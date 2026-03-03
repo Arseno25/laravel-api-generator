@@ -11,16 +11,10 @@ use Illuminate\Support\Str;
 use function Laravel\Prompts\confirm;
 use function Laravel\Prompts\error;
 use function Laravel\Prompts\info;
-use function Laravel\Prompts\confirm;
-use function Laravel\Prompts\error;
-use function Laravel\Prompts\info;
 use function Laravel\Prompts\intro;
-use function Laravel\Prompts\note;
 use function Laravel\Prompts\note;
 use function Laravel\Prompts\outro;
 use function Laravel\Prompts\select;
-use function Laravel\Prompts\table;
-use function Laravel\Prompts\text;
 use function Laravel\Prompts\table;
 use function Laravel\Prompts\text;
 use function Laravel\Prompts\warning;
@@ -48,7 +42,6 @@ final class GenerateApiCommand extends Command
 
         // Display Header
         if (! $noInteraction) {
-        if (! $noInteraction) {
             intro('✨ API Magic - Interactive Setup');
         }
 
@@ -58,10 +51,8 @@ final class GenerateApiCommand extends Command
             if ($noInteraction) {
                 error('Model name is required in non-interactive mode.');
 
-
                 return self::FAILURE;
             }
-
 
             $model = text(
                 label: 'What is the Model name?',
@@ -69,7 +60,6 @@ final class GenerateApiCommand extends Command
                 required: true
             );
         }
-
 
         $model = Str::singular(Str::studly($model));
         $table = Str::snake(Str::pluralStudly($model));
@@ -104,7 +94,6 @@ final class GenerateApiCommand extends Command
         // Get API version
         $version = $this->option('v');
         if (! $noInteraction && $version === '1') {
-        if (! $noInteraction && $version === '1') {
             $version = select(
                 label: 'What is the API version?',
                 options: [
@@ -119,7 +108,6 @@ final class GenerateApiCommand extends Command
         // Get test option
         $generateTest = $this->option('test');
         if (! $noInteraction && ! $generateTest) {
-        if (! $noInteraction && ! $generateTest) {
             $generateTest = confirm(
                 label: 'Generate Pest feature test?',
                 default: false
@@ -127,7 +115,6 @@ final class GenerateApiCommand extends Command
         }
 
         // Show summary and confirm
-        if (! $noInteraction) {
         if (! $noInteraction) {
             $this->displaySummary([
                 'model' => $model,
@@ -145,9 +132,7 @@ final class GenerateApiCommand extends Command
             ]);
 
             if (! confirm(label: 'Proceed to generate API?', default: true)) {
-            if (! confirm(label: 'Proceed to generate API?', default: true)) {
                 warning('Generation cancelled.');
-
 
                 return self::SUCCESS;
             }
@@ -156,15 +141,12 @@ final class GenerateApiCommand extends Command
         // Check force option
         $force = $this->option('force');
         if (! $noInteraction && ! $force) {
-        if (! $noInteraction && ! $force) {
             $existingFiles = $this->checkExistingFiles($model, $version, $generateTest);
-            if (! empty($existingFiles)) {
             if (! empty($existingFiles)) {
                 warning('The following files already exist:');
                 foreach ($existingFiles as $file) {
                     $this->line("  <fg=red>✗</> {$file}");
                 }
-
 
                 $force = confirm(label: 'Overwrite existing files?', default: false);
             }
@@ -233,14 +215,11 @@ final class GenerateApiCommand extends Command
         foreach ($files as $stub => $destination) {
             $directory = dirname($destination);
             if (! File::isDirectory($directory)) {
-            if (! File::isDirectory($directory)) {
                 File::makeDirectory($directory, 0755, true);
             }
 
             if (File::exists($destination) && ! $force) {
-            if (File::exists($destination) && ! $force) {
                 $this->line("  <fg=yellow>⊝ Skipped:</> {$destination}");
-
 
                 continue;
             }
@@ -275,15 +254,11 @@ final class GenerateApiCommand extends Command
         $fields = $this->parseFieldsFromSchema($data['fields']);
         $fieldCount = count($fields);
 
-
         // Merapikan tampilan nama field agar tidak merusak lebar tabel jika terlalu panjang
-        $fieldNames = ! empty($fields) ? implode(', ', array_keys($fields)) : 'None';
         $fieldNames = ! empty($fields) ? implode(', ', array_keys($fields)) : 'None';
         if (strlen($fieldNames) > 40) {
             $fieldNames = substr($fieldNames, 0, 40).'...';
-            $fieldNames = substr($fieldNames, 0, 40).'...';
         }
-
 
         $fieldsText = $fieldCount > 0 ? "{$fieldCount} field(s) <fg=gray>({$fieldNames})</>" : 'None';
 
@@ -291,11 +266,7 @@ final class GenerateApiCommand extends Command
         $relations = [];
         if (! empty($data['relations']['belongsTo'])) {
             $relations[] = count($data['relations']['belongsTo']).' BelongsTo';
-        if (! empty($data['relations']['belongsTo'])) {
-            $relations[] = count($data['relations']['belongsTo']).' BelongsTo';
         }
-        if (! empty($data['relations']['hasMany'])) {
-            $relations[] = count($data['relations']['hasMany']).' HasMany';
         if (! empty($data['relations']['hasMany'])) {
             $relations[] = count($data['relations']['hasMany']).' HasMany';
         }
@@ -334,7 +305,6 @@ final class GenerateApiCommand extends Command
 
         foreach ($items as $item) {
             $parts = explode(':', trim($item), 2);
-            if (! empty($parts[0])) {
             if (! empty($parts[0])) {
                 $fields[trim($parts[0])] = true;
             }
@@ -408,7 +378,6 @@ final class GenerateApiCommand extends Command
                 $rules[] = 'required';
             }
             if (! empty($additionalRules)) {
-            if (! empty($additionalRules)) {
                 $rules[] = $additionalRules;
             }
 
@@ -417,11 +386,9 @@ final class GenerateApiCommand extends Command
 
             $parts = [$fieldType, $isRequired ? 'required' : 'optional'];
             if (! empty($additionalRules)) {
-            if (! empty($additionalRules)) {
                 $parts[] = $additionalRules;
             }
 
-            $this->line("  <fg=green>✓</> Added: <fg=white>{$fieldName}</> <fg=gray>(".implode(', ', $parts).")</>\n");
             $this->line("  <fg=green>✓</> Added: <fg=white>{$fieldName}</> <fg=gray>(".implode(', ', $parts).")</>\n");
         }
 
@@ -445,7 +412,6 @@ final class GenerateApiCommand extends Command
                 required: true
             );
 
-
             $relatedModel = Str::studly(trim($relatedModel));
             $belongsTo[] = $relatedModel;
             $this->line("  <fg=green>✓</> Added belongsTo: <fg=white>{$relatedModel}</>\n");
@@ -457,7 +423,6 @@ final class GenerateApiCommand extends Command
                 placeholder: 'e.g., Comment, Review',
                 required: true
             );
-
 
             $relatedModel = Str::studly(trim($relatedModel));
             $hasMany[] = $relatedModel;
