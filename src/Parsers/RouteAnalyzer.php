@@ -33,7 +33,7 @@ final class RouteAnalyzer
         // In Laravel < 12, try getRoutesByType() first if available
         if (method_exists(RouteFacade::getRoutes(), 'getRoutesByType')) {
             $routes = RouteFacade::getRoutes()->getRoutesByType();
-            if (!empty($routes)) {
+            if (! empty($routes)) {
                 $allRoutes = [];
                 foreach ($routes as $routeCollection) {
                     foreach ($routeCollection as $route) {

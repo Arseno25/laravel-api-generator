@@ -13,7 +13,7 @@ it('debugs required rule parsing', function () {
 
     echo "\n=== DEBUG OUTPUT ===\n";
     echo "Rules output:\n";
-    echo $result['rules'] . "\n";
+    echo $result['rules']."\n";
     echo "===================\n\n";
 
     expect($result['rules'])->toContain("'name' => 'required'");
