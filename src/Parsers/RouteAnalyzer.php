@@ -156,7 +156,7 @@ final class RouteAnalyzer
     /**
      * Extract path parameters from URI.
      *
-     * @return array<int, array<string, string>>
+     * @return list<array<string, mixed>>
      */
     private function extractUriParameters(string $uri): array
     {
@@ -248,12 +248,12 @@ final class RouteAnalyzer
     private function generateDescription(string $method, string $uri): string
     {
         $summaries = match ($method) {
-            'GET' => str_ends_with($uri, '}') || ! str_contains($uri, '{')
+            'get' => str_ends_with($uri, '}') || ! str_contains($uri, '{')
                 ? 'Retrieve a list of resources'
                 : 'Retrieve a single resource',
-            'POST' => 'Create a new resource',
-            'PUT', 'PATCH' => 'Update an existing resource',
-            'DELETE' => 'Delete a resource',
+            'post' => 'Create a new resource',
+            'put', 'patch' => 'Update an existing resource',
+            'delete' => 'Delete a resource',
             default => '',
         };
 
@@ -270,7 +270,7 @@ final class RouteAnalyzer
 
         // Get the first segment
         $segments = explode('/', $uri);
-        $resource = $segments[0] ?? null;
+        $resource = $segments[0];
 
         if (! $resource) {
             return null;
@@ -357,7 +357,7 @@ final class RouteAnalyzer
 
         // Get the first segment as the main tag
         $segments = explode('/', $uri);
-        $mainTag = Str::studly($segments[0] ?? 'General');
+        $mainTag = Str::studly($segments[0]);
 
         $tags = [$mainTag];
 

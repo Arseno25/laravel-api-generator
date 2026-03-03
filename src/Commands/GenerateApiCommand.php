@@ -176,6 +176,7 @@ final class GenerateApiCommand extends Command
             '{{ rules }}' => $fields['rules'],
             '{{ resourceProperties }}' => $fields['resourceProperties'],
             '{{ relations }}' => $fields['relations'],
+            '{{ relationImports }}' => $this->buildRelationImports($belongsTo, $hasMany, $belongsToMany),
             '{{ foreignKeys }}' => $fields['foreignKeys'],
             '{{ factoryDefinitions }}' => $fields['factoryDefinitions'] ?? '',
             '{{ searchConditions }}' => $this->buildSearchConditions($fields['searchableFields'] ?? []),
@@ -184,7 +185,7 @@ final class GenerateApiCommand extends Command
             '{{ softDeletes }}' => $this->option('soft-deletes') ? '$table->softDeletes();' : '',
             '{{ softDeletesTrait }}' => $this->option('soft-deletes') ? '    use SoftDeletes;' : '',
             '{{ searchableFields }}' => ! empty($fields['searchableFields']),
-            '{{ seederCount }}' => '10',
+            '{{ seederCount }}' => (string) config('api-magic.generator.seeder_count', 10),
         ];
 
         $controllerDir = $version === '1' ? 'Http/Controllers/Api' : "Http/Controllers/Api/V{$version}";
@@ -247,6 +248,23 @@ final class GenerateApiCommand extends Command
         }
 
         return array_map(fn ($r) => Str::studly(trim($r)), explode(',', $relations));
+    }
+
+    private function buildRelationImports(array $belongsTo, array $hasMany, array $belongsToMany): string
+    {
+        $imports = [];
+
+        if (! empty($belongsTo)) {
+            $imports[] = 'use Illuminate\Database\Eloquent\Relations\BelongsTo;';
+        }
+        if (! empty($hasMany)) {
+            $imports[] = 'use Illuminate\Database\Eloquent\Relations\HasMany;';
+        }
+        if (! empty($belongsToMany)) {
+            $imports[] = 'use Illuminate\Database\Eloquent\Relations\BelongsToMany;';
+        }
+
+        return empty($imports) ? '' : implode("\n", $imports);
     }
 
     private function displaySummary(array $data): void

@@ -2,8 +2,8 @@
 
 namespace {{ seederNamespace }};
 
+use {{ namespace }}\Models\{{ model }};
 use Illuminate\Database\Seeder;
-use {{ model }};
 
 class {{ model }}Seeder extends Seeder
 {
@@ -12,6 +12,6 @@ class {{ model }}Seeder extends Seeder
      */
     public function run(): void
     {
-        {{ model }}::factory()->count({{ count }})->create();
+        {{ model }}::factory()->count({{ seederCount }})->create();
     }
 }

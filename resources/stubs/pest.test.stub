@@ -2,7 +2,7 @@
 
 use {{ namespace }}\Models\{{ model }};
 use {{ resourceNamespace }}\{{ model }}Resource;
-use function Pest\Laravel\{get, post, put, delete};
+use function Pest\Laravel\{get, post, put, patch, delete};
 
 uses()->group('api', '{{ apiVersion }}', '{{ modelPluralVariable }}');
 
@@ -33,11 +33,13 @@ it('can show a single {{ modelVariable }}', function () {
 });
 
 it('requires valid data to create a {{ modelVariable }}', function () {
-    $response = post('/api/{{ apiResourceUrl }}', [
-        // Add required fields here based on your schema
-    ]);
+    $response = post('/api/{{ apiResourceUrl }}', []);
 
-    $response->assertStatus(422);
+    $response->assertStatus(422)
+        ->assertJsonStructure([
+            'message',
+            'errors',
+        ]);
 });
 
 it('can create a {{ modelVariable }}', function () {
@@ -46,19 +48,15 @@ it('can create a {{ modelVariable }}', function () {
     $response = post('/api/{{ apiResourceUrl }}', $data);
 
     $response->assertStatus(201)
-        ->assertJson([
-            'data' => [
-                // Add expected fields here
-            ],
+        ->assertJsonStructure([
+            'data' => ['id'],
         ]);
 
-    $this->assertDatabaseHas('{{ table }}', [
-        // Add expected database fields here
-    ]);
+    $this->assertDatabaseHas('{{ table }}', $data);
 });
 
 it('can update a {{ modelVariable }}', function () {
-    $data = ['name' => 'Updated Name']; // Update with actual field
+    $data = {{ model }}::factory()->raw();
 
     $response = put("/api/{{ apiResourceUrl }}/{$this->{{ modelVariable }}->id}", $data);
 
@@ -70,10 +68,22 @@ it('can update a {{ modelVariable }}', function () {
         ]);
 });
 
+it('can partially update a {{ modelVariable }}', function () {
+    $data = {{ model }}::factory()->raw();
+    $partialData = array_slice($data, 0, 1, true);
+
+    $response = patch("/api/{{ apiResourceUrl }}/{$this->{{ modelVariable }}->id}", $partialData);
+
+    $response->assertStatus(200)
+        ->assertJson([
+            'data' => [
+                'id' => $this->{{ modelVariable }}->id,
+            ],
+        ]);
+});
+
 it('requires valid data to update a {{ modelVariable }}', function () {
-    $response = put("/api/{{ apiResourceUrl }}/{$this->{{ modelVariable }}->id}", [
-        // Add invalid data
-    ]);
+    $response = put("/api/{{ apiResourceUrl }}/{$this->{{ modelVariable }}->id}", []);
 
     $response->assertStatus(422);
 });

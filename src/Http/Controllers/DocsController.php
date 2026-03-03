@@ -22,9 +22,9 @@ final class DocsController extends Controller
     /**
      * Display the API documentation UI.
      */
-    public function index(): \Illuminate\View\View
+    public function index(): \Illuminate\Contracts\View\View
     {
-        return view('laravel-api-magic::docs');
+        return view('laravel-api-magic::docs'); // @phpstan-ignore argument.type
     }
 
     /**
@@ -86,7 +86,7 @@ final class DocsController extends Controller
             return null;
         }
 
-        return $cached['endpaths'] ?? null;
+        return $cached['endpoints'] ?? null;
     }
 
     /**
@@ -98,7 +98,8 @@ final class DocsController extends Controller
     {
         $routes = $this->routeAnalyzer->getApiRoutes();
 
-        $endpoints = collect($routes)
+        // Parse routes once, then group differently
+        $parsedRoutes = collect($routes)
             ->map(fn ($route) => $this->routeAnalyzer->parseRoute($route, $this->requestAnalyzer))
             ->filter()
             ->sortBy([
@@ -106,21 +107,14 @@ final class DocsController extends Controller
                 ['path', 'asc'],
                 ['method', 'asc'],
             ])
-            ->values()
+            ->values();
+
+        $endpoints = $parsedRoutes
             ->groupBy('path')
             ->map(fn ($group) => $group->keyBy('method'))
             ->toArray();
 
-        // Group by version
-        $endpointsByVersion = collect($routes)
-            ->map(fn ($route) => $this->routeAnalyzer->parseRoute($route, $this->requestAnalyzer))
-            ->filter()
-            ->sortBy([
-                ['version', 'asc'],
-                ['path', 'asc'],
-                ['method', 'asc'],
-            ])
-            ->values()
+        $endpointsByVersion = $parsedRoutes
             ->groupBy('version')
             ->map(fn ($group) => $group->groupBy('path')->map(fn ($methods) => $methods->keyBy('method'))->toArray())
             ->toArray();
@@ -268,6 +262,29 @@ final class DocsController extends Controller
                         'description' => 'Laravel Sanctum Bearer Token authentication. Enter token without "Bearer" prefix.',
                     ],
                 ],
+                'schemas' => [
+                    'SuccessResponse' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'data' => ['type' => 'object', 'description' => 'Response data'],
+                            'meta' => ['type' => 'object', 'description' => 'Pagination metadata'],
+                            'links' => ['type' => 'object', 'description' => 'Pagination links'],
+                        ],
+                    ],
+                    'ResourceResponse' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'data' => ['type' => 'object', 'description' => 'Resource data'],
+                        ],
+                    ],
+                    'ValidationError' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'message' => ['type' => 'string', 'example' => 'The given data was invalid.'],
+                            'errors' => ['type' => 'object', 'description' => 'Validation errors grouped by field'],
+                        ],
+                    ],
+                ],
             ],
             'tags' => $this->buildOpenApiTags($schema),
         ];
@@ -276,7 +293,7 @@ final class DocsController extends Controller
     /**
      * Build OpenAPI response definitions.
      *
-     * @return array<string, mixed>
+     * @return array<mixed>
      */
     private function buildOpenApiResponses(string $method): array
     {
@@ -360,7 +377,7 @@ final class DocsController extends Controller
                 'description' => $field['description'] ?? '',
             ];
 
-            if (! $field['required'] ?? false) {
+            if (! ($field['required'] ?? false)) {
                 $schema['nullable'] = true;
             }
 

@@ -4,6 +4,7 @@ namespace Arseno25\LaravelApiMagic\Parsers;
 
 use Illuminate\Foundation\Http\FormRequest;
 use ReflectionClass;
+use ReflectionNamedType;
 
 final class RequestAnalyzer
 {
@@ -26,8 +27,9 @@ final class RequestAnalyzer
                 return [];
             }
 
+            /** @var FormRequest $instance */
             $instance = $reflection->newInstance();
-            $rules = $instance->rules();
+            $rules = $instance->rules(); // @phpstan-ignore method.notFound
 
             return $this->parseRules($rules);
         } catch (\Throwable) {
@@ -240,7 +242,7 @@ final class RequestAnalyzer
             foreach ($parameters as $parameter) {
                 $type = $parameter->getType();
 
-                if ($type && ! $type->isBuiltin()) {
+                if ($type instanceof ReflectionNamedType && ! $type->isBuiltin()) {
                     $typeName = $type->getName();
 
                     if (class_exists($typeName) && is_subclass_of($typeName, FormRequest::class)) {

@@ -70,7 +70,7 @@ final class CacheDocsCommand extends Command
             'version' => '1.0.0',
             'generated_at' => now()->toIso8601String(),
             'title' => config('app.name', 'Laravel API').' Documentation',
-            'endpaths' => $endpoints,
+            'endpoints' => $endpoints,
             'tags' => array_keys($tags),
             'stats' => [
                 'total_endpoints' => count($endpoints),

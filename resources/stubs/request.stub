@@ -28,16 +28,30 @@ class {{ model }}Request extends FormRequest
 {{ rules }}
         ];
 
-        // Add unique rule for updates (exclude current record)
+        // For update requests (PUT/PATCH), make fields optional unless explicitly required
         if ($this->isMethod('put') || $this->isMethod('patch')) {
             foreach ($rules as $field => $rule) {
-                if (is_string($rule) && str_contains($rule, 'unique')) {
-                    ${{ modelVariable }} = $this->route('{{ modelVariable }}');
-                    $rules[$field] = str_replace(
-                        'unique',
-                        'unique:{{ table }},{$field},' . ${{ modelVariable }}->id,
-                        $rule
-                    );
+                if (is_string($rule)) {
+                    // Replace 'required' with 'sometimes' for partial updates
+                    if ($this->isMethod('patch')) {
+                        $rule = str_replace('required', 'sometimes', $rule);
+                    }
+
+                    // Handle unique rule — exclude current record
+                    if (str_contains($rule, 'unique')) {
+                        ${{ modelVariable }} = $this->route('{{ modelVariable }}');
+                        if (${{ modelVariable }}) {
+                            $rules[$field] = str_replace(
+                                'unique',
+                                'unique:{{ table }},' . $field . ',' . ${{ modelVariable }}->id,
+                                $rule
+                            );
+
+                            continue;
+                        }
+                    }
+
+                    $rules[$field] = $rule;
                 }
             }
         }

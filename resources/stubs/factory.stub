@@ -2,7 +2,7 @@
 
 namespace {{ factoryNamespace }};
 
-use {{ model }} as {{ modelVariable }};
+use {{ namespace }}\Models\{{ model }};
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class {{ model }}Factory extends Factory

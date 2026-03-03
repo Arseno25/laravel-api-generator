@@ -24,10 +24,6 @@ final class SchemaParser
         'uuid' => 'uuid',
     ];
 
-    private array $nullableTypes = [
-        'text', 'dateTime', 'timestamp', 'json', 'uuid',
-    ];
-
     public function parse(string $schema, array $belongsTo = [], array $hasMany = [], array $belongsToMany = []): array
     {
         $fields = $this->extractFields($schema);
@@ -131,11 +127,7 @@ final class SchemaParser
             $name = $field['name'];
             $nullable = $field['nullable'];
 
-            $method = in_array($type, $this->nullableTypes) && ! $nullable
-                ? $type
-                : $type;
-
-            $line = "\$table->{$method}('{$name}')";
+            $line = "\$table->{$type}('{$name}')";
 
             if ($type === 'decimal' || $type === 'float' || $type === 'double') {
                 $line .= '->default(0)';
@@ -184,10 +176,8 @@ final class SchemaParser
                 }
             }
 
-            if (! empty($rules)) {
-                $rulesString = implode('|', $rules);
-                $lines[] = "            '{$name}' => '{$rulesString}',";
-            }
+            $rulesString = implode('|', $rules);
+            $lines[] = "            '{$name}' => '{$rulesString}',";
         }
 
         if (empty($lines)) {
