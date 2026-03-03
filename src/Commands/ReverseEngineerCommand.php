@@ -112,7 +112,7 @@ final class ReverseEngineerCommand extends Command
             );
 
             if (! empty($schema['relationships'])) {
-                info("  🔗 Relationships: ".implode(', ', array_map(
+                info('  🔗 Relationships: '.implode(', ', array_map(
                     fn ($r) => $r['type'].' → '.$r['model'],
                     $schema['relationships']
                 )));

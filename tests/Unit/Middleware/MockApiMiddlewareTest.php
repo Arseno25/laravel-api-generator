@@ -1,13 +1,16 @@
 <?php
 
 use Arseno25\LaravelApiMagic\Http\Middleware\MockApiMiddleware;
-use Arseno25\LaravelApiMagic\Parsers\RequestAnalyzer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-class MockTestController {
-    public function index() { return new JsonResponse(['real' => true]); }
+class MockTestController
+{
+    public function index()
+    {
+        return new JsonResponse(['real' => true]);
+    }
 }
 
 uses()->group('middleware', 'mock');
