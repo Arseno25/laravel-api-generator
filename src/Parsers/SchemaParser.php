@@ -28,7 +28,7 @@ final class SchemaParser
         'text', 'dateTime', 'timestamp', 'json', 'uuid',
     ];
 
-    public function parse(string $schema, array $belongsTo = [], array $hasMany = []): array
+    public function parse(string $schema, array $belongsTo = [], array $hasMany = [], array $belongsToMany = []): array
     {
         $fields = $this->extractFields($schema);
 
@@ -37,8 +37,11 @@ final class SchemaParser
             'fillable' => $this->buildFillable($fields),
             'rules' => $this->buildValidationRules($fields),
             'resourceProperties' => $this->buildResourceProperties($fields),
-            'relations' => $this->buildRelations($belongsTo, $hasMany),
+            'relations' => $this->buildRelations($belongsTo, $hasMany, $belongsToMany),
             'foreignKeys' => $this->buildForeignKeys($belongsTo),
+            'factoryDefinitions' => $this->buildFactoryDefinitions($fields, $belongsTo),
+            'searchableFields' => $this->getSearchableFields($fields),
+            'belongsToMany' => $belongsToMany,
         ];
     }
 
@@ -79,7 +82,7 @@ final class SchemaParser
             // 1. There are explicit rules provided AND
             // 2. The field type is a valid validation rule type AND
             // 3. The field type is not already in the rules
-            if (!empty($parsedRules) && in_array($type, $validationRuleTypes, true) && !in_array($type, $parsedRules, true)) {
+            if (! empty($parsedRules) && in_array($type, $validationRuleTypes, true) && ! in_array($type, $parsedRules, true)) {
                 array_unshift($parsedRules, $type); // Add type as first rule
             }
 
@@ -205,7 +208,7 @@ final class SchemaParser
         return implode("\n", $lines);
     }
 
-    private function buildRelations(array $belongsTo, array $hasMany): string
+    private function buildRelations(array $belongsTo, array $hasMany, array $belongsToMany): string
     {
         $lines = [];
 
@@ -217,6 +220,11 @@ final class SchemaParser
         foreach ($hasMany as $relatedModel) {
             $relationName = Str::camel(Str::plural($relatedModel));
             $lines[] = $this->buildHasManyMethod($relatedModel, $relationName);
+        }
+
+        foreach ($belongsToMany as $relatedModel) {
+            $relationName = Str::camel(Str::plural($relatedModel));
+            $lines[] = $this->buildBelongsToManyMethod($relatedModel, $relationName);
         }
 
         return empty($lines) ? '' : implode("\n\n", $lines);
@@ -240,6 +248,16 @@ final class SchemaParser
         '    }';
     }
 
+    private function buildBelongsToManyMethod(string $relatedModel, string $relationName): string
+    {
+        $relatedClass = Str::studly(Str::singular($relatedModel));
+
+        return "    public function {$relationName}(): BelongsToMany\n".
+        "    {\n".
+        "        return \$this->belongsToMany({$relatedClass}::class);\n".
+        '    }';
+    }
+
     private function buildForeignKeys(array $belongsTo): string
     {
         if (empty($belongsTo)) {
@@ -253,5 +271,76 @@ final class SchemaParser
         }
 
         return implode("\n            ", $lines);
+    }
+
+    private function buildFactoryDefinitions(array $fields, array $belongsTo): string
+    {
+        $lines = [];
+
+        foreach ($fields as $field) {
+            $name = $field['name'];
+            $type = $field['type'];
+            $faker = $this->getFakerMethod($name, $type);
+            $lines[] = "            '{$name}' => {$faker},";
+        }
+
+        // Add foreign key factory definitions
+        foreach ($belongsTo as $relatedModel) {
+            $foreignKey = Str::snake($relatedModel).'_id';
+            $lines[] = "            '{$foreignKey}' => {$relatedModel}::factory(),";
+        }
+
+        return implode("\n", $lines);
+    }
+
+    private function getFakerMethod(string $fieldName, string $fieldType): string
+    {
+        $name = Str::lower($fieldName);
+
+        // Smart field name detection
+        return match (true) {
+            str_contains($name, 'email') => 'fake()->unique()->safeEmail()',
+            str_contains($name, 'name') => 'fake()->name()',
+            str_contains($name, 'title') => 'fake()->sentence()',
+            str_contains($name, 'description') => 'fake()->paragraph()',
+            str_contains($name, 'phone') => 'fake()->phoneNumber()',
+            str_contains($name, 'address') => 'fake()->address()',
+            str_contains($name, 'city') => 'fake()->city()',
+            str_contains($name, 'country') => 'fake()->country()',
+            str_contains($name, 'zip') || str_contains($name, 'postal') => 'fake()->postcode()',
+            str_contains($name, 'password') => 'fake()->password()',
+            str_contains($name, 'url') || str_contains($name, 'website') => 'fake()->url()',
+            str_contains($name, 'company') => 'fake()->company()',
+            str_contains($name, 'image') || str_contains($name, 'avatar') || str_contains($name, 'photo') => 'fake()->imageUrl()',
+            str_contains($name, 'price') || str_contains($name, 'cost') => 'fake()->randomFloat(2, 1, 1000)',
+            $fieldType === 'string' => 'fake()->word()',
+            $fieldType === 'text' => 'fake()->paragraph()',
+            $fieldType === 'integer' || $fieldType === 'bigInteger' => 'fake()->randomNumber()',
+            $fieldType === 'decimal' => 'fake()->randomFloat(2, 0, 1000)',
+            $fieldType === 'float' || $fieldType === 'double' => 'fake()->randomFloat()',
+            $fieldType === 'boolean' => 'fake()->boolean()',
+            $fieldType === 'date' => 'fake()->date()',
+            $fieldType === 'dateTime' || $fieldType === 'timestamp' => 'fake()->dateTime()',
+            $fieldType === 'json' => 'fake()->words(3)',
+            $fieldType === 'uuid' => 'fake()->uuid()',
+            default => 'fake()->word()',
+        };
+    }
+
+    private function getSearchableFields(array $fields): array
+    {
+        $searchable = [];
+
+        foreach ($fields as $field) {
+            $type = $field['type'];
+            $name = $field['name'];
+
+            // String and text fields are searchable
+            if (in_array($type, ['string', 'text'], true)) {
+                $searchable[] = $name;
+            }
+        }
+
+        return $searchable;
     }
 }

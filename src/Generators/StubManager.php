@@ -51,6 +51,30 @@ final class StubManager
             $stub = str_replace($key, $value, $stub);
         }
 
+        // Handle block conditionals @conditionalName ... @endConditionalName
+        $stub = preg_replace_callback('/@(\w+)\s*\n(.*?)\s*@end\1/s', function ($matches) use ($replacements) {
+            $conditionName = $matches[1];
+            $content = $matches[2];
+
+            // Check if the condition is truthy in replacements
+            $key = '{{'.strtolower($conditionName).'}}';
+            $isEnabled = isset($replacements[$key]) && $replacements[$key];
+
+            return $isEnabled ? $content : '';
+        }, $stub);
+
+        // Handle inline conditional replacements @conditionalName('content')
+        $stub = preg_replace_callback('/@(\w+)\(([\'"])(.+?)\2\)/', function ($matches) use ($replacements) {
+            $conditionName = $matches[1];
+            $content = $matches[3];
+
+            // Check if the condition is truthy in replacements
+            $key = '{{'.strtolower($conditionName).'}}';
+            $isEnabled = isset($replacements[$key]) && $replacements[$key];
+
+            return $isEnabled ? $content : '';
+        }, $stub);
+
         return $stub;
     }
 

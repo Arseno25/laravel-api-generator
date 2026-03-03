@@ -8,16 +8,16 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
-use function Laravel\Prompts\intro;
-use function Laravel\Prompts\outro;
-use function Laravel\Prompts\text;
-use function Laravel\Prompts\select;
 use function Laravel\Prompts\confirm;
-use function Laravel\Prompts\info;
-use function Laravel\Prompts\warning;
 use function Laravel\Prompts\error;
+use function Laravel\Prompts\info;
+use function Laravel\Prompts\intro;
 use function Laravel\Prompts\note;
+use function Laravel\Prompts\outro;
+use function Laravel\Prompts\select;
 use function Laravel\Prompts\table;
+use function Laravel\Prompts\text;
+use function Laravel\Prompts\warning;
 
 final class GenerateApiCommand extends Command
 {
@@ -25,8 +25,12 @@ final class GenerateApiCommand extends Command
         {model? : The name of the Model}
         {schema? : Field schema (e.g., "title:string|required,price:integer|min:0"). Leave empty to generate with placeholder fields.}
         {--test : Generate a Pest feature test}
+        {--factory : Generate a Factory}
+        {--seeder : Generate a Seeder}
+        {--soft-deletes : Add soft deletes to model and migration}
         {--belongsTo= : BelongsTo relations (e.g., "category,user")}
         {--hasMany= : HasMany relations (e.g., "comments,review")}
+        {--belongsToMany= : BelongsToMany relations (e.g., "tag,category")}
         {--v=1 : API version number (default: 1)}
         {--force : Overwrite existing files}';
 
@@ -37,7 +41,7 @@ final class GenerateApiCommand extends Command
         $noInteraction = $this->input->hasParameterOption('--no-interaction');
 
         // Display Header
-        if (!$noInteraction) {
+        if (! $noInteraction) {
             intro('✨ API Magic - Interactive Setup');
         }
 
@@ -46,16 +50,17 @@ final class GenerateApiCommand extends Command
         if (empty($model)) {
             if ($noInteraction) {
                 error('Model name is required in non-interactive mode.');
+
                 return self::FAILURE;
             }
-            
+
             $model = text(
                 label: 'What is the Model name?',
                 placeholder: 'e.g., Post, Product, User',
                 required: true
             );
         }
-        
+
         $model = Str::singular(Str::studly($model));
         $table = Str::snake(Str::pluralStudly($model));
 
@@ -76,17 +81,19 @@ final class GenerateApiCommand extends Command
         // Get relations
         $belongsTo = $this->option('belongsTo');
         $hasMany = $this->option('hasMany');
+        $belongsToMany = $this->option('belongsToMany');
 
-        if (empty($belongsTo) && empty($hasMany) && !$noInteraction) {
-            [$belongsTo, $hasMany] = $this->collectRelationsInteractively();
+        if (empty($belongsTo) && empty($hasMany) && empty($belongsToMany) && ! $noInteraction) {
+            [$belongsTo, $hasMany, $belongsToMany] = $this->collectRelationsInteractively();
         } else {
             $belongsTo = $this->parseRelations($belongsTo);
             $hasMany = $this->parseRelations($hasMany);
+            $belongsToMany = $this->parseRelations($belongsToMany);
         }
 
         // Get API version
         $version = $this->option('v');
-        if (!$noInteraction && $version === '1') {
+        if (! $noInteraction && $version === '1') {
             $version = select(
                 label: 'What is the API version?',
                 options: [
@@ -100,7 +107,7 @@ final class GenerateApiCommand extends Command
 
         // Get test option
         $generateTest = $this->option('test');
-        if (!$noInteraction && !$generateTest) {
+        if (! $noInteraction && ! $generateTest) {
             $generateTest = confirm(
                 label: 'Generate Pest feature test?',
                 default: false
@@ -108,40 +115,45 @@ final class GenerateApiCommand extends Command
         }
 
         // Show summary and confirm
-        if (!$noInteraction) {
+        if (! $noInteraction) {
             $this->displaySummary([
                 'model' => $model,
                 'fields' => $schemaInput,
                 'relations' => [
                     'belongsTo' => $belongsTo,
                     'hasMany' => $hasMany,
+                    'belongsToMany' => $belongsToMany,
                 ],
                 'version' => $version,
                 'test' => $generateTest,
+                'factory' => $this->option('factory'),
+                'seeder' => $this->option('seeder'),
+                'softDeletes' => $this->option('soft-deletes'),
             ]);
 
-            if (!confirm(label: 'Proceed to generate API?', default: true)) {
+            if (! confirm(label: 'Proceed to generate API?', default: true)) {
                 warning('Generation cancelled.');
+
                 return self::SUCCESS;
             }
         }
 
         // Check force option
         $force = $this->option('force');
-        if (!$noInteraction && !$force) {
+        if (! $noInteraction && ! $force) {
             $existingFiles = $this->checkExistingFiles($model, $version, $generateTest);
-            if (!empty($existingFiles)) {
+            if (! empty($existingFiles)) {
                 warning('The following files already exist:');
                 foreach ($existingFiles as $file) {
                     $this->line("  <fg=red>✗</> {$file}");
                 }
-                
+
                 $force = confirm(label: 'Overwrite existing files?', default: false);
             }
         }
 
         // Parse schema and generate files
-        $fields = $parser->parse($schemaInput, $belongsTo, $hasMany);
+        $fields = $parser->parse($schemaInput, $belongsTo, $hasMany, $belongsToMany);
 
         info("⚙️  Generating API for {$model}...");
 
@@ -152,6 +164,8 @@ final class GenerateApiCommand extends Command
             '{{ namespace }}' => 'App',
             '{{ controllerNamespace }}' => $controllerNamespace,
             '{{ resourceNamespace }}' => $resourceNamespace,
+            '{{ factoryNamespace }}' => 'Database\\Factories',
+            '{{ seederNamespace }}' => 'Database\\Seeders',
             '{{ model }}' => $model,
             '{{ modelVariable }}' => Str::camel($model),
             '{{ modelPlural }}' => Str::plural($model),
@@ -163,8 +177,14 @@ final class GenerateApiCommand extends Command
             '{{ resourceProperties }}' => $fields['resourceProperties'],
             '{{ relations }}' => $fields['relations'],
             '{{ foreignKeys }}' => $fields['foreignKeys'],
+            '{{ factoryDefinitions }}' => $fields['factoryDefinitions'] ?? '',
+            '{{ searchConditions }}' => $this->buildSearchConditions($fields['searchableFields'] ?? []),
             '{{ apiResourceUrl }}' => Str::kebab(Str::plural($model)),
             '{{ apiVersion }}' => $version,
+            '{{ softDeletes }}' => $this->option('soft-deletes') ? '$table->softDeletes();' : '',
+            '{{ softDeletesTrait }}' => $this->option('soft-deletes') ? '    use SoftDeletes;' : '',
+            '{{ searchableFields }}' => ! empty($fields['searchableFields']),
+            '{{ seederCount }}' => '10',
         ];
 
         $controllerDir = $version === '1' ? 'Http/Controllers/Api' : "Http/Controllers/Api/V{$version}";
@@ -176,6 +196,7 @@ final class GenerateApiCommand extends Command
             'controller.api.stub' => app_path("{$controllerDir}/{$model}Controller.php"),
             'request.stub' => app_path("Http/Requests/{$model}Request.php"),
             'resource.stub' => app_path("{$resourceDir}/{$model}Resource.php"),
+            'collection.stub' => app_path("{$resourceDir}/{$model}Collection.php"),
         ];
 
         if ($generateTest) {
@@ -183,14 +204,23 @@ final class GenerateApiCommand extends Command
             $files['pest.test.stub'] = base_path("{$testDir}/{$model}Test.php");
         }
 
+        if ($this->option('factory')) {
+            $files['factory.stub'] = database_path("factories/{$model}Factory.php");
+        }
+
+        if ($this->option('seeder')) {
+            $files['seeder.stub'] = database_path("seeders/{$model}Seeder.php");
+        }
+
         foreach ($files as $stub => $destination) {
             $directory = dirname($destination);
-            if (!File::isDirectory($directory)) {
+            if (! File::isDirectory($directory)) {
                 File::makeDirectory($directory, 0755, true);
             }
 
-            if (File::exists($destination) && !$force) {
+            if (File::exists($destination) && ! $force) {
                 $this->line("  <fg=yellow>⊝ Skipped:</> {$destination}");
+
                 continue;
             }
 
@@ -223,24 +253,27 @@ final class GenerateApiCommand extends Command
     {
         $fields = $this->parseFieldsFromSchema($data['fields']);
         $fieldCount = count($fields);
-        
+
         // Merapikan tampilan nama field agar tidak merusak lebar tabel jika terlalu panjang
-        $fieldNames = !empty($fields) ? implode(', ', array_keys($fields)) : 'None';
+        $fieldNames = ! empty($fields) ? implode(', ', array_keys($fields)) : 'None';
         if (strlen($fieldNames) > 40) {
-            $fieldNames = substr($fieldNames, 0, 40) . '...';
+            $fieldNames = substr($fieldNames, 0, 40).'...';
         }
-        
+
         $fieldsText = $fieldCount > 0 ? "{$fieldCount} field(s) <fg=gray>({$fieldNames})</>" : 'None';
 
         // Merapikan tampilan relasi
         $relations = [];
-        if (!empty($data['relations']['belongsTo'])) {
-            $relations[] = count($data['relations']['belongsTo']) . ' BelongsTo';
+        if (! empty($data['relations']['belongsTo'])) {
+            $relations[] = count($data['relations']['belongsTo']).' BelongsTo';
         }
-        if (!empty($data['relations']['hasMany'])) {
-            $relations[] = count($data['relations']['hasMany']) . ' HasMany';
+        if (! empty($data['relations']['hasMany'])) {
+            $relations[] = count($data['relations']['hasMany']).' HasMany';
         }
-        $relationsText = !empty($relations) ? implode(' | ', $relations) : 'None';
+        if (! empty($data['relations']['belongsToMany'])) {
+            $relations[] = count($data['relations']['belongsToMany']).' BelongsToMany';
+        }
+        $relationsText = ! empty($relations) ? implode(' | ', $relations) : 'None';
 
         // Menampilkan Header Summary
         info('📊 Configuration Summary');
@@ -254,6 +287,9 @@ final class GenerateApiCommand extends Command
                 ['🔗 Relations', $relationsText],
                 ['🔢 Version', "API v{$data['version']}"],
                 ['🧪 Pest Test', $data['test'] ? '✓ Enabled' : '✗ Disabled'],
+                ['🏭 Factory', $data['factory'] ? '✓ Enabled' : '✗ Disabled'],
+                ['🌱 Seeder', $data['seeder'] ? '✓ Enabled' : '✗ Disabled'],
+                ['🗑️  Soft Deletes', $data['softDeletes'] ? '✓ Enabled' : '✗ Disabled'],
             ]
         );
     }
@@ -269,7 +305,7 @@ final class GenerateApiCommand extends Command
 
         foreach ($items as $item) {
             $parts = explode(':', trim($item), 2);
-            if (!empty($parts[0])) {
+            if (! empty($parts[0])) {
                 $fields[trim($parts[0])] = true;
             }
         }
@@ -341,7 +377,7 @@ final class GenerateApiCommand extends Command
             if ($isRequired) {
                 $rules[] = 'required';
             }
-            if (!empty($additionalRules)) {
+            if (! empty($additionalRules)) {
                 $rules[] = $additionalRules;
             }
 
@@ -349,11 +385,11 @@ final class GenerateApiCommand extends Command
             $fields[] = "{$fieldName}:{$fieldType}:{$ruleString}";
 
             $parts = [$fieldType, $isRequired ? 'required' : 'optional'];
-            if (!empty($additionalRules)) {
+            if (! empty($additionalRules)) {
                 $parts[] = $additionalRules;
             }
 
-            $this->line("  <fg=green>✓</> Added: <fg=white>{$fieldName}</> <fg=gray>(" . implode(', ', $parts) . ")</>\n");
+            $this->line("  <fg=green>✓</> Added: <fg=white>{$fieldName}</> <fg=gray>(".implode(', ', $parts).")</>\n");
         }
 
         return implode(',', $fields);
@@ -363,9 +399,10 @@ final class GenerateApiCommand extends Command
     {
         $belongsTo = [];
         $hasMany = [];
+        $belongsToMany = [];
 
-        if (!confirm(label: 'Define relationships?', default: false)) {
-            return [$belongsTo, $hasMany];
+        if (! confirm(label: 'Define relationships?', default: false)) {
+            return [$belongsTo, $hasMany, $belongsToMany];
         }
 
         while (confirm(label: 'Add belongsTo relationship?', default: false)) {
@@ -374,7 +411,7 @@ final class GenerateApiCommand extends Command
                 placeholder: 'e.g., Category, User',
                 required: true
             );
-            
+
             $relatedModel = Str::studly(trim($relatedModel));
             $belongsTo[] = $relatedModel;
             $this->line("  <fg=green>✓</> Added belongsTo: <fg=white>{$relatedModel}</>\n");
@@ -386,12 +423,45 @@ final class GenerateApiCommand extends Command
                 placeholder: 'e.g., Comment, Review',
                 required: true
             );
-            
+
             $relatedModel = Str::studly(trim($relatedModel));
             $hasMany[] = $relatedModel;
             $this->line("  <fg=green>✓</> Added hasMany: <fg=white>{$relatedModel}</>\n");
         }
 
-        return [$belongsTo, $hasMany];
+        while (confirm(label: 'Add belongsToMany relationship?', default: false)) {
+            $relatedModel = text(
+                label: 'Related model name:',
+                placeholder: 'e.g., Tag, Category',
+                required: true
+            );
+
+            $relatedModel = Str::studly(trim($relatedModel));
+            $belongsToMany[] = $relatedModel;
+            $this->line("  <fg=green>✓</> Added belongsToMany: <fg=white>{$relatedModel}</>\n");
+        }
+
+        return [$belongsTo, $hasMany, $belongsToMany];
+    }
+
+    private function buildSearchConditions(array $searchableFields): string
+    {
+        if (empty($searchableFields)) {
+            return '';
+        }
+
+        $conditions = [];
+        $count = count($searchableFields);
+
+        foreach ($searchableFields as $i => $field) {
+            // Don't add comment on the last line
+            if ($i < $count - 1) {
+                $conditions[] = "                \$q->orWhere('{$field}', 'like', \"%{\$searchTerm}%\") // or";
+            } else {
+                $conditions[] = "                \$q->orWhere('{$field}', 'like', \"%{\$searchTerm}%\")";
+            }
+        }
+
+        return implode("\n", $conditions);
     }
 }

@@ -372,14 +372,16 @@
             container.innerHTML = `
                 <div class="space-y-6">
                     <!-- Endpoint Header -->
-                    <div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
-                        <div class="flex flex-wrap items-center gap-3 mb-4">
-                            <span class="method-badge text-base px-4 py-2 method-${method}">${method.toUpperCase()}</span>
-                            <code class="text-xl text-slate-200">${path}</code>
-                            ${endpoint.security && endpoint.security.length ? `<span class="px-3 py-1 rounded-full text-xs bg-red-400/10 text-red-400 flex items-center gap-1.5"><i class="fas fa-lock text-xs"></i> Auth Required</span>` : ''}
+                    <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                        <div class="flex items-center gap-3 px-5 py-4 border-b border-slate-700">
+                            <span class="method-badge method-${method}">${method.toUpperCase()}</span>
+                            <code class="text-sm text-slate-200 font-mono">${path}</code>
+                            ${endpoint.security && endpoint.security.length ? `<span class="ml-auto px-2 py-1 rounded-full text-xs bg-red-400/10 text-red-400 flex items-center gap-1.5"><i class="fas fa-lock text-xs"></i> Auth Required</span>` : ''}
                         </div>
-                        <h3 class="text-xl font-semibold text-white mb-2">${endpoint.summary || ''}</h3>
-                        <p class="text-slate-400">${endpoint.description || ''}</p>
+                        <div class="px-5 py-4">
+                            <h3 class="text-lg font-semibold text-white">${endpoint.summary || path}</h3>
+                            ${endpoint.description ? `<p class="text-slate-400 text-sm mt-1">${endpoint.description}</p>` : ''}
+                        </div>
                     </div>
                     ${paramsHtml || bodyHtml ? `<div class="bg-slate-800 rounded-xl p-6 border border-slate-700">${paramsHtml}${bodyHtml}</div>` : ''}
                     <div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
