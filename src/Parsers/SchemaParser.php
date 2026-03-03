@@ -79,7 +79,7 @@ final class SchemaParser
             // 1. There are explicit rules provided AND
             // 2. The field type is a valid validation rule type AND
             // 3. The field type is not already in the rules
-            if (!empty($parsedRules) && in_array($type, $validationRuleTypes, true) && !in_array($type, $parsedRules, true)) {
+            if (! empty($parsedRules) && in_array($type, $validationRuleTypes, true) && ! in_array($type, $parsedRules, true)) {
                 array_unshift($parsedRules, $type); // Add type as first rule
             }
 

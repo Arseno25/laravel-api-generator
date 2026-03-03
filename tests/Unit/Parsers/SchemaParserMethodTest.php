@@ -5,7 +5,7 @@ use Arseno25\LaravelApiMagic\Parsers\SchemaParser;
 uses()->group('parsers', 'schema-parser');
 
 it('tests isRequired method directly using reflection', function () {
-    $parser = new SchemaParser();
+    $parser = new SchemaParser;
 
     // Use reflection to access private method
     $reflection = new ReflectionClass($parser);
@@ -19,7 +19,7 @@ it('tests isRequired method directly using reflection', function () {
 });
 
 it('tests parseRules method directly using reflection', function () {
-    $parser = new SchemaParser();
+    $parser = new SchemaParser;
 
     // Use reflection to access private method
     $reflection = new ReflectionClass($parser);
@@ -34,7 +34,7 @@ it('tests parseRules method directly using reflection', function () {
 });
 
 it('tests full parse with name:string|required', function () {
-    $parser = new SchemaParser();
+    $parser = new SchemaParser;
     $result = $parser->parse('name:string|required');
 
     echo "\nFull result:\n";
