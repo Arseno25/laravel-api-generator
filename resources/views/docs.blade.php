@@ -190,7 +190,7 @@
                         <i class="fas fa-key"></i><span id="auth-status">Set Token</span>
                     </button>
                 </header>
-                <div class="flex-1 overflow-y-auto p-4 lg:p-6 pb-20" id="content-area">
+                <div class="flex-1 overflow-y-auto p-4 lg:p-6 pb-16" id="content-area">
                     <div class="text-center py-16 lg:py-20 max-w-4xl mx-auto">
                         <div class="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center">
                             <i class="fas fa-rocket text-3xl text-indigo-400"></i>
@@ -213,19 +213,19 @@
                         </div>
                     </div>
                 </div>
-            </main>
 
-            <!-- Footer -->
-            <footer class="fixed bottom-0 left-0 right-0 bg-slate-900/80 backdrop-blur-md border-t border-slate-800 py-3 px-6 z-20 lg:pl-72">
-                <div class="flex items-center justify-center gap-2 text-sm text-slate-500">
-                    <span>Made with</span>
-                    <i class="fas fa-heart text-red-500"></i>
-                    <span>by</span>
-                    <a href="https://github.com/Arseno25" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:text-indigo-300 font-medium transition-colors flex items-center gap-1.5">
-                        <i class="fab fa-github"></i> Arseno25
-                    </a>
-                </div>
-            </footer>
+                <!-- Footer -->
+                <footer class="bg-slate-900/80 backdrop-blur-md border-t border-slate-800 py-3 px-6 shrink-0">
+                    <div class="flex items-center justify-center gap-2 text-sm text-slate-500">
+                        <span>Made with</span>
+                        <i class="fas fa-heart text-red-500"></i>
+                        <span>by</span>
+                        <a href="https://github.com/Arseno25" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:text-indigo-300 font-medium transition-colors flex items-center gap-1.5">
+                            <i class="fab fa-github"></i> Arseno25
+                        </a>
+                    </div>
+                </footer>
+            </main>
         </div>
 
         <!-- Auth Modal -->
