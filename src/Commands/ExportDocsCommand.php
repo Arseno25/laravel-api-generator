@@ -19,9 +19,10 @@ final class ExportDocsCommand extends Command
     public function handle(DocsController $docsController): int
     {
         $format = strtolower((string) $this->option('format'));
-        
+
         if (! in_array($format, ['json', 'yaml'])) {
             $this->error('Invalid format. Please use "json" or "yaml".');
+
             return self::FAILURE;
         }
 
@@ -42,7 +43,7 @@ final class ExportDocsCommand extends Command
 
         // Fake a request so DocsController can get the URL
         $request = Request::create(config('app.url', '/'));
-        
+
         $schema = $docsController->getOpenApiSchema($request);
 
         $directory = dirname($outputPath);
@@ -62,7 +63,7 @@ final class ExportDocsCommand extends Command
 
         File::put($outputPath, $output);
 
-        $this->info("<fg=green>Documentation exported successfully!</>");
+        $this->info('<fg=green>Documentation exported successfully!</>');
         $this->info("File saved to: {$outputPath}");
 
         return self::SUCCESS;

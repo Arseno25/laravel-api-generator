@@ -114,15 +114,6 @@ final class SchemaParser
         return $this->typeMap[$type] ?? 'string';
     }
 
-    private function parseRules(string $rules): array
-    {
-        if (empty($rules)) {
-            return [];
-        }
-
-        return explode('|', $rules);
-    }
-
     private function isRequired(string $rules): bool
     {
         // If nullable is specified, field is not required regardless of required keyword

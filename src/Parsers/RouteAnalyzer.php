@@ -2,11 +2,10 @@
 
 namespace Arseno25\LaravelApiMagic\Parsers;
 
-use Arseno25\LaravelApiMagic\Parsers\RequestAnalyzer;
-use Arseno25\LaravelApiMagic\Parsers\ResourceAnalyzer;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Route as RouteFacade;
 use Illuminate\Support\Str;
+use ReflectionClass;
 
 final class RouteAnalyzer
 {
@@ -150,7 +149,7 @@ final class RouteAnalyzer
             foreach ($requestRules as $name => $rule) {
                 // Check if it already exists (e.g., from index pagination defaults)
                 $exists = collect($queryParameters)->contains('name', $name);
-                
+
                 if (! $exists) {
                     $queryParameters[] = [
                         'name' => $name,
@@ -186,7 +185,6 @@ final class RouteAnalyzer
     /**
      * Extract custom PHP Attributes from the controller method.
      *
-     * @param array|string|null $action
      * @return array<string, mixed>
      */
     private function extractAttributes(array|string|null $action): array

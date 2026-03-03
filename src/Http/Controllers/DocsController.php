@@ -75,6 +75,7 @@ final class DocsController extends Controller
     public function getOpenApiSchema(Request $request): array
     {
         $schema = $this->generateSchema($request);
+
         return $this->convertToOpenApi($schema, $request);
     }
 
@@ -225,7 +226,7 @@ final class DocsController extends Controller
                 // Add request body for POST/PUT/PATCH
                 if (in_array($method, ['post', 'put', 'patch']) && ! empty($endpoint['parameters']['body'] ?? [])) {
 
-                    $hasFile = collect($endpoint['parameters']['body'])->contains(fn($field) => isset($field['is_file']) && $field['is_file'] === true);
+                    $hasFile = collect($endpoint['parameters']['body'])->contains(fn ($field) => isset($field['is_file']) && $field['is_file'] === true);
                     $contentType = $hasFile ? 'multipart/form-data' : 'application/json';
 
                     $operation['requestBody'] = [
@@ -317,13 +318,13 @@ final class DocsController extends Controller
     /**
      * Build OpenAPI response definitions.
      *
-     * @param array<string, mixed>|null $resourceSchema
+     * @param  array<string, mixed>|null  $resourceSchema
      * @return array<mixed>
      */
     private function buildOpenApiResponses(string $method, ?array $resourceSchema = null): array
     {
         $schemaRef = $resourceSchema ? '#/components/schemas/'.$resourceSchema['name'] : '#/components/schemas/ResourceResponse';
-        
+
         return match ($method) {
             'get' => [
                 '200' => [
@@ -411,7 +412,7 @@ final class DocsController extends Controller
             if (isset($field['enum'])) {
                 $schema['enum'] = $field['enum'];
             }
-            
+
             if (isset($field['is_file']) && $field['is_file']) {
                 $schema['format'] = 'binary';
             }
