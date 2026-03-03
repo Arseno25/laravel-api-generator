@@ -22,6 +22,25 @@ final class DocsController extends Controller
     ) {}
 
     /**
+     * Get the package version from composer.json.
+     */
+    private function getPackageVersion(): string
+    {
+        try {
+            $composerJson = dirname(__DIR__, 2).'/composer.json';
+            if (File::exists($composerJson)) {
+                $composer = json_decode(File::get($composerJson), true);
+
+                return $composer['version'] ?? '1.0.0';
+            }
+        } catch (\Throwable) {
+            // Fall back to default version
+        }
+
+        return '1.0.0';
+    }
+
+    /**
      * Display the API documentation UI.
      */
     public function index(): \Illuminate\Contracts\View\View
@@ -134,7 +153,7 @@ final class DocsController extends Controller
 
         return [
             'title' => config('app.name', 'Laravel API').' Documentation',
-            'version' => '1.0.0',
+            'version' => $this->getPackageVersion(),
             'baseUrl' => $request->getSchemeAndHttpHost(),
             'endpoints' => $endpoints,
             'endpointsByVersion' => $endpointsByVersion,

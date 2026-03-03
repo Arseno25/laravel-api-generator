@@ -1,5 +1,6 @@
 {
     "name": "arseno/laravel-api-magic",
+    "version": "1.0.0",
     "description": "This is my package laravel-api-magic",
     "keywords": [
         "Arseno25",
