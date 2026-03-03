@@ -5,6 +5,8 @@ namespace Arseno25\LaravelApiMagic;
 use Arseno25\LaravelApiMagic\Commands\CacheDocsCommand;
 use Arseno25\LaravelApiMagic\Commands\ExportDocsCommand;
 use Arseno25\LaravelApiMagic\Commands\GenerateApiCommand;
+use Arseno25\LaravelApiMagic\Commands\GenerateTypescriptCommand;
+use Arseno25\LaravelApiMagic\Commands\ReverseEngineerCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -20,7 +22,9 @@ class LaravelApiMagicServiceProvider extends PackageServiceProvider
             ->hasMigration('create_laravel_api_magic_table')
             ->hasCommand(GenerateApiCommand::class)
             ->hasCommand(CacheDocsCommand::class)
-            ->hasCommand(ExportDocsCommand::class);
+            ->hasCommand(ExportDocsCommand::class)
+            ->hasCommand(GenerateTypescriptCommand::class)
+            ->hasCommand(ReverseEngineerCommand::class);
     }
 
     public function packageRegistered(): void
@@ -30,5 +34,15 @@ class LaravelApiMagicServiceProvider extends PackageServiceProvider
         $this->publishes([
             __DIR__.'/../resources/stubs' => base_path('stubs/vendor/api-magic'),
         ], 'api-magic-stubs');
+    }
+
+    public function packageBooted(): void
+    {
+        parent::packageBooted();
+
+        // Register middleware aliases
+        $router = $this->app->make(\Illuminate\Routing\Router::class);
+        $router->aliasMiddleware('api.mock', \Arseno25\LaravelApiMagic\Http\Middleware\MockApiMiddleware::class);
+        $router->aliasMiddleware('api.cache', \Arseno25\LaravelApiMagic\Http\Middleware\ApiCacheMiddleware::class);
     }
 }

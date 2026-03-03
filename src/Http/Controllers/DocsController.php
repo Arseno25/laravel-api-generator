@@ -76,14 +76,35 @@ final class DocsController extends Controller
     }
 
     /**
-     * Export documentation as OpenAPI/Postman JSON.
+     * Export documentation as OpenAPI or Postman JSON.
      */
     public function export(Request $request): JsonResponse
     {
+        $format = $request->query('format', 'openapi');
+
+        if ($format === 'postman') {
+            $schema = $this->generateSchema($request);
+            $exporter = app(\Arseno25\LaravelApiMagic\Exporters\PostmanExporter::class);
+            $postman = $exporter->export($schema, $request->getSchemeAndHttpHost());
+
+            return response()->json($postman)
+                ->header('Content-Disposition', 'attachment; filename="postman-collection-'.date('Y-m-d').'.json"');
+        }
+
         $openApi = $this->getOpenApiSchema($request);
 
         return response()->json($openApi)
             ->header('Content-Disposition', 'attachment; filename="api-docs-'.date('Y-m-d').'.json"');
+    }
+
+    /**
+     * Get the internal API schema (for use by artisan commands).
+     *
+     * @return array<string, mixed>
+     */
+    public function generateSchemaPublic(Request $request): array
+    {
+        return $this->generateSchema($request);
     }
 
     /**

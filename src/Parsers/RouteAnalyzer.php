@@ -492,6 +492,26 @@ final class RouteAnalyzer
                     'description' => 'Requires specific permission: '.$m,
                 ];
             }
+
+            // Spatie Permission: role middleware (role:admin|editor)
+            if (preg_match('#^role:(.+)$#', $m, $matches)) {
+                $roles = explode('|', $matches[1]);
+                $security[] = [
+                    'type' => 'role',
+                    'roles' => $roles,
+                    'description' => 'Required roles: '.implode(', ', $roles),
+                ];
+            }
+
+            // Spatie Permission: permission middleware (permission:manage-users|edit-posts)
+            if (preg_match('#^permission:(.+)$#', $m, $matches)) {
+                $permissions = explode('|', $matches[1]);
+                $security[] = [
+                    'type' => 'permission',
+                    'permissions' => $permissions,
+                    'description' => 'Required permissions: '.implode(', ', $permissions),
+                ];
+            }
         }
 
         // If authentication is required, add bearer auth security

@@ -3,8 +3,8 @@
   <p style="color: #E5E7EB; font-size: 1.1em;">Generate a complete REST API with a single command — Model, Migration, Controller, Request, Resource, and Tests.</p>
   
   <p>
-    <a href="https://packagist.org/packages/arseno25/laravel-api-magic"><img src="https://img.shields.io/packagist/v/arseno25/laravel-api-magic.svg?style=flat-square" alt="Latest Version"></a>
-    <a href="https://packagist.org/packages/arseno25/laravel-api-magic"><img src="https://img.shields.io/packagist/dt/arseno25/laravel-api-magic.svg?style=flat-square" alt="Total Downloads"></a>
+    <a href="https://packagist.org/packages/arseno25/laravel-api-magic"><img src="https://img.shields.io/packagist/v/arseno/laravel-api-magic.svg?style=flat-square" alt="Latest Version"></a>
+    <a href="https://packagist.org/packages/arseno25/laravel-api-magic"><img src="https://img.shields.io/packagist/dt/arseno/laravel-api-magic.svg?style=flat-square" alt="Total Downloads"></a>
   </p>
 </div>
 
@@ -168,13 +168,86 @@ php artisan vendor:publish --tag="api-magic-stubs"
 
 <hr style="border: 1px solid #374151;" />
 
-<h2 style="color: #F9FAFB;">🗺️ Roadmap & Future Features</h2>
+<h2 style="color: #F9FAFB;">🔮 Advanced Features (Phase 4)</h2>
 
-<p style="color: #D1D5DB;">We're continuously improving the package to match strict Enterprise OpenAPI specs. Upcoming features include:</p>
+<h3 style="color: #E5E7EB;">TypeScript Interface Generator</h3>
+
+<p style="color: #D1D5DB;">Auto-generate TypeScript interfaces from your API schema for end-to-end type safety:</p>
+
+```bash
+php artisan api-magic:ts
+php artisan api-magic:ts --output=frontend/src/api-types.d.ts --namespace=Api
+```
+
+<h3 style="color: #E5E7EB;">Reverse Engineering (Database → API)</h3>
+
+<p style="color: #D1D5DB;">Generate a complete API stack from existing database tables in seconds:</p>
+
+```bash
+php artisan api-magic:reverse --table=products
+php artisan api-magic:reverse --all --exclude=users,migrations
+php artisan api-magic:reverse --all --v=1 --test --factory --seeder
+```
+
+<h3 style="color: #E5E7EB;">Mock Server (API Faking)</h3>
+
+<p style="color: #D1D5DB;">Enable frontend-first development without waiting for backend logic. Add the middleware or use the <code>X-Api-Mock</code> header:</p>
+
+```php
+// In a controller method:
+use Arseno25\LaravelApiMagic\Attributes\ApiMock;
+
+#[ApiMock(statusCode: 200, count: 10)]
+public function index() { ... }
+
+// Or via HTTP Header:
+curl -H "X-Api-Mock: true" http://localhost:8000/api/products
+```
+
+<p style="color: #9CA3AF; font-size: 0.9em;">Enable globally via <code>.env</code>: <code>API_MAGIC_MOCK_ENABLED=true</code></p>
+
+<h3 style="color: #E5E7EB;">API Response Caching</h3>
+
+<p style="color: #D1D5DB;">Automatically cache GET responses with a simple attribute — no <code>Cache::remember()</code> needed:</p>
+
+```php
+use Arseno25\LaravelApiMagic\Attributes\ApiCache;
+
+#[ApiCache(ttl: 60)] // Cache for 60 seconds
+public function index() { ... }
+```
+
+<p style="color: #9CA3AF; font-size: 0.9em;">Returns <code>X-Api-Cache: HIT</code>/<code>MISS</code> header to confirm caching status.</p>
+
+<h3 style="color: #E5E7EB;">RBAC Auto-Detection</h3>
+
+<p style="color: #D1D5DB;">Automatically detects Spatie Permission <code>role:</code> and <code>permission:</code> middleware on your routes and displays colored badges in the docs UI:</p>
+
+<ul style="color: #D1D5DB;">
+  <li>🔴 <strong>Auth</strong> — Bearer token required</li>
+  <li>🟣 <strong>Roles</strong> — Spatie <code>role:admin|editor</code></li>
+  <li>🟡 <strong>Permissions</strong> — Spatie <code>permission:manage-users</code></li>
+  <li>🔵 <strong>Rate Limited</strong> — Throttle middleware detected</li>
+</ul>
+
+<h3 style="color: #E5E7EB;">Postman Collection Export</h3>
+
+<p style="color: #D1D5DB;">Export your entire API as a Postman Collection v2.1 with one click from the docs UI, or via URL:</p>
+
+```bash
+# Via browser/docs UI: click the "Postman" export button
+# Via URL:
+curl http://localhost:8000/api/docs/export?format=postman -o postman-collection.json
+```
+
+<hr style="border: 1px solid #374151;" />
+
+<h2 style="color: #F9FAFB;">🗺️ Roadmap</h2>
 
 <ul style="color: #D1D5DB; line-height: 1.6;">
-  <li><strong>Deprecation Attributes:</strong> `#[ApiDeprecated]` support to visually strikethrough retired endpoints in Swagger UI.</li>
-  <li><strong>Deep Type Extraction:</strong> Utilizing DocBlock parsing safely to fully evaluate `JsonResource` nested properties without Laravel Model instantiation.</li>
+  <li><strong>Deprecation Attributes:</strong> <code>#[ApiDeprecated]</code> to visually strikethrough retired endpoints.</li>
+  <li><strong>Deep Type Extraction:</strong> DocBlock parsing for fully nested <code>JsonResource</code> properties.</li>
+  <li><strong>Insomnia Collection Export:</strong> Direct export for Insomnia users.</li>
 </ul>
 
 <hr style="border: 1px solid #374151;" />
