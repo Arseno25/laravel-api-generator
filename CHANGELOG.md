@@ -2,6 +2,36 @@
 
 All notable changes to `laravel-api-magic` will be documented in this file.
 
+## Release v1.1.0 - 2026-03-03
+
+### Laravel API Magic v1.1.0
+
+Laravel API Magic adalah package untuk generate REST API lengkap dengan satu command.
+
+#### Installation
+
+```bash
+composer require arseno/laravel-api-magic:1.1.0
+
+```
+#### Quick Start
+
+```bash
+php artisan api:magic
+
+```
+#### What's Changed
+
+#### Features
+
+- One Command API Generation
+- Interactive Mode
+- Relationship Support (BelongsTo, HasMany, BelongsToMany)
+- API Versioning
+- Pest Testing
+- API Documentation UI
+- OpenAPI Export
+
 ## v1.0.0 - 2026-03-03
 
 ### What's Changed
