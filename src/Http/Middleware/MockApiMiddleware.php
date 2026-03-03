@@ -22,10 +22,6 @@ class MockApiMiddleware
         $mockEnabled = config('laravel-api-magic.mock.enabled', false);
         $headerMock = $request->header('X-Api-Mock') === 'true';
 
-        if (! $mockEnabled && ! $headerMock) {
-            return $next($request);
-        }
-
         // Get the current route's controller and method
         $route = $request->route();
         if (! $route) {
@@ -49,12 +45,12 @@ class MockApiMiddleware
             return $next($request);
         }
 
-        $statusCode = $mockAttribute?->statusCode ?? 200;
-        $count = $mockAttribute?->count ?? 5;
+        $statusCode = $mockAttribute !== null ? $mockAttribute->statusCode : 200;
+        $count = $mockAttribute !== null ? $mockAttribute->count : 5;
 
         // Generate mock response based on method type
         $httpMethod = strtolower($request->method());
-        $mockData = $this->generateMockData($controller, $method, $httpMethod, $count);
+        $mockData = $this->generateMockData($controller, $method, $httpMethod, $count, $action);
 
         return new JsonResponse([
             'data' => $mockData,
@@ -100,10 +96,11 @@ class MockApiMiddleware
      *
      * @return array<string, mixed>|array<int, array<string, mixed>>
      */
-    private function generateMockData(string $controller, string $method, string $httpMethod, int $count): array
+    private function generateMockData(string $controller, string $method, string $httpMethod, int $count, array|string|null $action = null): array
     {
         // Try to get the FormRequest rules to generate realistic data
-        $fields = $this->requestAnalyzer->analyze($controller, $method);
+        $requestClass = $this->requestAnalyzer->extractRequestFromAction($action);
+        $fields = $requestClass ? $this->requestAnalyzer->analyze($requestClass) : [];
 
         if (empty($fields)) {
             // Generate generic mock data

@@ -3,8 +3,8 @@
   <p style="color: #E5E7EB; font-size: 1.1em;">Generate a complete REST API with a single command — Model, Migration, Controller, Request, Resource, and Tests.</p>
   
   <p>
-    <a href="https://packagist.org/packages/arseno25/laravel-api-magic"><img src="https://img.shields.io/packagist/v/arseno/laravel-api-magic.svg?style=flat-square" alt="Latest Version"></a>
-    <a href="https://packagist.org/packages/arseno25/laravel-api-magic"><img src="https://img.shields.io/packagist/dt/arseno/laravel-api-magic.svg?style=flat-square" alt="Total Downloads"></a>
+    <a href="https://packagist.org/packages/arseno25/laravel-api-magic"><img src="https://img.shields.io/packagist/v/arseno25/laravel-api-magic.svg?style=flat-square" alt="Latest Version"></a>
+    <a href="https://packagist.org/packages/arseno25/laravel-api-magic"><img src="https://img.shields.io/packagist/dt/arseno25/laravel-api-magic.svg?style=flat-square" alt="Total Downloads"></a>
   </p>
 </div>
 

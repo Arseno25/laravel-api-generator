@@ -251,6 +251,16 @@
     </div>
 
     <script>
+        function escapeHtml(unsafe) {
+            if (unsafe === null || unsafe === undefined) return '';
+            return unsafe.toString()
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        }
+
         let schema = { endpoints: {}, baseUrl: window.location.origin };
         let selectedPath = null;
         let selectedMethod = null;
@@ -526,8 +536,8 @@
                             <code class="text-sm text-slate-200 font-mono truncate">${path}</code>
                             <div class="ml-auto flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
                                 ${endpoint.security && endpoint.security.some(s => s.type === 'http') ? `<span class="px-2 py-1 rounded-full text-xs bg-red-400/10 text-red-400 flex items-center gap-1.5 border border-red-400/20"><i class="fas fa-lock text-xs"></i> Auth</span>` : ''}
-                                ${endpoint.security && endpoint.security.filter(s => s.type === 'role').map(s => s.roles.map(r => `<span class="px-2 py-1 rounded-full text-xs bg-purple-400/10 text-purple-400 flex items-center gap-1.5 border border-purple-400/20"><i class="fas fa-user-shield text-xs"></i> ${r}</span>`).join('')).join('') || ''}
-                                ${endpoint.security && endpoint.security.filter(s => s.type === 'permission').map(s => s.permissions.map(p => `<span class="px-2 py-1 rounded-full text-xs bg-amber-400/10 text-amber-400 flex items-center gap-1.5 border border-amber-400/20"><i class="fas fa-key text-xs"></i> ${p}</span>`).join('')).join('') || ''}
+                                ${endpoint.security && endpoint.security.filter(s => s.type === 'role').map(s => s.roles.map(r => `<span class="px-2 py-1 rounded-full text-xs bg-purple-400/10 text-purple-400 flex items-center gap-1.5 border border-purple-400/20"><i class="fas fa-user-shield text-xs"></i> ${escapeHtml(r)}</span>`).join('')).join('') || ''}
+                                ${endpoint.security && endpoint.security.filter(s => s.type === 'permission').map(s => s.permissions.map(p => `<span class="px-2 py-1 rounded-full text-xs bg-amber-400/10 text-amber-400 flex items-center gap-1.5 border border-amber-400/20"><i class="fas fa-key text-xs"></i> ${escapeHtml(p)}</span>`).join('')).join('') || ''}
                                 ${endpoint.security && endpoint.security.some(s => s.type === 'rateLimit') ? `<span class="px-2 py-1 rounded-full text-xs bg-cyan-400/10 text-cyan-400 flex items-center gap-1.5 border border-cyan-400/20"><i class="fas fa-tachometer-alt text-xs"></i> Rate Limited</span>` : ''}
                             </div>
                         </div>

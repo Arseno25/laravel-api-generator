@@ -1,10 +1,23 @@
 <?php
 
-use Arseno25\LaravelApiMagic\Http\Middleware\ApiCacheMiddleware;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Route;
+namespace Arseno25\LaravelApiMagic\Tests\Fixtures {
+    use Arseno25\LaravelApiMagic\Attributes\ApiCache;
+    use Illuminate\Http\JsonResponse;
+
+    class CacheTestController {
+        #[ApiCache(ttl: 120)]
+        public function index() {
+            return new JsonResponse(['data' => 'value']);
+        }
+    }
+}
+
+namespace {
+    use Arseno25\LaravelApiMagic\Http\Middleware\ApiCacheMiddleware;
+    use Illuminate\Http\JsonResponse;
+    use Illuminate\Http\Request;
+    use Illuminate\Support\Facades\Cache;
+    use Illuminate\Support\Facades\Route;
 
 uses()->group('middleware', 'cache');
 
@@ -74,9 +87,7 @@ describe('API Cache Middleware', function () {
         config()->set('laravel-api-magic.cache.enabled', true);
         Cache::flush();
 
-        Route::middleware('api')->get('/api/test-cache-miss', function () {
-            return response()->json(['data' => 'value']);
-        });
+        Route::middleware('api')->get('/api/test-cache-miss', '\Arseno25\LaravelApiMagic\Tests\Fixtures\CacheTestController@index');
 
         $middleware = app(ApiCacheMiddleware::class);
         $request = Request::create('/api/test-cache-miss', 'GET');
@@ -84,12 +95,21 @@ describe('API Cache Middleware', function () {
         $route = Route::getRoutes()->match($request);
         $request->setRouteResolver(fn () => $route);
 
-        // Without the ApiCache attribute, the middleware should pass through
-        // We test the pass-through behavior since closures don't have attributes
         $response = $middleware->handle($request, function ($req) {
             return new JsonResponse(['data' => 'value']);
         });
 
         expect($response)->toBeInstanceOf(JsonResponse::class);
+        expect($response->headers->get('X-Api-Cache'))->toBe('MISS');
+        expect($response->headers->get('X-Api-Cache-TTL'))->toBe('120');
+
+        // Test cache HIT
+        $response2 = $middleware->handle($request, function ($req) {
+            return new JsonResponse(['data' => 'ignored']);
+        });
+
+        expect($response2->headers->get('X-Api-Cache'))->toBe('HIT');
+        expect($response2->getData(true)['data'])->toBe('value');
     });
 });
+}

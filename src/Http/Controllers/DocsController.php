@@ -80,7 +80,11 @@ final class DocsController extends Controller
      */
     public function export(Request $request): JsonResponse
     {
-        $format = $request->query('format', 'openapi');
+        $format = strtolower((string) $request->query('format', 'openapi'));
+
+        if (! in_array($format, ['openapi', 'postman'])) {
+            return response()->json(['error' => 'Invalid format. Supported formats are: openapi, postman'], 400);
+        }
 
         if ($format === 'postman') {
             $schema = $this->generateSchema($request);

@@ -88,7 +88,7 @@ final class PostmanExporter
             'request' => [
                 'method' => strtoupper($method),
                 'header' => $this->buildHeaders($endpoint),
-                'url' => $this->buildUrl($path, $endpoint, $baseUrl),
+                'url' => $this->buildUrl($path, $endpoint),
             ],
             'response' => [],
         ];
@@ -114,7 +114,16 @@ final class PostmanExporter
 
         // Add request body for POST/PUT/PATCH
         if (in_array(strtolower($method), ['post', 'put', 'patch']) && ! empty($endpoint['parameters']['body'])) {
-            $request['request']['body'] = $this->buildBody($endpoint['parameters']['body']);
+            $body = $this->buildBody($endpoint['parameters']['body']);
+            $request['request']['body'] = $body;
+
+            if (($body['mode'] ?? '') === 'raw') {
+                $request['request']['header'][] = [
+                    'key' => 'Content-Type',
+                    'value' => 'application/json',
+                    'type' => 'text',
+                ];
+            }
         }
 
         return $request;
@@ -134,11 +143,6 @@ final class PostmanExporter
                 'value' => 'application/json',
                 'type' => 'text',
             ],
-            [
-                'key' => 'Content-Type',
-                'value' => 'application/json',
-                'type' => 'text',
-            ],
         ];
 
         return $headers;
@@ -150,7 +154,7 @@ final class PostmanExporter
      * @param  array<string, mixed>  $endpoint
      * @return array<string, mixed>
      */
-    private function buildUrl(string $path, array $endpoint, string $baseUrl): array
+    private function buildUrl(string $path, array $endpoint): array
     {
         // Replace {param} with :param for Postman format
         $postmanPath = preg_replace('/\{(\w+)\}/', ':$1', $path);

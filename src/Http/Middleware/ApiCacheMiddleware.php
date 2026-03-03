@@ -65,10 +65,18 @@ class ApiCacheMiddleware
 
         // Cache the response if it's successful
         if ($response instanceof JsonResponse && $response->getStatusCode() >= 200 && $response->getStatusCode() < 300) {
+            $safeHeaders = ['Content-Type', 'Content-Length', 'Cache-Control', 'ETag', 'Last-Modified', 'Expires', 'Vary', 'Content-Language'];
+            $headersToCache = [];
+            foreach ($safeHeaders as $header) {
+                if ($response->headers->has($header)) {
+                    $headersToCache[$header] = $response->headers->all($header);
+                }
+            }
+
             Cache::store($store)->put($cacheKey, [
                 'data' => json_decode($response->getContent(), true),
                 'status' => $response->getStatusCode(),
-                'headers' => [],
+                'headers' => $headersToCache,
             ], $cacheAttribute->ttl);
 
             $response->headers->set('X-Api-Cache', 'MISS');
@@ -109,12 +117,17 @@ class ApiCacheMiddleware
         $uri = $request->getPathInfo();
         $query = $request->query();
 
-        if (is_array($query)) {
-            ksort($query);
-        }
+        ksort($query);
 
         $queryHash = md5(json_encode($query) ?: '');
 
-        return "api_cache:GET:{$uri}:{$queryHash}";
+        $identity = 'anonymous';
+        if ($request->user()) {
+            $identity = 'user_' . $request->user()->getAuthIdentifier();
+        } elseif ($request->hasSession()) {
+            $identity = 'session_' . $request->session()->getId();
+        }
+
+        return "api_cache:{$identity}:GET:{$uri}:{$queryHash}";
     }
 }
