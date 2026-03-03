@@ -123,9 +123,9 @@ class ApiCacheMiddleware
 
         $identity = 'anonymous';
         if ($request->user()) {
-            $identity = 'user_' . $request->user()->getAuthIdentifier();
+            $identity = 'user_'.$request->user()->getAuthIdentifier();
         } elseif ($request->hasSession()) {
-            $identity = 'session_' . $request->session()->getId();
+            $identity = 'session_'.$request->session()->getId();
         }
 
         return "api_cache:{$identity}:GET:{$uri}:{$queryHash}";
