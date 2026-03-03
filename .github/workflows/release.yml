@@ -36,35 +36,34 @@ jobs:
       - name: Run Pint
         run: vendor/bin/pint --test
 
-      - name: Get current version from composer.json
-        id: current_version
-        run: |
-          VERSION=$(grep '"version"' composer.json | sed 's/.*"version": "\(.*\)".*/\1/' | tr -d '",')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Current version: $VERSION"
-
-      - name: Get last tag
+      - name: Get last tag and version
         id: last_tag
         run: |
           # Get the most recent tag, or empty if no tags exist
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            VERSION="0.0.0"
+          else
+            VERSION=${LAST_TAG#v}
+          fi
           echo "tag=$LAST_TAG" >> $GITHUB_OUTPUT
-          echo "Last tag: $LAST_TAG"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Last tag: $LAST_TAG (Version: $VERSION)"
 
       - name: Determine version bump type
         id: bump_type
         run: |
           LAST_TAG="${{ steps.last_tag.outputs.tag }}"
-          CURRENT_VERSION="${{ steps.current_version.outputs.version }}"
 
           if [ -z "$LAST_TAG" ]; then
-            # No tags exist, use current version from composer.json
-            echo "type=none" >> $GITHUB_OUTPUT
-            echo "No previous tags found, using current version"
+            # No tags exist, evaluate all commits for initial bump type
+            COMMITS=$(git log --pretty=format:"%s")
           else
             # Get commits since last tag
             COMMITS=$(git log "${LAST_TAG}..HEAD" --pretty=format:"%s")
+          fi
 
+          if [ -n "$COMMITS" ]; then
             # Check for BREAKING CHANGE (highest priority)
             if echo "$COMMITS" | grep -qiE "BREAKING CHANGE|break!"; then
               echo "type=major" >> $GITHUB_OUTPUT
@@ -81,16 +80,24 @@ jobs:
               echo "type=none" >> $GITHUB_OUTPUT
               echo "No conventional commits detected, keeping current version"
             fi
+          else
+             echo "type=none" >> $GITHUB_OUTPUT
+             echo "No commits found to process"
           fi
 
       - name: Calculate new version
         id: new_version
         run: |
-          CURRENT="${{ steps.current_version.outputs.version }}"
+          CURRENT="${{ steps.last_tag.outputs.version }}"
           BUMP_TYPE="${{ steps.bump_type.outputs.type }}"
 
           # Split version into major, minor, patch
           IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+
+          # Fallbacks in case they are empty
+          MAJOR=${MAJOR:-0}
+          MINOR=${MINOR:-0}
+          PATCH=${PATCH:-0}
 
           case "$BUMP_TYPE" in
             major)
@@ -114,31 +121,14 @@ jobs:
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "New version: $NEW_VERSION"
 
-      - name: Update composer.json with new version
-        if: steps.bump_type.outputs.type != 'none'
-        run: |
-          NEW_VERSION="${{ steps.new_version.outputs.version }}"
-          # Update version in composer.json
-          sed -i "s/\"version\": \".*\"/\"version\": \"$NEW_VERSION\"/" composer.json
-          echo "Updated composer.json to version $NEW_VERSION"
-
-      - name: Commit version bump
-        if: steps.bump_type.outputs.type != 'none'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add composer.json
-          git commit -m "chore: bump version to ${{ steps.new_version.outputs.version }}" --no-verify
-          git push
-
       - name: Create and push tag
         if: steps.bump_type.outputs.type != 'none'
         run: |
           NEW_VERSION="${{ steps.new_version.outputs.version }}"
           TAG="v${NEW_VERSION}"
-          git tag -a "$TAG" -m "Release $TAG
-
-          Version $TAG of arseno/laravel-api-magic"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Release $TAG" -m "Version $TAG of arseno/laravel-api-magic"
           git push origin "$TAG"
 
       - name: Create GitHub Release
@@ -194,7 +184,7 @@ jobs:
           echo "### Release Summary :rocket:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Package:** arseno/laravel-api-magic" >> $GITHUB_STEP_SUMMARY
-          echo "**Previous Version:** ${{ steps.current_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Previous Version:** ${{ steps.last_tag.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "**New Version:** ${{ steps.new_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "**Bump Type:** ${{ steps.bump_type.outputs.type }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
