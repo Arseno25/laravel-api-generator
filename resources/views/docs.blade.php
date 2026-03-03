@@ -176,9 +176,14 @@
                             <div class="text-xs text-slate-500">Requests</div>
                         </div>
                     </div>
-                    <a href="/api/docs/export" target="_blank" class="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 bg-slate-800 rounded-lg text-xs text-slate-400 hover:bg-slate-700 hover:text-slate-200 transition-colors">
-                        <i class="fas fa-download"></i> Export OpenAPI
-                    </a>
+                    <div class="flex gap-2 mt-3">
+                        <a href="/api/docs/export" target="_blank" class="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-slate-800 rounded-lg text-xs text-slate-400 hover:bg-slate-700 hover:text-slate-200 transition-colors">
+                            <i class="fas fa-download"></i> OpenAPI
+                        </a>
+                        <a href="/api/docs/export?format=postman" target="_blank" class="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-slate-800 rounded-lg text-xs text-orange-400 hover:bg-slate-700 hover:text-orange-300 transition-colors">
+                            <i class="fas fa-paper-plane"></i> Postman
+                        </a>
+                    </div>
                 </div>
             </aside>
 
@@ -246,6 +251,16 @@
     </div>
 
     <script>
+        function escapeHtml(unsafe) {
+            if (unsafe === null || unsafe === undefined) return '';
+            return unsafe.toString()
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        }
+
         let schema = { endpoints: {}, baseUrl: window.location.origin };
         let selectedPath = null;
         let selectedMethod = null;
@@ -519,7 +534,12 @@
                         <div class="flex items-center gap-3 px-5 lg:px-6 py-4 lg:py-5 border-b border-white/5 bg-slate-800/20">
                             <span class="method-badge method-${method}">${method.toUpperCase()}</span>
                             <code class="text-sm text-slate-200 font-mono truncate">${path}</code>
-                            ${endpoint.security && endpoint.security.length ? `<span class="ml-auto px-2 py-1 rounded-full text-xs bg-red-400/10 text-red-400 flex items-center gap-1.5 flex-shrink-0 border border-red-400/20"><i class="fas fa-lock text-xs"></i> Auth</span>` : ''}
+                            <div class="ml-auto flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
+                                ${endpoint.security && endpoint.security.some(s => s.type === 'http') ? `<span class="px-2 py-1 rounded-full text-xs bg-red-400/10 text-red-400 flex items-center gap-1.5 border border-red-400/20"><i class="fas fa-lock text-xs"></i> Auth</span>` : ''}
+                                ${endpoint.security && endpoint.security.filter(s => s.type === 'role').map(s => s.roles.map(r => `<span class="px-2 py-1 rounded-full text-xs bg-purple-400/10 text-purple-400 flex items-center gap-1.5 border border-purple-400/20"><i class="fas fa-user-shield text-xs"></i> ${escapeHtml(r)}</span>`).join('')).join('') || ''}
+                                ${endpoint.security && endpoint.security.filter(s => s.type === 'permission').map(s => s.permissions.map(p => `<span class="px-2 py-1 rounded-full text-xs bg-amber-400/10 text-amber-400 flex items-center gap-1.5 border border-amber-400/20"><i class="fas fa-key text-xs"></i> ${escapeHtml(p)}</span>`).join('')).join('') || ''}
+                                ${endpoint.security && endpoint.security.some(s => s.type === 'rateLimit') ? `<span class="px-2 py-1 rounded-full text-xs bg-cyan-400/10 text-cyan-400 flex items-center gap-1.5 border border-cyan-400/20"><i class="fas fa-tachometer-alt text-xs"></i> Rate Limited</span>` : ''}
+                            </div>
                         </div>
                         <div class="px-5 lg:px-6 py-4 lg:py-5">
                             <h3 class="text-lg lg:text-xl font-semibold text-white tracking-tight">${endpoint.summary || path}</h3>

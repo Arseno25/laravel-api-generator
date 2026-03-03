@@ -65,4 +65,38 @@ return [
         // Path to custom stubs directory (null = use package defaults)
         'path' => null,
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Mock Server
+    |--------------------------------------------------------------------------
+    |
+    | Enable the mock API server for frontend-first development.
+    | When enabled, requests with X-Api-Mock: true header will get
+    | fake data responses without hitting the database.
+    |
+    */
+    'mock' => [
+
+        // Enable or disable mock mode globally
+        'enabled' => env('API_MAGIC_MOCK_ENABLED', false),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | API Response Caching
+    |--------------------------------------------------------------------------
+    |
+    | Configure automatic response caching for GET endpoints
+    | that use the #[ApiCache] attribute.
+    |
+    */
+    'cache' => [
+
+        // Enable or disable API caching globally
+        'enabled' => env('API_MAGIC_CACHE_ENABLED', true),
+
+        // Default cache store (null = use default cache driver)
+        'store' => env('API_MAGIC_CACHE_STORE', null),
+    ],
 ];
