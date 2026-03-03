@@ -1,0 +1,95 @@
+<?php
+
+use {{ namespace }}\Models\{{ model }};
+use {{ resourceNamespace }}\{{ model }}Resource;
+use function Pest\Laravel\{get, post, put, delete};
+
+uses()->group('api', '{{ apiVersion }}', '{{ modelPluralVariable }}');
+
+beforeEach(function () {
+    $this->{{ modelVariable}} = {{ model }}::factory()->create();
+});
+
+it('can list all {{ modelPluralVariable }}', function () {
+    $response = get('/api/{{ apiResourceUrl }}');
+
+    $response->assertStatus(200)
+        ->assertJsonStructure([
+            'data',
+            'links',
+            'meta',
+        ]);
+});
+
+it('can show a single {{ modelVariable }}', function () {
+    $response = get("/api/{{ apiResourceUrl }}/{$this->{{ modelVariable }}->id}");
+
+    $response->assertStatus(200)
+        ->assertJson([
+            'data' => [
+                'id' => $this->{{ modelVariable }}->id,
+            ],
+        ]);
+});
+
+it('requires valid data to create a {{ modelVariable }}', function () {
+    $response = post('/api/{{ apiResourceUrl }}', [
+        // Add required fields here based on your schema
+    ]);
+
+    $response->assertStatus(422);
+});
+
+it('can create a {{ modelVariable }}', function () {
+    $data = {{ model }}::factory()->raw();
+
+    $response = post('/api/{{ apiResourceUrl }}', $data);
+
+    $response->assertStatus(201)
+        ->assertJson([
+            'data' => [
+                // Add expected fields here
+            ],
+        ]);
+
+    $this->assertDatabaseHas('{{ table }}', [
+        // Add expected database fields here
+    ]);
+});
+
+it('can update a {{ modelVariable }}', function () {
+    $data = ['name' => 'Updated Name']; // Update with actual field
+
+    $response = put("/api/{{ apiResourceUrl }}/{$this->{{ modelVariable }}->id}", $data);
+
+    $response->assertStatus(200)
+        ->assertJson([
+            'data' => [
+                'id' => $this->{{ modelVariable }}->id,
+            ],
+        ]);
+});
+
+it('requires valid data to update a {{ modelVariable }}', function () {
+    $response = put("/api/{{ apiResourceUrl }}/{$this->{{ modelVariable }}->id}", [
+        // Add invalid data
+    ]);
+
+    $response->assertStatus(422);
+});
+
+it('can delete a {{ modelVariable }}', function () {
+    $response = delete("/api/{{ apiResourceUrl }}/{$this->{{ modelVariable }}->id}");
+
+    $response->assertStatus(204);
+
+    $this->assertDatabaseMissing('{{ table }}', [
+        'id' => $this->{{ modelVariable }}->id,
+    ]);
+});
+
+it('returns 404 for non-existent {{ modelVariable }}', function () {
+    $response = get("/api/{{ apiResourceUrl }}/999999");
+
+    $response->assertStatus(404);
+});

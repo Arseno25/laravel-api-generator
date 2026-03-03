@@ -1,0 +1,62 @@
+<?php
+
+namespace {{ namespace }}\Http\Requests;
+
+use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Contracts\Validation\Validator;
+
+class {{ model }}Request extends FormRequest
+{
+    /**
+     * Determine if the user is authorized to make this request.
+     */
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Get the validation rules that apply to the request.
+     *
+     * @return array<string, ValidationRule|array<mixed>|string>
+     */
+    public function rules(): array
+    {
+        $rules = [
+{{ rules }}
+        ];
+
+        // Add unique rule for updates (exclude current record)
+        if ($this->isMethod('put') || $this->isMethod('patch')) {
+            foreach ($rules as $field => $rule) {
+                if (is_string($rule) && str_contains($rule, 'unique')) {
+                    ${{ modelVariable }} = $this->route('{{ modelVariable }}');
+                    $rules[$field] = str_replace(
+                        'unique',
+                        'unique:{{ table }},{$field},' . ${{ modelVariable }}->id,
+                        $rule
+                    );
+                }
+            }
+        }
+
+        return $rules;
+    }
+
+    /**
+     * Handle a failed validation attempt.
+     *
+     * @throws HttpResponseException
+     */
+    protected function failedValidation(Validator $validator): void
+    {
+        throw new HttpResponseException(
+            response()->json([
+                'message' => 'The given data was invalid.',
+                'errors' => $validator->errors(),
+            ], 422)
+        );
+    }
+}
