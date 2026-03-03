@@ -206,7 +206,7 @@ final class PostmanExporter
                     'key' => $f['name'] ?? 'file',
                     'value' => ! empty($f['is_file']) ? '' : $this->getExampleValue($f),
                     'type' => ! empty($f['is_file']) ? 'file' : 'text',
-                    'description' => ($f['type'] ?? 'string').(!empty($f['rules']) ? ' | Rules: '.(is_array($f['rules']) ? implode(', ', $f['rules']) : $f['rules']) : ''),
+                    'description' => ($f['type'] ?? 'string').(! empty($f['rules']) ? ' | Rules: '.(is_array($f['rules']) ? implode(', ', $f['rules']) : $f['rules']) : ''),
                 ], $fields),
             ];
         }
@@ -214,7 +214,7 @@ final class PostmanExporter
         // JSON body
         $body = [];
         foreach ($fields as $field) {
-            if (!empty($field['name'])) {
+            if (! empty($field['name'])) {
                 $body[$field['name']] = $this->getExampleValue($field);
             }
         }

@@ -7,7 +7,6 @@ use Arseno25\LaravelApiMagic\Parsers\RequestAnalyzer;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use ReflectionMethod;
 
 class MockApiMiddleware
