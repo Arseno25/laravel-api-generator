@@ -31,7 +31,7 @@ final class GenerateApiCommand extends Command
         {--belongsTo= : BelongsTo relations (e.g., "category,user")}
         {--hasMany= : HasMany relations (e.g., "comments,review")}
         {--belongsToMany= : BelongsToMany relations (e.g., "tag,category")}
-        {--v=1 : API version number (default: 1)}
+        {--v= : API version number (e.g., 1, 2). Omit for no versioning.}
         {--force : Overwrite existing files}';
 
     protected $description = 'Generate a complete API with Model, Migration, Controller, Request, Resource, and optional Pest Test';
@@ -91,18 +91,20 @@ final class GenerateApiCommand extends Command
             $belongsToMany = $this->parseRelations($belongsToMany);
         }
 
-        // Get API version
+        // Get API version (null = no versioning)
         $version = $this->option('v');
-        if (! $noInteraction && $version === '1') {
-            $version = select(
-                label: 'What is the API version?',
+        if (! $noInteraction && $version === null) {
+            $versionChoice = select(
+                label: 'API versioning?',
                 options: [
-                    '1' => 'v1',
-                    '2' => 'v2',
-                    '3' => 'v3',
+                    'none' => 'No versioning (e.g., /api/products)',
+                    '1' => 'v1 (e.g., /api/v1/products)',
+                    '2' => 'v2 (e.g., /api/v2/products)',
+                    '3' => 'v3 (e.g., /api/v3/products)',
                 ],
-                default: '1'
+                default: 'none'
             );
+            $version = $versionChoice === 'none' ? null : $versionChoice;
         }
 
         // Get test option
@@ -157,8 +159,15 @@ final class GenerateApiCommand extends Command
 
         info("⚙️  Generating API for {$model}...");
 
-        $controllerNamespace = $version === '1' ? 'App\\Http\\Controllers\\Api' : "App\\Http\\Controllers\\Api\\V{$version}";
-        $resourceNamespace = $version === '1' ? 'App\\Http\\Resources' : "App\\Http\\Resources\\V{$version}";
+        // Build namespaces and paths based on version
+        $controllerNamespace = $this->buildNamespace('App\\Http\\Controllers\\Api', $version);
+        $resourceNamespace = $this->buildNamespace('App\\Http\\Resources', $version);
+        $controllerDir = $this->buildPath('Http/Controllers/Api', $version);
+        $resourceDir = $this->buildPath('Http/Resources', $version);
+
+        // Build route prefix: no version → "" | with version → "v1/"
+        $routePrefix = $version !== null ? "v{$version}/" : '';
+        $apiPrefix = "/api/{$routePrefix}".Str::kebab(Str::plural($model));
 
         $replacements = [
             '{{ namespace }}' => 'App',
@@ -181,15 +190,13 @@ final class GenerateApiCommand extends Command
             '{{ factoryDefinitions }}' => $fields['factoryDefinitions'] ?? '',
             '{{ searchConditions }}' => $this->buildSearchConditions($fields['searchableFields'] ?? []),
             '{{ apiResourceUrl }}' => Str::kebab(Str::plural($model)),
-            '{{ apiVersion }}' => $version,
+            '{{ apiPrefix }}' => $apiPrefix,
+            '{{ apiVersion }}' => $version ?? '',
             '{{ softDeletes }}' => $this->option('soft-deletes') ? '$table->softDeletes();' : '',
             '{{ softDeletesTrait }}' => $this->option('soft-deletes') ? '    use SoftDeletes;' : '',
-            '{{ searchableFields }}' => ! empty($fields['searchableFields']),
+            '{{ searchablefields }}' => ! empty($fields['searchableFields']),
             '{{ seederCount }}' => (string) config('api-magic.generator.seeder_count', 10),
         ];
-
-        $controllerDir = $version === '1' ? 'Http/Controllers/Api' : "Http/Controllers/Api/V{$version}";
-        $resourceDir = $version === '1' ? 'Http/Resources' : "Http/Resources/V{$version}";
 
         $files = [
             'model.stub' => app_path("Models/{$model}.php"),
@@ -201,7 +208,7 @@ final class GenerateApiCommand extends Command
         ];
 
         if ($generateTest) {
-            $testDir = $version === '1' ? 'tests/Feature/Api' : "tests/Feature/Api/V{$version}";
+            $testDir = $this->buildPath('tests/Feature/Api', $version);
             $files['pest.test.stub'] = base_path("{$testDir}/{$model}Test.php");
         }
 
@@ -231,14 +238,31 @@ final class GenerateApiCommand extends Command
 
         outro('✨ API Generated Successfully!');
 
-        $routePrefix = $version === '1' ? '' : "v{$version}/";
+        $routeResource = $routePrefix.$table;
+        $versionLabel = $version !== null ? " (v{$version})" : '';
         $nextSteps = "1. Run: php artisan migrate\n";
         $nextSteps .= "2. Add to routes/api.php:\n";
-        $nextSteps .= "   Route::apiResource('{$routePrefix}{$table}', {$model}Controller::class);";
+        $nextSteps .= "   Route::apiResource('{$routeResource}', {$model}Controller::class);";
 
-        note($nextSteps, '📌 Next steps');
+        note($nextSteps, "📌 Next steps{$versionLabel}");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Build a namespace with optional version suffix.
+     */
+    private function buildNamespace(string $base, ?string $version): string
+    {
+        return $version !== null ? "{$base}\\V{$version}" : $base;
+    }
+
+    /**
+     * Build a directory path with optional version suffix.
+     */
+    private function buildPath(string $base, ?string $version): string
+    {
+        return $version !== null ? "{$base}/V{$version}" : $base;
     }
 
     private function parseRelations(?string $relations): array
@@ -272,7 +296,6 @@ final class GenerateApiCommand extends Command
         $fields = $this->parseFieldsFromSchema($data['fields']);
         $fieldCount = count($fields);
 
-        // Merapikan tampilan nama field agar tidak merusak lebar tabel jika terlalu panjang
         $fieldNames = ! empty($fields) ? implode(', ', array_keys($fields)) : 'None';
         if (strlen($fieldNames) > 40) {
             $fieldNames = substr($fieldNames, 0, 40).'...';
@@ -280,7 +303,6 @@ final class GenerateApiCommand extends Command
 
         $fieldsText = $fieldCount > 0 ? "{$fieldCount} field(s) <fg=gray>({$fieldNames})</>" : 'None';
 
-        // Merapikan tampilan relasi
         $relations = [];
         if (! empty($data['relations']['belongsTo'])) {
             $relations[] = count($data['relations']['belongsTo']).' BelongsTo';
@@ -293,17 +315,17 @@ final class GenerateApiCommand extends Command
         }
         $relationsText = ! empty($relations) ? implode(' | ', $relations) : 'None';
 
-        // Menampilkan Header Summary
+        $versionText = $data['version'] !== null ? "API v{$data['version']}" : 'No versioning';
+
         info('📊 Configuration Summary');
 
-        // Menggunakan Laravel Prompts Table
         table(
             headers: ['Component', 'Details'],
             rows: [
                 ['📦 Model', $data['model']],
                 ['📝 Fields', $fieldsText],
                 ['🔗 Relations', $relationsText],
-                ['🔢 Version', "API v{$data['version']}"],
+                ['🔢 Version', $versionText],
                 ['🧪 Pest Test', $data['test'] ? '✓ Enabled' : '✗ Disabled'],
                 ['🏭 Factory', $data['factory'] ? '✓ Enabled' : '✗ Disabled'],
                 ['🌱 Seeder', $data['seeder'] ? '✓ Enabled' : '✗ Disabled'],
@@ -331,11 +353,11 @@ final class GenerateApiCommand extends Command
         return $fields;
     }
 
-    private function checkExistingFiles(string $model, string $version, bool $generateTest): array
+    private function checkExistingFiles(string $model, ?string $version, bool $generateTest): array
     {
         $existing = [];
-        $controllerDir = $version === '1' ? 'Http/Controllers/Api' : "Http/Controllers/Api/V{$version}";
-        $resourceDir = $version === '1' ? 'Http/Resources' : "Http/Resources/V{$version}";
+        $controllerDir = $this->buildPath('Http/Controllers/Api', $version);
+        $resourceDir = $this->buildPath('Http/Resources', $version);
 
         $files = [
             app_path("Models/{$model}.php"),
@@ -345,7 +367,7 @@ final class GenerateApiCommand extends Command
         ];
 
         if ($generateTest) {
-            $testDir = $version === '1' ? 'tests/Feature/Api' : "tests/Feature/Api/V{$version}";
+            $testDir = $this->buildPath('tests/Feature/Api', $version);
             $files[] = base_path("{$testDir}/{$model}Test.php");
         }
 
@@ -469,16 +491,18 @@ final class GenerateApiCommand extends Command
         }
 
         $conditions = [];
-        $count = count($searchableFields);
 
         foreach ($searchableFields as $i => $field) {
-            // Don't add comment on the last line
-            if ($i < $count - 1) {
-                $conditions[] = "                \$q->orWhere('{$field}', 'like', \"%{\$searchTerm}%\") // or";
+            if ($i === 0) {
+                $conditions[] = "                \$q->where('{$field}', 'like', \"%{\$searchTerm}%\")";
             } else {
-                $conditions[] = "                \$q->orWhere('{$field}', 'like', \"%{\$searchTerm}%\")";
+                $conditions[] = "                    ->orWhere('{$field}', 'like', \"%{\$searchTerm}%\")";
             }
         }
+
+        // Add semicolon to the last line
+        $lastIndex = count($conditions) - 1;
+        $conditions[$lastIndex] .= ';';
 
         return implode("\n", $conditions);
     }

@@ -11,6 +11,7 @@ final class CacheDocsCommand extends Command
 {
     protected $signature = 'api-magic:cache
         {--clear : Clear the cached documentation}
+        {--force : Force regeneration even if cache exists}
         {--path= : Custom path for cache file (default: bootstrap/cache/api-magic.json)}';
 
     protected $description = 'Cache API documentation schema for better performance';
@@ -31,7 +32,7 @@ final class CacheDocsCommand extends Command
 
         $this->saveCache($cachePath, $schema);
 
-        $endpointCount = count($schema['endpaths'] ?? []);
+        $endpointCount = count($schema['endpoints'] ?? []);
         $this->info("<fg=green>Documentation cached successfully!</> ({$endpointCount} endpoints)");
         $this->info("Cache file: {$cachePath}");
 
@@ -43,6 +44,7 @@ final class CacheDocsCommand extends Command
         $routes = $routeAnalyzer->getApiRoutes();
         $endpoints = [];
         $tags = [];
+        $endpointsByVersion = [];
 
         foreach ($routes as $route) {
             $endpoint = $routeAnalyzer->parseRoute($route, $requestAnalyzer);
@@ -53,12 +55,22 @@ final class CacheDocsCommand extends Command
 
             $pathKey = $endpoint['path'];
             $method = $endpoint['method'];
+            $version = $endpoint['version'] ?? '1';
 
             if (! isset($endpoints[$pathKey])) {
                 $endpoints[$pathKey] = [];
             }
 
             $endpoints[$pathKey][$method] = $endpoint;
+
+            // Group by version
+            if (! isset($endpointsByVersion[$version])) {
+                $endpointsByVersion[$version] = [];
+            }
+            if (! isset($endpointsByVersion[$version][$pathKey])) {
+                $endpointsByVersion[$version][$pathKey] = [];
+            }
+            $endpointsByVersion[$version][$pathKey][$method] = $endpoint;
 
             // Collect tags
             foreach ($endpoint['tags'] as $tag) {
@@ -71,6 +83,8 @@ final class CacheDocsCommand extends Command
             'generated_at' => now()->toIso8601String(),
             'title' => config('app.name', 'Laravel API').' Documentation',
             'endpoints' => $endpoints,
+            'endpointsByVersion' => $endpointsByVersion,
+            'versions' => array_keys($endpointsByVersion),
             'tags' => array_keys($tags),
             'stats' => [
                 'total_endpoints' => count($endpoints),

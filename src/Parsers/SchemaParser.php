@@ -47,7 +47,6 @@ final class SchemaParser
         $items = explode(',', $schema);
 
         // Valid validation rule types that should be included in rules (when explicit rules are provided)
-        // Note: 'string' is excluded as it's too generic and rarely used as a validation rule
         $validationRuleTypes = [
             'integer', 'int', 'numeric', 'float', 'decimal', 'boolean', 'bool',
             'array', 'email', 'url', 'ip', 'json', 'date', 'datetime', 'timestamp',
@@ -61,25 +60,42 @@ final class SchemaParser
                 continue;
             }
 
-            // Limit to 3 parts: name:type|rules - keeps rules with parameters intact (e.g., min:18)
-            $parts = explode(':', $item, 3);
-            $name = trim($parts[0]);
-            $type = $parts[1] ?? 'string';
-            $rules = $parts[2] ?? '';
+            // Split on first colon to get name and rest
+            // e.g. "name:string|required" → name="name", rest="string|required"
+            // e.g. "email:email|required|unique:users" → name="email", rest="email|required|unique:users"
+            $colonPos = strpos($item, ':');
+            if ($colonPos === false) {
+                // No colon — just a field name with default type
+                $name = trim($item);
+                $type = 'string';
+                $parsedRules = [];
+            } else {
+                $name = trim(substr($item, 0, $colonPos));
+                $rest = substr($item, $colonPos + 1);
 
-            // Parse rules
-            $parsedRules = $this->parseRules($rules);
+                // Split rest on pipe — first part is the type, remaining are rules
+                $pipeParts = explode('|', $rest);
+                $typeCandidate = trim($pipeParts[0]);
 
-            // Check if required BEFORE modifying parsedRules with field type
-            // This ensures validation rules display correctly in the UI
-            $isRequired = $this->isRequired($rules);
+                if (isset($this->typeMap[$typeCandidate])) {
+                    $type = $typeCandidate;
+                    $parsedRules = array_slice($pipeParts, 1);
+                } else {
+                    // Type is not recognized — default to string, treat everything as rules
+                    $type = 'string';
+                    $parsedRules = $pipeParts;
+                }
 
-            // Include field type as a validation rule if:
-            // 1. There are explicit rules provided AND
-            // 2. The field type is a valid validation rule type AND
-            // 3. The field type is not already in the rules
+                // Clean up empty rules
+                $parsedRules = array_values(array_filter($parsedRules, fn ($r) => trim($r) !== ''));
+            }
+
+            $rulesString = implode('|', $parsedRules);
+            $isRequired = $this->isRequired($rulesString);
+
+            // Include field type as validation rule if applicable
             if (! empty($parsedRules) && in_array($type, $validationRuleTypes, true) && ! in_array($type, $parsedRules, true)) {
-                array_unshift($parsedRules, $type); // Add type as first rule
+                $parsedRules[] = $type;
             }
 
             $fields[] = [

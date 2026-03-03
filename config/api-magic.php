@@ -45,7 +45,7 @@ return [
     'generator' => [
 
         // Default API version
-        'default_version' => 1,
+        'default_version' => null,
 
         // Default seeder count
         'seeder_count' => 10,

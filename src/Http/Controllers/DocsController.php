@@ -24,7 +24,7 @@ final class DocsController extends Controller
      */
     public function index(): \Illuminate\Contracts\View\View
     {
-        return view('laravel-api-magic::docs'); // @phpstan-ignore argument.type
+        return view('api-magic::docs'); // @phpstan-ignore argument.type
     }
 
     /**
@@ -86,7 +86,7 @@ final class DocsController extends Controller
             return null;
         }
 
-        return $cached['endpoints'] ?? null;
+        return $cached;
     }
 
     /**

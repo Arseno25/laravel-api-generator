@@ -29,7 +29,7 @@ describe('GET /api/docs', function () {
         $response = get('/api/docs');
 
         $response->assertStatus(200);
-        $response->assertViewIs('apimagic::docs');
+        $response->assertViewIs('api-magic::docs');
     });
 
     it('includes documentation assets', function () {
@@ -63,6 +63,10 @@ describe('GET /api/docs/json', function () {
     });
 
     it('includes versions array', function () {
+        // Without any routes registered via Route::get(), iterations should be empty.
+        // We'll register one to ensure '1' gets populated.
+        Illuminate\Support\Facades\Route::middleware('api')->get('/api/users', function () {});
+
         $response = getJson('/api/docs/json');
 
         $response->assertJson([
@@ -302,11 +306,9 @@ describe('error handling', function () {
 
 describe('query parameters for index endpoints', function () {
     it('includes standard query parameters for GET index', function () {
-        // Register an index route
+        // Register an index route with a controller so RouteAnalyzer detects the 'index' method
         Illuminate\Support\Facades\Route::middleware('api')
-            ->get('/api/products', function () {
-                return response()->json([]);
-            });
+            ->get('/api/products', [Arseno25\LaravelApiMagic\Http\Controllers\DocsController::class, 'index']);
 
         $response = getJson('/api/docs/json');
 

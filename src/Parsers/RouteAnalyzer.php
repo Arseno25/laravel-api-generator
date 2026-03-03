@@ -331,7 +331,7 @@ final class RouteAnalyzer
     public function extractVersion(string $uri, array $controllerInfo): string
     {
         // First, check URI for version prefix (e.g., /api/v2/products)
-        if (preg_match('#/api/v(\d+)/#i', $uri, $matches)) {
+        if (preg_match('#(?:^|/)api/v(\d+)(?:/|$)#i', $uri, $matches)) {
             return $matches[1];
         }
 
@@ -351,6 +351,8 @@ final class RouteAnalyzer
      */
     private function generateTags(string $uri, string $version = '1'): array
     {
+        $uri = ltrim($uri, '/');
+
         // Remove 'api/' prefix and version prefix
         $uri = preg_replace('#^api/v\d+/#i', '', $uri);
         $uri = preg_replace('#^api/#', '', $uri);

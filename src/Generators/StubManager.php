@@ -52,13 +52,19 @@ final class StubManager
         }
 
         // Handle block conditionals @conditionalName ... @endConditionalName
-        $stub = preg_replace_callback('/@(\w+)\s*\n(.*?)\s*@end\1/s', function ($matches) use ($replacements) {
-            $conditionName = $matches[1];
+        $stub = preg_replace_callback('/@(\w+)\s*\n(.*?)\s*@end\1/si', function ($matches) use ($replacements) {
+            $conditionName = strtolower($matches[1]);
             $content = $matches[2];
 
-            // Check if the condition is truthy in replacements
-            $key = '{{'.strtolower($conditionName).'}}';
-            $isEnabled = isset($replacements[$key]) && $replacements[$key];
+            // Check if the condition is truthy in replacements (case-insensitive key lookup)
+            $key = '{{ '.$conditionName.' }}';
+            $isEnabled = false;
+            foreach ($replacements as $rKey => $rVal) {
+                if (strtolower($rKey) === $key && $rVal) {
+                    $isEnabled = true;
+                    break;
+                }
+            }
 
             return $isEnabled ? $content : '';
         }, $stub);

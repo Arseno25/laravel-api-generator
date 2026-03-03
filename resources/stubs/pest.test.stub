@@ -4,14 +4,14 @@ use {{ namespace }}\Models\{{ model }};
 use {{ resourceNamespace }}\{{ model }}Resource;
 use function Pest\Laravel\{get, post, put, patch, delete};
 
-uses()->group('api', '{{ apiVersion }}', '{{ modelPluralVariable }}');
+uses()->group('api', '{{ modelPluralVariable }}');
 
 beforeEach(function () {
     $this->{{ modelVariable}} = {{ model }}::factory()->create();
 });
 
 it('can list all {{ modelPluralVariable }}', function () {
-    $response = get('/api/{{ apiResourceUrl }}');
+    $response = get('{{ apiPrefix }}');
 
     $response->assertStatus(200)
         ->assertJsonStructure([
@@ -22,7 +22,7 @@ it('can list all {{ modelPluralVariable }}', function () {
 });
 
 it('can show a single {{ modelVariable }}', function () {
-    $response = get("/api/{{ apiResourceUrl }}/{$this->{{ modelVariable }}->id}");
+    $response = get("{{ apiPrefix }}/{$this->{{ modelVariable }}->id}");
 
     $response->assertStatus(200)
         ->assertJson([
@@ -33,7 +33,7 @@ it('can show a single {{ modelVariable }}', function () {
 });
 
 it('requires valid data to create a {{ modelVariable }}', function () {
-    $response = post('/api/{{ apiResourceUrl }}', []);
+    $response = post('{{ apiPrefix }}', []);
 
     $response->assertStatus(422)
         ->assertJsonStructure([
@@ -45,7 +45,7 @@ it('requires valid data to create a {{ modelVariable }}', function () {
 it('can create a {{ modelVariable }}', function () {
     $data = {{ model }}::factory()->raw();
 
-    $response = post('/api/{{ apiResourceUrl }}', $data);
+    $response = post('{{ apiPrefix }}', $data);
 
     $response->assertStatus(201)
         ->assertJsonStructure([
@@ -58,7 +58,7 @@ it('can create a {{ modelVariable }}', function () {
 it('can update a {{ modelVariable }}', function () {
     $data = {{ model }}::factory()->raw();
 
-    $response = put("/api/{{ apiResourceUrl }}/{$this->{{ modelVariable }}->id}", $data);
+    $response = put("{{ apiPrefix }}/{$this->{{ modelVariable }}->id}", $data);
 
     $response->assertStatus(200)
         ->assertJson([
@@ -72,7 +72,7 @@ it('can partially update a {{ modelVariable }}', function () {
     $data = {{ model }}::factory()->raw();
     $partialData = array_slice($data, 0, 1, true);
 
-    $response = patch("/api/{{ apiResourceUrl }}/{$this->{{ modelVariable }}->id}", $partialData);
+    $response = patch("{{ apiPrefix }}/{$this->{{ modelVariable }}->id}", $partialData);
 
     $response->assertStatus(200)
         ->assertJson([
@@ -83,13 +83,13 @@ it('can partially update a {{ modelVariable }}', function () {
 });
 
 it('requires valid data to update a {{ modelVariable }}', function () {
-    $response = put("/api/{{ apiResourceUrl }}/{$this->{{ modelVariable }}->id}", []);
+    $response = put("{{ apiPrefix }}/{$this->{{ modelVariable }}->id}", []);
 
     $response->assertStatus(422);
 });
 
 it('can delete a {{ modelVariable }}', function () {
-    $response = delete("/api/{{ apiResourceUrl }}/{$this->{{ modelVariable }}->id}");
+    $response = delete("{{ apiPrefix }}/{$this->{{ modelVariable }}->id}");
 
     $response->assertStatus(204);
 
@@ -99,7 +99,7 @@ it('can delete a {{ modelVariable }}', function () {
 });
 
 it('returns 404 for non-existent {{ modelVariable }}', function () {
-    $response = get("/api/{{ apiResourceUrl }}/999999");
+    $response = get("{{ apiPrefix }}/999999");
 
     $response->assertStatus(404);
 });

@@ -20,7 +20,7 @@ class {{ model }}Controller extends Controller
     {
         $query = {{ model }}::query();
 
-@searchableFields
+@searchablefields
         // Apply search filter if provided
         if ($request->filled('search')) {
             $searchTerm = $request->input('search');
@@ -28,7 +28,7 @@ class {{ model }}Controller extends Controller
 {{ searchConditions }}
             });
         }
-@endSearchableFields
+@endSearchablefields
 
         ${{ modelPluralVariable }} = $query
             ->latest()

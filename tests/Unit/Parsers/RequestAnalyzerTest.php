@@ -69,6 +69,7 @@ PHP;
         $tempPath = base_path('app/Http/Requests/TestProductRequest.php');
         File::ensureDirectoryExists(dirname($tempPath));
         File::put($tempPath, $requestContent);
+        require_once $tempPath;
 
         $result = $this->analyzer->analyze('App\\Http\\Requests\\TestProductRequest');
 
@@ -107,6 +108,7 @@ PHP;
         $tempPath = base_path('app/Http/Requests/TestRequiredRequest.php');
         File::ensureDirectoryExists(dirname($tempPath));
         File::put($tempPath, $requestContent);
+        require_once $tempPath;
 
         $result = $this->analyzer->analyze('App\\Http\\Requests\\TestRequiredRequest');
 
@@ -138,6 +140,7 @@ PHP;
         $tempPath = base_path('app/Http/Requests/TestNullableRequest.php');
         File::ensureDirectoryExists(dirname($tempPath));
         File::put($tempPath, $requestContent);
+        require_once $tempPath;
 
         $result = $this->analyzer->analyze('App\\Http\\Requests\\TestNullableRequest');
 
@@ -169,6 +172,7 @@ PHP;
         $tempPath = base_path('app/Http/Requests/TestEnumRequest.php');
         File::ensureDirectoryExists(dirname($tempPath));
         File::put($tempPath, $requestContent);
+        require_once $tempPath;
 
         $result = $this->analyzer->analyze('App\\Http\\Requests\\TestEnumRequest');
 
@@ -202,6 +206,7 @@ PHP;
         $tempPath = base_path('app/Http/Requests/TestIntegerRequest.php');
         File::ensureDirectoryExists(dirname($tempPath));
         File::put($tempPath, $requestContent);
+        require_once $tempPath;
 
         $result = $this->analyzer->analyze('App\\Http\\Requests\\TestIntegerRequest');
 
@@ -233,6 +238,7 @@ PHP;
         $tempPath = base_path('app/Http/Requests/TestBooleanRequest.php');
         File::ensureDirectoryExists(dirname($tempPath));
         File::put($tempPath, $requestContent);
+        require_once $tempPath;
 
         $result = $this->analyzer->analyze('App\\Http\\Requests\\TestBooleanRequest');
 
@@ -264,6 +270,7 @@ PHP;
         $tempPath = base_path('app/Http/Requests/TestArrayRequest.php');
         File::ensureDirectoryExists(dirname($tempPath));
         File::put($tempPath, $requestContent);
+        require_once $tempPath;
 
         $result = $this->analyzer->analyze('App\\Http\\Requests\\TestArrayRequest');
 
@@ -295,6 +302,7 @@ PHP;
         $tempPath = base_path('app/Http/Requests/TestEmailRequest.php');
         File::ensureDirectoryExists(dirname($tempPath));
         File::put($tempPath, $requestContent);
+        require_once $tempPath;
 
         $result = $this->analyzer->analyze('App\\Http\\Requests\\TestEmailRequest');
 
@@ -326,6 +334,7 @@ PHP;
         $tempPath = base_path('app/Http/Requests/TestStringRequest.php');
         File::ensureDirectoryExists(dirname($tempPath));
         File::put($tempPath, $requestContent);
+        require_once $tempPath;
 
         $result = $this->analyzer->analyze('App\\Http\\Requests\\TestStringRequest');
 
@@ -359,6 +368,7 @@ PHP;
         $tempPath = base_path('app/Http/Requests/TestDescRequest.php');
         File::ensureDirectoryExists(dirname($tempPath));
         File::put($tempPath, $requestContent);
+        require_once $tempPath;
 
         $result = $this->analyzer->analyze('App\\Http\\Requests\\TestDescRequest');
 
@@ -390,6 +400,7 @@ PHP;
         $tempPath = base_path('app/Http/Requests/TestMinRequest.php');
         File::ensureDirectoryExists(dirname($tempPath));
         File::put($tempPath, $requestContent);
+        require_once $tempPath;
 
         $result = $this->analyzer->analyze('App\\Http\\Requests\\TestMinRequest');
 
