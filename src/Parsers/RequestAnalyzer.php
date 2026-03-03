@@ -68,6 +68,7 @@ final class RequestAnalyzer
                 'rules' => $this->rulesToString($rule),
                 'description' => $this->generateDescription($rule),
                 'enum' => $this->extractEnum($rule),
+                'is_file' => $this->isFile($rule),
             ];
         }
 
@@ -79,6 +80,7 @@ final class RequestAnalyzer
             'rules' => $rule,
             'description' => $this->generateDescription($ruleArray),
             'enum' => $this->extractEnum($ruleArray),
+            'is_file' => $this->isFile($ruleArray),
         ];
     }
 
@@ -130,6 +132,16 @@ final class RequestAnalyzer
     private function isRequired(array $rules): bool
     {
         return in_array('required', $rules);
+    }
+
+    /**
+     * Check if field is a file or image.
+     *
+     * @param  array<string>  $rules
+     */
+    private function isFile(array $rules): bool
+    {
+        return in_array('file', $rules) || in_array('image', $rules) || collect($rules)->contains(fn ($rule) => str_starts_with($rule, 'mimes:'));
     }
 
     /**

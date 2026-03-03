@@ -3,6 +3,7 @@
 namespace Arseno25\LaravelApiMagic;
 
 use Arseno25\LaravelApiMagic\Commands\CacheDocsCommand;
+use Arseno25\LaravelApiMagic\Commands\ExportDocsCommand;
 use Arseno25\LaravelApiMagic\Commands\GenerateApiCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
@@ -18,7 +19,8 @@ class LaravelApiMagicServiceProvider extends PackageServiceProvider
             ->hasRoute('docs')
             ->hasMigration('create_laravel_api_magic_table')
             ->hasCommand(GenerateApiCommand::class)
-            ->hasCommand(CacheDocsCommand::class);
+            ->hasCommand(CacheDocsCommand::class)
+            ->hasCommand(ExportDocsCommand::class);
     }
 
     public function packageRegistered(): void

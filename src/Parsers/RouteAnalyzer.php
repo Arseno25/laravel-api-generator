@@ -2,6 +2,8 @@
 
 namespace Arseno25\LaravelApiMagic\Parsers;
 
+use Arseno25\LaravelApiMagic\Parsers\RequestAnalyzer;
+use Arseno25\LaravelApiMagic\Parsers\ResourceAnalyzer;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Route as RouteFacade;
 use Illuminate\Support\Str;
@@ -100,7 +102,7 @@ final class RouteAnalyzer
      *
      * @return array<string, mixed>|null
      */
-    public function parseRoute(Route $route, RequestAnalyzer $requestAnalyzer): ?array
+    public function parseRoute(Route $route, RequestAnalyzer $requestAnalyzer, ?ResourceAnalyzer $resourceAnalyzer = null): ?array
     {
         $methods = array_filter($route->methods, fn ($m) => $m !== 'HEAD');
 
@@ -128,18 +130,45 @@ final class RouteAnalyzer
         // Extract API version
         $version = $this->extractVersion($uri, $controllerInfo);
 
+        // Analyze response schema
+        $responseSchema = null;
+        if ($resourceAnalyzer && isset($controllerInfo['full_path']) && isset($controllerInfo['method'])) {
+            $responseSchema = $resourceAnalyzer->analyze($controllerInfo['full_path'], $controllerInfo['method']);
+        }
+
         // Add query parameters for GET index endpoints
         $queryParameters = [];
         if ($method === 'get' && $controllerInfo['method'] === 'index') {
             $queryParameters = $requestAnalyzer->getIndexQueryParameters();
         }
 
+        // Extract custom PHP Attributes
+        $attributes = $this->extractAttributes($action);
+
+        // Map request rules to query parameters for GET and DELETE methods
+        if (in_array($method, ['get', 'delete']) && ! empty($requestRules)) {
+            foreach ($requestRules as $name => $rule) {
+                // Check if it already exists (e.g., from index pagination defaults)
+                $exists = collect($queryParameters)->contains('name', $name);
+                
+                if (! $exists) {
+                    $queryParameters[] = [
+                        'name' => $name,
+                        'type' => $rule['type'] ?? 'string',
+                        'required' => $rule['required'] ?? false,
+                        'description' => $rule['description'] ?? '',
+                    ];
+                }
+            }
+            $requestRules = []; // Clear body for GET/DELETE
+        }
+
         return [
             'method' => $method,
             'path' => $uri,
             'name' => $name,
-            'summary' => $this->generateSummary($method, $uri, $controllerInfo),
-            'description' => $this->generateDescription($method, $uri),
+            'summary' => $this->generateSummary($method, $uri, $controllerInfo, $attributes),
+            'description' => $this->generateDescription($method, $uri, $attributes),
             'parameters' => [
                 'path' => $pathParameters,
                 'query' => $queryParameters,
@@ -147,10 +176,60 @@ final class RouteAnalyzer
             ],
             'controller' => $controllerInfo,
             'request' => $requestClass ? class_basename($requestClass) : null,
-            'tags' => $this->generateTags($uri, $version),
+            'response' => $responseSchema,
+            'tags' => $this->generateTags($uri, $version, $attributes),
             'security' => $this->analyzeSecurity($route),
             'version' => $version,
         ];
+    }
+
+    /**
+     * Extract custom PHP Attributes from the controller method.
+     *
+     * @param array|string|null $action
+     * @return array<string, mixed>
+     */
+    private function extractAttributes(array|string|null $action): array
+    {
+        $attributes = [];
+
+        if (! is_array($action) || ! isset($action['uses']) || ! is_string($action['uses'])) {
+            return $attributes;
+        }
+
+        $parts = explode('@', $action['uses']);
+        if (count($parts) !== 2) {
+            return $attributes;
+        }
+
+        [$controller, $method] = $parts;
+
+        if (! class_exists($controller)) {
+            return $attributes;
+        }
+
+        try {
+            $reflection = new ReflectionClass($controller);
+            if ($reflection->hasMethod($method)) {
+                $methodReflection = $reflection->getMethod($method);
+
+                // Check for ApiGroup Attribute
+                $groupAttributes = $methodReflection->getAttributes(\Arseno25\LaravelApiMagic\Attributes\ApiGroup::class);
+                if (! empty($groupAttributes)) {
+                    $attributes['group'] = $groupAttributes[0]->newInstance()->name;
+                }
+
+                // Check for ApiDescription Attribute
+                $descAttributes = $methodReflection->getAttributes(\Arseno25\LaravelApiMagic\Attributes\ApiDescription::class);
+                if (! empty($descAttributes)) {
+                    $attributes['description'] = $descAttributes[0]->newInstance()->description;
+                }
+            }
+        } catch (\Throwable) {
+            // Ignore reflection errors
+        }
+
+        return $attributes;
     }
 
     /**
@@ -229,9 +308,14 @@ final class RouteAnalyzer
      * Generate summary for route.
      *
      * @param  array<string, string|null>  $controllerInfo
+     * @param  array<string, mixed>  $attributes
      */
-    private function generateSummary(string $method, string $uri, array $controllerInfo): string
+    private function generateSummary(string $method, string $uri, array $controllerInfo, array $attributes = []): string
     {
+        if (isset($attributes['description'])) {
+            return $attributes['description'];
+        }
+
         $resource = $this->extractResourceName($uri);
         $action = $this->guessAction($method, $uri, $controllerInfo);
 
@@ -244,9 +328,15 @@ final class RouteAnalyzer
 
     /**
      * Generate detailed description for route.
+     *
+     * @param  array<string, mixed>  $attributes
      */
-    private function generateDescription(string $method, string $uri): string
+    private function generateDescription(string $method, string $uri, array $attributes = []): string
     {
+        if (isset($attributes['description'])) {
+            return $attributes['description'];
+        }
+
         $summaries = match ($method) {
             'get' => str_ends_with($uri, '}') || ! str_contains($uri, '{')
                 ? 'Retrieve a list of resources'
@@ -347,10 +437,15 @@ final class RouteAnalyzer
     /**
      * Generate tags for grouping endpoints.
      *
+     * @param  array<string, mixed>  $attributes
      * @return array<int, string>
      */
-    private function generateTags(string $uri, string $version = '1'): array
+    private function generateTags(string $uri, string $version = '1', array $attributes = []): array
     {
+        if (isset($attributes['group'])) {
+            return [$attributes['group']];
+        }
+
         $uri = ltrim($uri, '/');
 
         // Remove 'api/' prefix and version prefix

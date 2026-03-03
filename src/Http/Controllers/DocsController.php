@@ -3,6 +3,7 @@
 namespace Arseno25\LaravelApiMagic\Http\Controllers;
 
 use Arseno25\LaravelApiMagic\Parsers\RequestAnalyzer;
+use Arseno25\LaravelApiMagic\Parsers\ResourceAnalyzer;
 use Arseno25\LaravelApiMagic\Parsers\RouteAnalyzer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,6 +18,7 @@ final class DocsController extends Controller
     public function __construct(
         private readonly RouteAnalyzer $routeAnalyzer,
         private readonly RequestAnalyzer $requestAnalyzer,
+        private readonly ResourceAnalyzer $resourceAnalyzer,
     ) {}
 
     /**
@@ -59,11 +61,21 @@ final class DocsController extends Controller
      */
     public function export(Request $request): JsonResponse
     {
-        $schema = $this->generateSchema($request);
-        $openApi = $this->convertToOpenApi($schema, $request);
+        $openApi = $this->getOpenApiSchema($request);
 
         return response()->json($openApi)
             ->header('Content-Disposition', 'attachment; filename="api-docs-'.date('Y-m-d').'.json"');
+    }
+
+    /**
+     * Get the raw OpenAPI 3.0 schema array.
+     *
+     * @return array<string, mixed>
+     */
+    public function getOpenApiSchema(Request $request): array
+    {
+        $schema = $this->generateSchema($request);
+        return $this->convertToOpenApi($schema, $request);
     }
 
     /**
@@ -100,7 +112,7 @@ final class DocsController extends Controller
 
         // Parse routes once, then group differently
         $parsedRoutes = collect($routes)
-            ->map(fn ($route) => $this->routeAnalyzer->parseRoute($route, $this->requestAnalyzer))
+            ->map(fn ($route) => $this->routeAnalyzer->parseRoute($route, $this->requestAnalyzer, $this->resourceAnalyzer))
             ->filter()
             ->sortBy([
                 ['version', 'asc'],
@@ -140,6 +152,7 @@ final class DocsController extends Controller
         $baseUrl = $schema['baseUrl'] ?? $request->getSchemeAndHttpHost();
         $paths = [];
         $versionServers = [];
+        $customSchemas = [];
 
         foreach ($schema['endpoints'] ?? [] as $path => $methods) {
             $pathKey = str_replace($baseUrl, '', $path);
@@ -156,7 +169,7 @@ final class DocsController extends Controller
                     'description' => $endpoint['description'] ?? '',
                     'operationId' => strtolower($method).str_replace(['/', '{', '}', '-', '.'], '', $path),
                     'tags' => $endpoint['tags'] ?? ['default'],
-                    'responses' => $this->buildOpenApiResponses($method),
+                    'responses' => $this->buildOpenApiResponses($method, $endpoint['response'] ?? null),
                 ];
 
                 // Add security if endpoint requires authentication
@@ -211,18 +224,29 @@ final class DocsController extends Controller
 
                 // Add request body for POST/PUT/PATCH
                 if (in_array($method, ['post', 'put', 'patch']) && ! empty($endpoint['parameters']['body'] ?? [])) {
+
+                    $hasFile = collect($endpoint['parameters']['body'])->contains(fn($field) => isset($field['is_file']) && $field['is_file'] === true);
+                    $contentType = $hasFile ? 'multipart/form-data' : 'application/json';
+
                     $operation['requestBody'] = [
                         'required' => true,
                         'content' => [
-                            'application/json' => [
+                            $contentType => [
                                 'schema' => [
                                     'type' => 'object',
                                     'properties' => $this->buildOpenApiSchemaProperties($endpoint['parameters']['body']),
                                 ],
-                                'example' => $this->buildOpenApiExample($endpoint['parameters']['body']),
                             ],
                         ],
                     ];
+
+                    if (! $hasFile) {
+                        $operation['requestBody']['content'][$contentType]['example'] = $this->buildOpenApiExample($endpoint['parameters']['body']);
+                    }
+                }
+
+                if (isset($endpoint['response'])) {
+                    $customSchemas[$endpoint['response']['name']] = $endpoint['response']['schema'];
                 }
 
                 $paths[$pathKey][$method] = $operation;
@@ -262,7 +286,7 @@ final class DocsController extends Controller
                         'description' => 'Laravel Sanctum Bearer Token authentication. Enter token without "Bearer" prefix.',
                     ],
                 ],
-                'schemas' => [
+                'schemas' => array_merge([
                     'SuccessResponse' => [
                         'type' => 'object',
                         'properties' => [
@@ -284,7 +308,7 @@ final class DocsController extends Controller
                             'errors' => ['type' => 'object', 'description' => 'Validation errors grouped by field'],
                         ],
                     ],
-                ],
+                ], $customSchemas),
             ],
             'tags' => $this->buildOpenApiTags($schema),
         ];
@@ -293,10 +317,13 @@ final class DocsController extends Controller
     /**
      * Build OpenAPI response definitions.
      *
+     * @param array<string, mixed>|null $resourceSchema
      * @return array<mixed>
      */
-    private function buildOpenApiResponses(string $method): array
+    private function buildOpenApiResponses(string $method, ?array $resourceSchema = null): array
     {
+        $schemaRef = $resourceSchema ? '#/components/schemas/'.$resourceSchema['name'] : '#/components/schemas/ResourceResponse';
+        
         return match ($method) {
             'get' => [
                 '200' => [
@@ -316,7 +343,7 @@ final class DocsController extends Controller
                     'description' => 'Resource created',
                     'content' => [
                         'application/json' => [
-                            'schema' => ['$ref' => '#/components/schemas/ResourceResponse'],
+                            'schema' => ['$ref' => $schemaRef],
                         ],
                     ],
                 ],
@@ -334,7 +361,7 @@ final class DocsController extends Controller
                     'description' => 'Resource updated',
                     'content' => [
                         'application/json' => [
-                            'schema' => ['$ref' => '#/components/schemas/ResourceResponse'],
+                            'schema' => ['$ref' => $schemaRef],
                         ],
                     ],
                 ],
@@ -383,6 +410,10 @@ final class DocsController extends Controller
 
             if (isset($field['enum'])) {
                 $schema['enum'] = $field['enum'];
+            }
+            
+            if (isset($field['is_file']) && $field['is_file']) {
+                $schema['format'] = 'binary';
             }
 
             $properties[$name] = $schema;

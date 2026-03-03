@@ -1,333 +1,208 @@
-# Laravel API Magic
+<div align="center">
+  <h1 style="color: #FF2D20;">✨ Laravel API Magic</h1>
+  <p style="color: #E5E7EB; font-size: 1.1em;">Generate a complete REST API with a single command — Model, Migration, Controller, Request, Resource, and Tests.</p>
+  
+  <p>
+    <a href="https://packagist.org/packages/arseno25/laravel-api-magic"><img src="https://img.shields.io/packagist/v/arseno25/laravel-api-magic.svg?style=flat-square" alt="Latest Version"></a>
+    <a href="https://packagist.org/packages/arseno25/laravel-api-magic"><img src="https://img.shields.io/packagist/dt/arseno25/laravel-api-magic.svg?style=flat-square" alt="Total Downloads"></a>
+  </p>
+</div>
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/arseno25/laravel-api-magic.svg?style=flat-square)](https://packagist.org/packages/arseno25/laravel-api-magic)
-[![Total Downloads](https://img.shields.io/packagist/dt/arseno25/laravel-api-magic.svg?style=flat-square)](https://packagist.org/packages/arseno25/laravel-api-magic)
+<hr style="border: 1px solid #374151;" />
 
-> Generate complete REST API with a single command - Model, Migration, Controller, Request, Resource, and Tests!
+<h2 style="color: #F9FAFB;">⚡ Installation</h2>
 
-Laravel API Magic adalah package yang powerful untuk generating complete REST API dengan satu artisan command. Package ini secara otomatis membuat Model, Migration, Controller, Form Request, API Resource, dan optional Pest Test dengan interactive prompts.
-
-## Features
-
-### Core Features
-- **One Command Generation** - Generate complete REST API dengan single command
-- **Interactive Mode** - Guided prompts untuk mudah mengkonfigurasi API
-- **Smart Schema Parser** - Parse validation rules otomatis untuk migration dan request
-- **Relationship Support** - Easy BelongsTo dan HasMany relationships
-- **Pest Testing** - Optional Pest feature test generation
-
-### API Documentation
-- **Interactive Documentation UI** - Swagger-like UI untuk mencoba endpoint langsung dari browser
-- **Auto Documentation** - Dokumentasi API otomatis tergenerate
-- **Search & Filter** - Filter endpoints by path atau summary
-- **Try It Out** - Kirim request langsung dari UI
-- **Authentication Support** - Set Bearer token untuk authenticated requests
-- **Request Body Examples** - Auto-generate example JSON untuk POST/PUT/PATCH
-- **Smart Caching** - Cache documentation schema untuk better performance
-
----
-
-## Installation
-
-Install package via composer:
+<p style="color: #D1D5DB;">Install the package via Composer:</p>
 
 ```bash
 composer require arseno25/laravel-api-magic
 ```
 
-Publish dan jalankan migration:
+<hr style="border: 1px solid #374151;" />
 
-```bash
-php artisan vendor:publish --tag="laravel-api-magic-migrations"
-php artisan migrate
-```
+<h2 style="color: #F9FAFB;">🛠 Main Features</h2>
 
-Publish config file (optional):
+<ul style="color: #D1D5DB; line-height: 1.6;">
+  <li><strong style="color: #EF4444;">One Command API Setup:</strong> Generate fully functional API endpoints in seconds.</li>
+  <li><strong style="color: #3B82F6;">Flexible Schema Parsing:</strong> Define column types and validation rules simply (e.g., <code style="color: #F9FAFB; background-color: #1F2937; padding: 2px 4px; border-radius: 4px;">title:string|required</code>).</li>
+  <li><strong style="color: #10B981;">Smart Relationships:</strong> Define <code style="color: #F9FAFB; background-color: #1F2937; padding: 2px 4px; border-radius: 4px;">BelongsTo</code> and <code style="color: #F9FAFB; background-color: #1F2937; padding: 2px 4px; border-radius: 4px;">HasMany</code> relations cleanly in the command.</li>
+  <li><strong style="color: #A78BFA;">API Versioning:</strong> Easily scaffold multi-version endpoints using flags like <code style="color: #F9FAFB; background-color: #1F2937; padding: 2px 4px; border-radius: 4px;">--v=2</code>.</li>
+  <li><strong style="color: #FCD34D;">Auto Feature Testing:</strong> Includes Pest Test scaffolding fully integrated with your API.</li>
+  <li><strong style="color: #F472B6;">Built-in API Documentation UI:</strong> Swagger-like UI dynamically generating docs for all endpoints at <code style="color: #F9FAFB; background-color: #1F2937; padding: 2px 4px; border-radius: 4px;">/api/docs</code>.</li>
+  <li><strong style="color: #14B8A6;">Advanced OpenAPI Specs:</strong> Supports file uploads (<code>multipart/form-data</code>), Enum UI dropdowns, accurate JSON Resource bindings, and static exporting.</li>
+</ul>
 
-```bash
-php artisan vendor:publish --tag="laravel-api-magic-config"
-```
+<hr style="border: 1px solid #374151;" />
 
----
+<h2 style="color: #F9FAFB;">🚀 Usage</h2>
 
-## Usage
+<h3 style="color: #E5E7EB;">Interactive Mode</h3>
 
-### Interactive Mode (Recommended)
-
-Mode interaktif adalah cara paling mudah untuk generate API. Cukup jalankan command tanpa argumen:
-
-```bash
-php artisan api:magic
-```
-
-Anda akan diarahkan melalui prompts:
-
-```
-✨ API Magic - Interactive Setup
-
-  What is the Model name? > Product
-
-  ➤ Would you like to define fields interactively? Yes
-
-  Field name: title
-  Select type: string
-  Is required? Yes
-  ✓ Added: title (string, required)
-
-  ➤ Add belongsTo relationship? Yes
-  Related model name: Category
-  ✓ Added belongsTo: Category
-
-  📊 Configuration Summary
-  ┌─────────────────────────────────────┐
-  │ Component   │ Details                │
-  ├─────────────────────────────────────┤
-  │ Model       │ Product                │
-  │ Fields      │ 2 fields               │
-  │ Relations   │ 1 BelongsTo | 1 HasMany │
-  └─────────────────────────────────────┘
-
-  ✨ API Generated Successfully!
-```
-
-### Command Options
-
-```
-Usage:
-  api:magic [options] [--] [<model> [<schema>]]
-
-Arguments:
-  model                 The name of the Model
-  schema                Field schema (e.g., "title:string|required,price:integer|min:0")
-
-Options:
-  --test                Generate a Pest feature test
-  --belongsTo=          BelongsTo relations (e.g., "category,user")
-  --hasMany=            HasMany relations (e.g., "comments,review")
-  --v=                  API version number (default: 1)
-  --force               Overwrite existing files
-  --no-interaction      Run without prompts
-```
-
----
-
-## Schema Format
-
-### Field Types
-
-| Type | Description | Database |
-|------|-------------|----------|
-| `string` | VARCHAR field | VARCHAR(255) |
-| `text` | Long text field | TEXT |
-| `integer` | Integer field | INTEGER |
-| `decimal` | Decimal field | DECIMAL |
-| `boolean` | Boolean field | BOOLEAN |
-| `datetime` | DateTime field | DATETIME |
-| `date` | Date field | DATE |
-
-### Validation Rules
-
-Gunakan Laravel validation syntax:
-
-```bash
-php artisan api:magic Post "title:string|required|min:5|max:255,slug:string|required|unique:posts,content:text|required,category_id:integer|required|exists:categories,id,published_at:datetime|nullable,is_featured:boolean|default:false"
-```
-
----
-
-## Examples
-
-### 1. Interactive Mode
+<p style="color: #D1D5DB;">The easiest way to generate an API is by running the command with no arguments. It will guide you via interactive prompts.</p>
 
 ```bash
 php artisan api:magic
 ```
 
-### 2. Quick Generate
+<h3 style="color: #E5E7EB;">Command Line Mode</h3>
+
+<p style="color: #D1D5DB;">You can bypass prompts for fast scaffolding by providing arguments.</p>
 
 ```bash
-php artisan api:magic Product
+php artisan api:magic Post "title:string|required|max:255,content:text|required,is_published:boolean|default:false" --belongsTo="User" --hasMany="Comment" --test --v=1
 ```
 
-### 3. With Schema
+<h4 style="color: #D1D5DB;">Command Options:</h4>
+<table border="1" cellpadding="10" cellspacing="0" width="100%" style="border-collapse: collapse; border-color: #374151; text-align: left; color: #D1D5DB;">
+  <thead style="background-color: #1F2937; color: #F9FAFB;">
+    <tr>
+      <th align="left">Option</th>
+      <th align="left">Description</th>
+      <th align="left">Example</th>
+    </tr>
+  </thead>
+  <tbody style="background-color: #111827;">
+    <tr>
+      <td style="color: #EF4444; font-weight: 500;"><code>model</code></td>
+      <td>Name of the Model to generate.</td>
+      <td style="background-color: #1F2937;"><code>Post</code></td>
+    </tr>
+    <tr>
+      <td style="color: #EF4444; font-weight: 500;"><code>schema</code></td>
+      <td>Field schema format: <code>field:type|rule</code>. Available types: <code>string</code>, <code>text</code>, <code>integer</code>, <code>boolean</code>, <code>date</code>, <code>datetime</code>, <code>decimal</code>.</td>
+      <td style="background-color: #1F2937;"><code>title:string|required</code></td>
+    </tr>
+    <tr>
+      <td style="color: #3B82F6; font-weight: 500;"><code>--v=</code></td>
+      <td>Specify API version number.</td>
+      <td style="background-color: #1F2937;"><code>--v=2</code></td>
+    </tr>
+    <tr>
+      <td style="color: #10B981; font-weight: 500;"><code>--belongsTo=</code></td>
+      <td>Comma-separated BelongsTo relationships.</td>
+      <td style="background-color: #1F2937;"><code>--belongsTo="Category,User"</code></td>
+    </tr>
+    <tr>
+      <td style="color: #10B981; font-weight: 500;"><code>--hasMany=</code></td>
+      <td>Comma-separated HasMany relationships.</td>
+      <td style="background-color: #1F2937;"><code>--hasMany="Comment,Review"</code></td>
+    </tr>
+    <tr style="background-color: #111827;">
+      <td style="color: #10B981; font-weight: 500;"><code>--belongsToMany=</code></td>
+      <td>Comma-separated BelongsToMany relationships.</td>
+      <td style="background-color: #1F2937;"><code>--belongsToMany="Tag,Role"</code></td>
+    </tr>
+    <tr>
+      <td style="color: #FCD34D; font-weight: 500;"><code>--test</code></td>
+      <td>Generate a Pest Feature test alongside the API.</td>
+      <td style="background-color: #1F2937;"><code>--test</code></td>
+    </tr>
+    <tr style="background-color: #111827;">
+      <td style="color: #FCD34D; font-weight: 500;"><code>--factory</code></td>
+      <td>Generate a Model Factory.</td>
+      <td style="background-color: #1F2937;"><code>--factory</code></td>
+    </tr>
+    <tr>
+      <td style="color: #FCD34D; font-weight: 500;"><code>--seeder</code></td>
+      <td>Generate a Database Seeder class.</td>
+      <td style="background-color: #1F2937;"><code>--seeder</code></td>
+    </tr>
+    <tr style="background-color: #111827;">
+      <td style="color: #A78BFA; font-weight: 500;"><code>--soft-deletes</code></td>
+      <td>Add Soft Deletes to the model and migration.</td>
+      <td style="background-color: #1F2937;"><code>--soft-deletes</code></td>
+    </tr>
+    <tr>
+      <td style="color: #9CA3AF; font-weight: 500;"><code>--force</code></td>
+      <td>Overwrite existing generated files.</td>
+      <td style="background-color: #1F2937;"><code>--force</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 style="color: #E5E7EB; margin-top: 24px;">API Documentation</h3>
+
+<p style="color: #D1D5DB;">View your auto-generated endpoints, test APIs from the browser, and view schema definitions by visiting:</p>
 
 ```bash
-php artisan api:magic Product "title:string|required,price:integer|min:0,description:text"
-```
-
-### 4. With Relationships
-
-```bash
-php artisan api:magic Product "name:string|required,category_id:integer|required" --belongsTo="Category" --hasMany="Review"
-```
-
-### 5. API Versioning
-
-```bash
-php artisan api:magic Product "name:string|required" --v=2
-```
-
-### 6. Complete Blog Post
-
-```bash
-php artisan api:magic Post "
-  title:string|required|min:5|max:255,
-  slug:string|required|unique:posts,
-  content:text|required,
-  category_id:integer|required|exists:categories,id,
-  author_id:integer|required|exists:users,id
-" --belongsTo="Category,Author" --hasMany="Comment" --test
-```
-
-### 7. Non-Interactive (Automation)
-
-```bash
-php artisan api:magic Product "title:string|required" --no-interaction --test
-```
-
----
-
-## Generated Files
-
-| File | Location |
-|------|----------|
-| **Model** | `app/Models/{Model}.php` |
-| **Migration** | `database/migrations/YYYY_MM_DD_HHMMSS_create_{table}_table.php` |
-| **Controller** | `app/Http/Controllers/Api/{Model}Controller.php` |
-| **V2 Controller** | `app/Http/Controllers/Api/V2/{Model}Controller.php` (if v=2) |
-| **Form Request** | `app/Http/Requests/{Model}Request.php` |
-| **API Resource** | `app/Http/Resources/{Model}Resource.php` |
-| **Pest Test** | `tests/Feature/Api/{Model}Test.php` (with --test) |
-
----
-
-## Register Routes
-
-Tambahkan route di `routes/api.php`:
-
-```php
-use App\Http\Controllers\Api\ProductController;
-
-// API v1
-Route::apiResource('products', ProductController::class);
-
-// API v2
-Route::apiResource('v2/products', \App\Http\Controllers\Api\V2\ProductController::class);
-```
-
----
-
-## API Documentation UI
-
-Akses dokumentasi API di:
-
-```
 http://your-app.test/api/docs
 ```
 
-### Documentation Features
+<p style="color: #D1D5DB; margin-top: 16px;">Customize your API documentation using the provided PHP 8 Attributes directly in your controllers:</p>
 
-| Feature | Description |
-|---------|-------------|
-| **Search** | Filter endpoints by path atau summary |
-| **Try It Out** | Kirim request langsung dari UI |
-| **Authentication** | Set Bearer token untuk authenticated requests |
-| **Request Examples** | Auto-generate example JSON untuk POST/PUT/PATCH |
-| **Response Display** | Beautiful formatted responses dengan status badges |
-| **Error Details** | Clean error display dengan validation errors breakdown |
+```php
+use Arseno25\LaravelApiMagic\Attributes\ApiGroup;
+use Arseno25\LaravelApiMagic\Attributes\ApiDescription;
 
----
+#[ApiGroup('User Management')]
+#[ApiDescription('Retrieves a paginated list of all active users.')]
+public function index() { ... }
+```
 
-## Cache Documentation
+<p style="color: #D1D5DB; margin-top: 16px;">Export your complete OpenAPI schema to a static JSON or YAML file for tools like Postman, Insomnia, or Redoc:</p>
 
-Untuk production, cache documentation untuk better performance:
+```bash
+php artisan api-magic:export --format=json
+php artisan api-magic:export --format=yaml
+```
+
+<p style="color: #D1D5DB; margin-top: 16px;">To optimize for production, cache your schema:</p>
 
 ```bash
 php artisan api-magic:cache
-php artisan api-magic:cache --clear
 ```
 
----
+<h3 style="color: #E5E7EB; margin-top: 24px;">⚙️ Configuration & Customization</h3>
 
-## API Endpoints
-
-Generated API resource menyediakan standard RESTful endpoints:
-
-| Method | URI | Action | Description |
-|--------|-----|--------|-------------|
-| `GET` | `/api/{resource}` | `index` | List semua resources |
-| `POST` | `/api/{resource}` | `store` | Create new resource |
-| `GET` | `/api/{resource}/{id}` | `show` | Get detail resource |
-| `PUT/PATCH` | `/api/{resource}/{id}` | `update` | Update resource |
-| `DELETE` | `/api/{resource}/{id}` | `destroy` | Delete resource |
-
----
-
-## Testing
-
-Run generated tests:
-
-```bash
-php artisan test tests/Feature/Api/ProductTest.php
-```
-
----
-
-## Configuration
-
-Publish config untuk kustomisasi:
+<p style="color: #D1D5DB;">You can publish the configuration file to customize API documentation routes, middleware, and default generation settings (like seeder count):</p>
 
 ```bash
 php artisan vendor:publish --tag="laravel-api-magic-config"
 ```
 
----
-
-## Troubleshooting
-
-### Documentation UI Blank Page
+<p style="color: #D1D5DB; margin-top: 16px;">Need to change the generated code structure? Publish the package stubs to customize Models, Controllers, and Requests:</p>
 
 ```bash
-php artisan view:clear
-php artisan config:clear
-php artisan api-magic:cache --clear
-php artisan api-magic:cache
+php artisan vendor:publish --tag="api-magic-stubs"
 ```
 
-### Command Not Found
+<hr style="border: 1px solid #374151;" />
+
+<h2 style="color: #F9FAFB;">🗺️ Roadmap & Future Features</h2>
+
+<p style="color: #D1D5DB;">We're continuously improving the package to match strict Enterprise OpenAPI specs. Upcoming features include:</p>
+
+<ul style="color: #D1D5DB; line-height: 1.6;">
+  <li><strong>Deprecation Attributes:</strong> `#[ApiDeprecated]` support to visually strikethrough retired endpoints in Swagger UI.</li>
+  <li><strong>Deep Type Extraction:</strong> Utilizing DocBlock parsing safely to fully evaluate `JsonResource` nested properties without Laravel Model instantiation.</li>
+</ul>
+
+<hr style="border: 1px solid #374151;" />
+
+<h2 style="color: #F9FAFB;">🧪 Testing</h2>
+
+<p style="color: #D1D5DB;">This package comes with a comprehensive <a href="https://pestphp.com/" style="color: #60A5FA; text-decoration: none;">Pest</a> test suite mapped across 130+ assertions to ensure stability. Run the tests using:</p>
 
 ```bash
-composer dump-autoload
-php artisan package:discover
+composer test
+# or
+vendor/bin/pest
 ```
 
----
+<hr style="border: 1px solid #374151;" />
 
-## Changelog
+<h2 style="color: #F9FAFB;">📝 License</h2>
 
-Please see [CHANGELOG](CHANGELOG.md) for more information.
+<p style="color: #D1D5DB;">
+  This package is open-sourced software licensed under the <strong><a href="LICENSE.md" style="color: #60A5FA; text-decoration: none;">MIT license</a></strong>.
+</p>
 
----
+<hr style="border: 1px solid #374151; margin: 40px 0 20px 0;" />
 
-## Contributing
-
-Please see [CONTRIBUTING](CONTRIBUTING.md) for details.
-
----
-
-## Security
-
-Please review [our security policy](../../security/policy) on how to report vulnerabilities.
-
----
-
-## Credits
-
-- [Arseno25](https://github.com/Arseno25)
-- [All Contributors](../../contributors)
-
----
-
-## License
-
-The MIT License (MIT). Please see [License File](LICENSE.md) for more information.
+<div align="center" style="font-family: Arial, sans-serif; margin-top: 40px;">
+  <p style="font-size: 1.1em; margin-bottom: 8px; color: #E5E7EB;">Created with ❤️ by <strong><a href="https://github.com/Arseno25" style="color: #EF4444; text-decoration: none;">Arseno25</a></strong></p>
+  <p style="font-size: 0.9em; max-width: 500px; margin: 0 auto; line-height: 1.5; color: #D1D5DB;">
+    Empowering Laravel developers to build APIs faster and write less boilerplate. <br>
+    <em style="color: #9CA3AF;">"Magic is just beautifully organized code."</em>
+  </p>
+</div>

@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <style>
+    <style type="text/tailwindcss">
         * { font-family: 'Inter', sans-serif; }
         code, pre, .font-mono { font-family: 'JetBrains Mono', monospace !important; }
 
@@ -16,19 +16,20 @@
         ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
 
         .method-badge {
-            font-size: 0.6rem;
+            font-size: 0.625rem;
             font-weight: 700;
             letter-spacing: 0.05em;
             text-transform: uppercase;
-            padding: 0.2rem 0.45rem;
-            border-radius: 0.375rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.5rem;
             flex-shrink: 0;
+            backdrop-filter: blur(4px);
         }
-        .method-get { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
-        .method-post { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
-        .method-put { background: rgba(249, 115, 22, 0.2); color: #fb923c; border: 1px solid rgba(249, 115, 22, 0.3); }
-        .method-patch { background: rgba(234, 179, 8, 0.2); color: #facc15; border: 1px solid rgba(234, 179, 8, 0.3); }
-        .method-delete { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .method-get { @apply bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-[0_0_10px_rgba(59,130,246,0.1)]; }
+        .method-post { @apply bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.1)]; }
+        .method-put { @apply bg-orange-500/10 text-orange-400 border border-orange-500/20 shadow-[0_0_10px_rgba(249,115,22,0.1)]; }
+        .method-patch { @apply bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 shadow-[0_0_10px_rgba(234,179,8,0.1)]; }
+        .method-delete { @apply bg-rose-500/10 text-rose-400 border border-rose-500/20 shadow-[0_0_10px_rgba(244,63,94,0.1)]; }
 
         .status-badge {
             font-size: 0.75rem;
@@ -36,11 +37,12 @@
             padding: 0.375rem 0.75rem;
             border-radius: 0.5rem;
             letter-spacing: 0.025em;
+            backdrop-filter: blur(4px);
         }
-        .status-2xx { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.25); }
-        .status-3xx { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.25); }
-        .status-4xx { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.25); }
-        .status-5xx { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.25); }
+        .status-2xx { @apply bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.1)]; }
+        .status-3xx { @apply bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-[0_0_10px_rgba(59,130,246,0.1)]; }
+        .status-4xx { @apply bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 shadow-[0_0_10px_rgba(234,179,8,0.1)]; }
+        .status-5xx { @apply bg-rose-500/10 text-rose-400 border border-rose-500/20 shadow-[0_0_10px_rgba(244,63,94,0.1)]; }
 
         .sidebar-item { transition: all 0.15s ease; }
         .sidebar-item:hover { background: rgba(99, 102, 241, 0.1); }
@@ -101,8 +103,14 @@
         .group-header:hover { background: rgba(255, 255, 255, 0.03); }
     </style>
 </head>
-<body class="bg-slate-950 text-white">
-    <div id="app">
+<body class="bg-slate-950 text-slate-300 antialiased selection:bg-indigo-500/30">
+    <!-- Ambient Background -->
+    <div class="fixed inset-0 z-[-1] bg-slate-950">
+        <div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-500/10 blur-[120px]"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-purple-500/10 blur-[120px]"></div>
+    </div>
+    
+    <div id="app" class="relative">
         <!-- Loading -->
         <div id="loading" class="fixed inset-0 flex items-center justify-center bg-slate-950 z-50">
             <div class="text-center">
@@ -128,7 +136,7 @@
             <div id="sidebar-overlay" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden sidebar-overlay" onclick="closeMobileSidebar()"></div>
 
             <!-- Sidebar -->
-            <aside id="sidebar" class="fixed lg:relative w-72 bg-slate-900 border-r border-slate-800 flex flex-col h-full z-50 -translate-x-full lg:translate-x-0 sidebar-panel">
+            <aside id="sidebar" class="fixed lg:relative w-72 bg-slate-900/60 backdrop-blur-2xl border-r border-white/5 flex flex-col h-full z-50 -translate-x-full lg:translate-x-0 sidebar-panel shadow-2xl shadow-indigo-500/5">
                 <div class="p-4 border-b border-slate-800">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
@@ -168,44 +176,56 @@
                             <div class="text-xs text-slate-500">Requests</div>
                         </div>
                     </div>
-                    <a href="/docs/export" target="_blank" class="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 bg-slate-800 rounded-lg text-xs text-slate-400 hover:bg-slate-700 hover:text-slate-200 transition-colors">
+                    <a href="/api/docs/export" target="_blank" class="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 bg-slate-800 rounded-lg text-xs text-slate-400 hover:bg-slate-700 hover:text-slate-200 transition-colors">
                         <i class="fas fa-download"></i> Export OpenAPI
                     </a>
                 </div>
             </aside>
 
             <!-- Main -->
-            <main class="flex-1 flex flex-col overflow-hidden bg-slate-900 pt-14 lg:pt-0">
-                <header class="hidden lg:flex border-b border-slate-800 px-6 py-4 items-center justify-between">
+            <main class="flex-1 flex flex-col overflow-hidden pt-14 lg:pt-0"> <!-- Removed bg-slate-900 to let ambient bg show -->
+                <header class="hidden lg:flex border-b border-white/5 px-6 py-4 items-center justify-between bg-slate-900/40 backdrop-blur-md">
                     <h2 class="font-semibold text-lg" id="schema-title">API Documentation</h2>
                     <button onclick="openAuthModal()" class="px-4 py-2 bg-slate-800 rounded-lg text-sm hover:bg-slate-700 flex items-center gap-2 transition-colors">
                         <i class="fas fa-key"></i><span id="auth-status">Set Token</span>
                     </button>
                 </header>
-                <div class="flex-1 overflow-y-auto p-4 lg:p-6" id="content-area">
-                    <div class="text-center py-16 lg:py-20">
+                <div class="flex-1 overflow-y-auto p-4 lg:p-6 pb-20" id="content-area">
+                    <div class="text-center py-16 lg:py-20 max-w-4xl mx-auto">
                         <div class="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center">
                             <i class="fas fa-rocket text-3xl text-indigo-400"></i>
                         </div>
                         <h3 class="text-2xl font-bold mb-2">Welcome to API Magic</h3>
                         <p class="text-slate-400 mb-6">Your advanced API documentation and testing platform</p>
                         <div class="inline-flex flex-wrap justify-center items-center gap-2 text-sm text-slate-500">
-                            <span class="px-3 py-1.5 rounded-lg flex items-center gap-2" style="background: rgba(59, 130, 246, 0.1);">
+                            <span class="px-3 py-1.5 rounded-lg flex items-center gap-2 bg-slate-800/50 border border-white/5 shadow-sm">
                                 <span class="method-badge method-get">GET</span> Retrieve
                             </span>
-                            <span class="px-3 py-1.5 rounded-lg flex items-center gap-2" style="background: rgba(34, 197, 94, 0.1);">
+                            <span class="px-3 py-1.5 rounded-lg flex items-center gap-2 bg-slate-800/50 border border-white/5 shadow-sm">
                                 <span class="method-badge method-post">POST</span> Create
                             </span>
-                            <span class="px-3 py-1.5 rounded-lg flex items-center gap-2" style="background: rgba(249, 115, 22, 0.1);">
+                            <span class="px-3 py-1.5 rounded-lg flex items-center gap-2 bg-slate-800/50 border border-white/5 shadow-sm">
                                 <span class="method-badge method-put">PUT</span> Update
                             </span>
-                            <span class="px-3 py-1.5 rounded-lg flex items-center gap-2" style="background: rgba(239, 68, 68, 0.1);">
+                            <span class="px-3 py-1.5 rounded-lg flex items-center gap-2 bg-slate-800/50 border border-white/5 shadow-sm">
                                 <span class="method-badge method-delete">DELETE</span> Delete
                             </span>
                         </div>
                     </div>
                 </div>
             </main>
+
+            <!-- Footer -->
+            <footer class="fixed bottom-0 left-0 right-0 bg-slate-900/80 backdrop-blur-md border-t border-slate-800 py-3 px-6 z-20 lg:pl-72">
+                <div class="flex items-center justify-center gap-2 text-sm text-slate-500">
+                    <span>Made with</span>
+                    <i class="fas fa-heart text-red-500"></i>
+                    <span>by</span>
+                    <a href="https://github.com/Arseno25" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:text-indigo-300 font-medium transition-colors flex items-center gap-1.5">
+                        <i class="fab fa-github"></i> Arseno25
+                    </a>
+                </div>
+            </footer>
         </div>
 
         <!-- Auth Modal -->
@@ -481,40 +501,35 @@
                         </button>
                     </div>
                     <div id="query-params" class="space-y-2">
-                        ${method === 'get' ? `
+                        ${endpoint.parameters?.query?.length ? endpoint.parameters.query.map(q => `
                             <div class="flex gap-2 query-param-row">
-                                <input type="text" value="page" placeholder="key" class="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 query-key">
-                                <input type="text" value="1" placeholder="value" class="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 query-value">
+                                <input type="text" value="${q.name}" placeholder="key" class="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 query-key">
+                                <input type="text" value="${q.name === 'page' ? '1' : (q.name === 'per_page' ? '15' : '')}" placeholder="value" class="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 query-value">
                                 <button onclick="this.parentElement.remove()" class="px-2 text-slate-500 hover:text-red-400"><i class="fas fa-times"></i></button>
                             </div>
-                            <div class="flex gap-2 query-param-row">
-                                <input type="text" value="per_page" placeholder="key" class="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 query-key">
-                                <input type="text" value="15" placeholder="value" class="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 query-value">
-                                <button onclick="this.parentElement.remove()" class="px-2 text-slate-500 hover:text-red-400"><i class="fas fa-times"></i></button>
-                            </div>
-                        ` : ''}
+                        `).join('') : ''}
                     </div>
                 </div>
             ` : '';
 
             container.innerHTML = `
-                <div class="space-y-4 lg:space-y-6 max-w-4xl">
+                <div class="space-y-4 lg:space-y-6 max-w-4xl mx-auto w-full">
                     <!-- Endpoint Header -->
-                    <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-                        <div class="flex items-center gap-3 px-4 lg:px-5 py-3 lg:py-4 border-b border-slate-700">
+                    <div class="bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-white/5 overflow-hidden shadow-xl shadow-black/20">
+                        <div class="flex items-center gap-3 px-5 lg:px-6 py-4 lg:py-5 border-b border-white/5 bg-slate-800/20">
                             <span class="method-badge method-${method}">${method.toUpperCase()}</span>
                             <code class="text-sm text-slate-200 font-mono truncate">${path}</code>
-                            ${endpoint.security && endpoint.security.length ? `<span class="ml-auto px-2 py-1 rounded-full text-xs bg-red-400/10 text-red-400 flex items-center gap-1.5 flex-shrink-0"><i class="fas fa-lock text-xs"></i> Auth</span>` : ''}
+                            ${endpoint.security && endpoint.security.length ? `<span class="ml-auto px-2 py-1 rounded-full text-xs bg-red-400/10 text-red-400 flex items-center gap-1.5 flex-shrink-0 border border-red-400/20"><i class="fas fa-lock text-xs"></i> Auth</span>` : ''}
                         </div>
-                        <div class="px-4 lg:px-5 py-3 lg:py-4">
-                            <h3 class="text-base lg:text-lg font-semibold text-white">${endpoint.summary || path}</h3>
-                            ${endpoint.description ? `<p class="text-slate-400 text-sm mt-1">${endpoint.description}</p>` : ''}
+                        <div class="px-5 lg:px-6 py-4 lg:py-5">
+                            <h3 class="text-lg lg:text-xl font-semibold text-white tracking-tight">${endpoint.summary || path}</h3>
+                            ${endpoint.description ? `<p class="text-slate-400 text-sm mt-3 leading-relaxed">${endpoint.description}</p>` : ''}
                         </div>
                     </div>
-                    ${paramsHtml || bodyHtml ? `<div class="bg-slate-800 rounded-xl p-4 lg:p-6 border border-slate-700">${paramsHtml}${bodyHtml}</div>` : ''}
-                    <div class="bg-slate-800 rounded-xl p-4 lg:p-6 border border-slate-700">
-                        <h4 class="font-semibold mb-5 flex items-center gap-2">
-                            <i class="fas fa-play-circle text-indigo-400"></i> Try it out
+                    ${paramsHtml || bodyHtml ? `<div class="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-5 lg:p-8 border border-white/5 shadow-xl shadow-black/20">${paramsHtml}${bodyHtml}</div>` : ''}
+                    <div class="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-5 lg:p-8 border border-white/5 shadow-xl shadow-black/20">
+                        <h4 class="font-semibold mb-6 flex items-center gap-2 text-lg text-slate-200">
+                            <i class="fas fa-play-circle text-indigo-400 shadow-indigo-500/20"></i> Try it out
                         </h4>
                         <div class="space-y-4">
                             <div>
@@ -537,23 +552,23 @@
                             ${queryParamsSection}
                             ${exampleSection}
                             ${bodyInputSection}
-                            <button onclick="sendRequest(this)" class="w-full sm:w-auto px-6 py-3 bg-indigo-500 text-white rounded-lg font-medium hover:bg-indigo-600 flex items-center justify-center gap-2 transition-colors">
+                            <button onclick="sendRequest(this)" class="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-indigo-500 to-violet-600 shadow-lg shadow-indigo-500/25 text-white rounded-xl font-medium hover:from-indigo-400 hover:to-violet-500 flex items-center justify-center gap-2 transition-all transform hover:-translate-y-0.5 mt-6">
                                 <i class="fas fa-paper-plane"></i> Send Request
                             </button>
-                            <div id="response" class="hidden rounded-xl overflow-hidden border border-slate-700">
-                                <div class="px-4 lg:px-5 py-3 lg:py-4 bg-slate-900 flex items-center justify-between">
-                                    <span class="text-sm font-medium text-slate-200">Response</span>
+                            <div id="response" class="hidden rounded-2xl overflow-hidden border border-white/5 shadow-xl shadow-black/20 mt-6 bg-slate-900/40 backdrop-blur-xl">
+                                <div class="px-5 lg:px-6 py-4 bg-slate-800/40 flex items-center justify-between border-b border-white/5">
+                                    <span class="text-sm font-semibold text-slate-200"><i class="fas fa-terminal mr-2 text-indigo-400"></i>Response</span>
                                     <div class="flex items-center gap-3">
                                         <span id="response-status" class="status-badge"></span>
-                                        <span id="response-time" class="text-xs text-slate-400 flex items-center gap-1">
+                                        <span id="response-time" class="text-xs text-slate-400 flex items-center gap-1 bg-slate-950/50 px-2 py-1 rounded-md border border-white/5">
                                             <i class="fas fa-clock"></i>
                                             <span id="response-time-val"></span>
                                         </span>
                                     </div>
                                 </div>
-                                <div class="flex justify-between items-center px-4 lg:px-5 py-3 bg-slate-800 border-b border-slate-700">
-                                    <span class="text-xs text-slate-400">Response Body</span>
-                                    <button onclick="copyResponse()" id="copy-response-btn" class="text-xs px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 flex items-center gap-1.5 transition-colors">
+                                <div class="flex justify-between items-center px-5 lg:px-6 py-3 bg-slate-900/60 border-b border-white/5">
+                                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Payload</span>
+                                    <button onclick="copyResponse()" id="copy-response-btn" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center gap-1.5 transition-colors border border-white/5">
                                         <i class="fas fa-copy"></i> Copy
                                     </button>
                                 </div>
@@ -661,7 +676,9 @@
                 headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
             };
 
-            if (token) options.headers['Authorization'] = 'Bearer ' + token;
+            if (token && endpoint.security && endpoint.security.length > 0) {
+                options.headers['Authorization'] = 'Bearer ' + token;
+            }
 
             if (endpoint.parameters?.body && ['post','put','patch'].includes(selectedMethod)) {
                 options.body = document.getElementById('request-body')?.value;
@@ -708,18 +725,18 @@
 
         function displaySuccessBody(data) {
             document.getElementById('response-body').innerHTML = `
-                <div class="p-4 lg:p-5">
-                    <div class="flex items-center gap-3 p-4 rounded-xl success-card">
+                <div class="p-5">
+                    <div class="flex items-center gap-4 p-5 rounded-2xl success-card backdrop-blur-md">
                         <div class="success-icon-wrapper flex-shrink-0">
-                            <i class="fas fa-check text-green-400 text-lg"></i>
+                            <i class="fas fa-check text-green-400 text-xl"></i>
                         </div>
                         <div>
-                            <h4 class="font-semibold text-green-400">Success!</h4>
-                            <p class="text-sm text-slate-400">Request completed successfully</p>
+                            <h4 class="font-bold text-green-400 text-lg">Success!</h4>
+                            <p class="text-sm text-slate-300">Request completed successfully</p>
                         </div>
                     </div>
-                    <div class="mt-4 p-4 bg-slate-950 rounded-lg overflow-x-auto">
-                        <pre class="text-sm text-green-400"><code>${JSON.stringify(data, null, 2)}</code></pre>
+                    <div class="mt-4 p-4 bg-slate-950/80 rounded-xl overflow-x-auto border border-white/5 shadow-inner">
+                        <pre class="text-sm text-green-400"><code class="font-mono">${JSON.stringify(data, null, 2)}</code></pre>
                     </div>
                 </div>
             `;
@@ -761,12 +778,12 @@
                         ${file ? `<div class="mt-4 pt-4 border-t border-red-400/20"><div class="flex items-center gap-2 text-xs text-slate-400"><i class="fas fa-file-code"></i><span class="code-inline break-all">${file}:${line}</span></div></div>` : ''}
                     </div>
                     <div>
-                        <button onclick="this.nextElementSibling.classList.toggle('hidden')" class="w-full flex items-center justify-between p-3 rounded-lg bg-slate-800 border border-slate-700 text-sm text-slate-300 hover:bg-slate-750 transition-colors">
-                            <span class="flex items-center gap-2"><i class="fas fa-code"></i><span>View Full Response</span></span>
+                        <button onclick="this.nextElementSibling.classList.toggle('hidden')" class="w-full flex items-center justify-between p-3 rounded-xl bg-slate-800/50 border border-white/5 text-sm text-slate-300 hover:bg-slate-700/50 transition-colors mt-4">
+                            <span class="flex items-center gap-2"><i class="fas fa-code"></i><span>View Raw Payload</span></span>
                             <i class="fas fa-chevron-down"></i>
                         </button>
                         <div class="hidden mt-2">
-                            <pre class="text-xs text-slate-400 p-4 bg-slate-950 rounded-lg overflow-x-auto border border-slate-800"><code>${JSON.stringify(data, null, 2)}</code></pre>
+                            <pre class="text-xs text-slate-400 p-4 bg-slate-950/80 rounded-xl overflow-x-auto border border-white/5"><code>${JSON.stringify(data, null, 2)}</code></pre>
                         </div>
                     </div>
                 </div>
