@@ -38,7 +38,7 @@ final class ResourceAnalyzer
                 'name' => class_basename($resourceClass),
                 'schema' => [
                     'type' => 'object',
-                    'description' => "Response mapped by ".class_basename($resourceClass),
+                    'description' => 'Response mapped by '.class_basename($resourceClass),
                     // For a robust implementation, this could parse the DB schema or the model
                     // to determine properties. For now, we return empty properties which
                     // Swagger accepts as a generic JSON object.
