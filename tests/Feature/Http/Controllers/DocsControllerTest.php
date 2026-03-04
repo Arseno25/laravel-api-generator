@@ -165,6 +165,21 @@ describe('GET /api/docs/export', function () {
         expect($response->headers->get('content-disposition'))->toContain('attachment');
         expect($response->headers->get('content-disposition'))->toContain('api-docs-');
     });
+
+    it('exports Insomnia format JSON when requested', function () {
+        $response = getJson('/api/docs/export?format=insomnia');
+
+        $response->assertStatus(200);
+        $response->assertJsonStructure([
+            '_type',
+            '__export_format',
+            'resources',
+        ]);
+
+        $data = $response->json();
+        expect($data['_type'])->toBe('export');
+        expect($data['__export_format'])->toBe(4);
+    });
 });
 
 describe('caching behavior', function () {
