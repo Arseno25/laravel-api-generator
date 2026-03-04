@@ -24,6 +24,18 @@ final class ResourceAnalyzer
             }
 
             $methodReflection = $reflection->getMethod($method);
+
+            // Check for ApiMagicSchema Attribute on the Method
+            $schemaAttributes = $methodReflection->getAttributes(\Arseno25\LaravelApiMagic\Attributes\ApiMagicSchema::class);
+            if (! empty($schemaAttributes)) {
+                $customSchema = $schemaAttributes[0]->newInstance()->schema;
+
+                return [
+                    'name' => 'CustomSchema',
+                    'schema' => $customSchema,
+                ];
+            }
+
             $returnType = $methodReflection->getReturnType();
 
             if (! $returnType || ! $returnType instanceof ReflectionNamedType) {
@@ -78,6 +90,22 @@ final class ResourceAnalyzer
             // We only analyze valid JsonResource classes
             if (! class_exists($resourceClass) || ! is_subclass_of($resourceClass, JsonResource::class)) {
                 return null;
+            }
+
+            // Check if resource class itself has ApiMagicSchema Attribute
+            $resourceReflection = new ReflectionClass($resourceClass);
+            $schemaAttributes = $resourceReflection->getAttributes(\Arseno25\LaravelApiMagic\Attributes\ApiMagicSchema::class);
+            if (! empty($schemaAttributes)) {
+                $customSchema = $schemaAttributes[0]->newInstance()->schema;
+
+                return [
+                    'name' => class_basename($resourceClass),
+                    'schema' => [
+                        'type' => 'object',
+                        'description' => 'Response mapped by '.class_basename($resourceClass),
+                        'properties' => (object) $customSchema,
+                    ],
+                ];
             }
 
             $properties = $this->extractProperties($resourceClass);
@@ -274,6 +302,40 @@ final class ResourceAnalyzer
                     $properties[$key] = $isCollection
                         ? ['type' => 'array', 'items' => ['type' => 'object'], 'description' => Str::headline($key)]
                         : ['type' => 'object', 'description' => Str::headline($key)];
+                }
+            }
+
+            // Match nested arrays or objects: 'field' => [ ...
+            if (preg_match_all(
+                "/['\"](\w+)['\"]\s*=>\s*(?:\[|array\s*\()/",
+                $methodBody,
+                $matches,
+                PREG_SET_ORDER
+            )) {
+                foreach ($matches as $match) {
+                    $key = $match[1];
+                    if (! isset($properties[$key])) {
+                        $properties[$key] = [
+                            'type' => 'object',
+                            'description' => Str::headline($key).' (Nested Object/Array)',
+                        ];
+                    }
+                }
+            }
+
+            // Match Polymorphic (MorphTo) conditional relations: 'field' => $this->type === 'x' ? new XResource : new YResource
+            if (preg_match_all(
+                "/['\"](\w+)['\"]\s*=>\s*.*?\?.*?new\s+(\w+Resource).*?:.*?new\s+(\w+Resource)/s",
+                $methodBody,
+                $matches,
+                PREG_SET_ORDER
+            )) {
+                foreach ($matches as $match) {
+                    $key = $match[1];
+                    $properties[$key] = [
+                        'type' => 'object',
+                        'description' => Str::headline($key).' (Polymorphic: '.$match[2].' / '.$match[3].')',
+                    ];
                 }
             }
 

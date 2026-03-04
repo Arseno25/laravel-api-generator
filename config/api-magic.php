@@ -152,4 +152,25 @@ return [
         // Storage path for schema snapshots
         'storage_path' => storage_path('api-magic/changelog'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | OAuth2 Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure OAuth2 authentication for the API documentation UI.
+    | This enables the "Login with OAuth" button in the docs interface.
+    |
+    */
+    'oauth' => [
+
+        // OAuth2 authorization URL
+        'auth_url' => env('API_MAGIC_OAUTH_AUTH_URL', ''),
+
+        // OAuth2 client ID
+        'client_id' => env('API_MAGIC_OAUTH_CLIENT_ID', ''),
+
+        // OAuth2 scopes (comma-separated or array)
+        'scopes' => env('API_MAGIC_OAUTH_SCOPES', []),
+    ],
 ];

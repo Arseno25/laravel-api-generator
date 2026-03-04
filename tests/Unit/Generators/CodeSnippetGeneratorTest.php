@@ -67,4 +67,44 @@ describe('Code Snippet Generator', function () {
         expect($snippets['python'])->toContain('import requests');
         expect($snippets['python'])->toContain('requests.delete');
     });
+
+    it('generates dart snippet', function () {
+        $generator = new CodeSnippetGenerator;
+        $endpoint = [
+            'parameters' => ['body' => []],
+            'security' => [],
+        ];
+
+        $snippets = $generator->generate('post', '/api/users', $endpoint, 'http://localhost');
+
+        expect($snippets)->toHaveKey('dart');
+        expect($snippets['dart'])->toContain('import \'package:http/http.dart\'');
+    });
+
+    it('generates swift snippet', function () {
+        $generator = new CodeSnippetGenerator;
+        $endpoint = [
+            'parameters' => ['body' => []],
+            'security' => [],
+        ];
+
+        $snippets = $generator->generate('post', '/api/users', $endpoint, 'http://localhost');
+
+        expect($snippets)->toHaveKey('swift');
+        expect($snippets['swift'])->toContain('import Foundation');
+    });
+
+    it('generates go snippet', function () {
+        $generator = new CodeSnippetGenerator;
+        $endpoint = [
+            'parameters' => ['body' => []],
+            'security' => [],
+        ];
+
+        $snippets = $generator->generate('post', '/api/users', $endpoint, 'http://localhost');
+
+        expect($snippets)->toHaveKey('go');
+        expect($snippets['go'])->toContain('import (');
+        expect($snippets['go'])->toContain('net/http');
+    });
 });

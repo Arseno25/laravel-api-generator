@@ -144,6 +144,11 @@ final class RouteAnalyzer
         // Extract custom PHP Attributes
         $attributes = $this->extractAttributes($action);
 
+        // Skip if marked with ApiMagicHide
+        if (! empty($attributes['hide'])) {
+            return null;
+        }
+
         // Map request rules to query parameters for GET and DELETE methods
         if (in_array($method, ['get', 'delete']) && ! empty($requestRules)) {
             foreach ($requestRules as $name => $rule) {
@@ -246,6 +251,15 @@ final class RouteAnalyzer
                     $attributes['deprecated_message'] = $dep->message;
                     $attributes['deprecated_since'] = $dep->since;
                     $attributes['deprecated_alternative'] = $dep->alternative;
+                }
+
+                // Check for ApiMagicHide Attribute (method then class)
+                $hideAttributes = $methodReflection->getAttributes(\Arseno25\LaravelApiMagic\Attributes\ApiMagicHide::class);
+                if (empty($hideAttributes)) {
+                    $hideAttributes = $reflection->getAttributes(\Arseno25\LaravelApiMagic\Attributes\ApiMagicHide::class);
+                }
+                if (! empty($hideAttributes)) {
+                    $attributes['hide'] = true;
                 }
 
                 // Check for ApiResponse Attribute (repeatable)

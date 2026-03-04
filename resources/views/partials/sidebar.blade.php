@@ -19,10 +19,19 @@
             <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
             <input type="text" id="search" placeholder="Search... (Ctrl+K)" class="w-full pl-9 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
         </div>
-        <div id="version-filter-container" class="hidden">
-            <select id="version-filter" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <option value="all">All Versions</option>
-            </select>
+        <div class="flex gap-2">
+            <div id="version-filter-container" class="hidden flex-1">
+                <select id="version-filter" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="all">All Versions</option>
+                </select>
+            </div>
+            <div class="flex-1">
+                <select id="env-switcher" aria-label="Environment" onchange="switchEnvironment(this.value)" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="local">Local</option>
+                    <option value="staging">Staging</option>
+                    <option value="production">Production</option>
+                </select>
+            </div>
         </div>
     </div>
 

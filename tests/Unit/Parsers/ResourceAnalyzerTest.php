@@ -1,6 +1,8 @@
 <?php
 
+use Arseno25\LaravelApiMagic\Attributes\ApiMagicSchema;
 use Arseno25\LaravelApiMagic\Parsers\ResourceAnalyzer;
+use Illuminate\Http\Resources\Json\JsonResource;
 
 uses()->group('unit', 'resource-analyzer');
 
@@ -32,3 +34,43 @@ it('returns null for methods not returning JsonResource', function () {
 
     expect($result)->toBeNull();
 });
+
+it('prioritizes ApiMagicSchema attribute on the controller method', function () {
+    $analyzer = new ResourceAnalyzer;
+
+    $result = $analyzer->analyze(DummyMethodSchemaController::class, 'getAction');
+
+    expect($result)->not->toBeNull();
+    expect($result['name'])->toBe('CustomSchema');
+    expect($result['schema']['foo']['type'])->toBe('boolean');
+});
+
+it('prioritizes ApiMagicSchema attribute on the resource class', function () {
+    $analyzer = new ResourceAnalyzer;
+
+    $result = $analyzer->analyze(DummyClassSchemaController::class, 'getAction');
+
+    expect($result)->not->toBeNull();
+    expect($result['name'])->toBe('DummyClassSchemaResource');
+    expect($result['schema']['properties']->bar['type'])->toBe('integer');
+});
+
+class DummyMethodSchemaController
+{
+    #[ApiMagicSchema(['foo' => ['type' => 'boolean']])]
+    public function getAction(): JsonResource
+    {
+        return new class([]) extends JsonResource {};
+    }
+}
+
+#[ApiMagicSchema(['bar' => ['type' => 'integer']])]
+class DummyClassSchemaResource extends JsonResource {}
+
+class DummyClassSchemaController
+{
+    public function getAction(): DummyClassSchemaResource
+    {
+        return new DummyClassSchemaResource([]);
+    }
+}

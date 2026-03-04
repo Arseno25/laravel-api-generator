@@ -276,6 +276,9 @@ function renderEndpointDetail(path, method, endpoint) {
                     <button onclick="showSnippetTab('javascript')" class="snippet-tab px-4 py-2.5 text-xs font-semibold text-slate-400 hover:text-white border-b-2 border-transparent whitespace-nowrap" data-tab="javascript">JavaScript</button>
                     <button onclick="showSnippetTab('php')" class="snippet-tab px-4 py-2.5 text-xs font-semibold text-slate-400 hover:text-white border-b-2 border-transparent whitespace-nowrap" data-tab="php">PHP</button>
                     <button onclick="showSnippetTab('python')" class="snippet-tab px-4 py-2.5 text-xs font-semibold text-slate-400 hover:text-white border-b-2 border-transparent whitespace-nowrap" data-tab="python">Python</button>
+                    <button onclick="showSnippetTab('dart')" class="snippet-tab px-4 py-2.5 text-xs font-semibold text-slate-400 hover:text-white border-b-2 border-transparent whitespace-nowrap" data-tab="dart">Dart</button>
+                    <button onclick="showSnippetTab('swift')" class="snippet-tab px-4 py-2.5 text-xs font-semibold text-slate-400 hover:text-white border-b-2 border-transparent whitespace-nowrap" data-tab="swift">Swift</button>
+                    <button onclick="showSnippetTab('go')" class="snippet-tab px-4 py-2.5 text-xs font-semibold text-slate-400 hover:text-white border-b-2 border-transparent whitespace-nowrap" data-tab="go">Go</button>
                 </div>
                 <div id="snippet-content" class="p-4">
                     <pre class="text-xs text-green-400 bg-slate-950 rounded-lg p-4 overflow-x-auto"><code id="snippet-code">Loading...</code></pre>
@@ -432,7 +435,10 @@ function generateLocalSnippets(method, path, endpoint, baseUrl) {
         curl: `curl -X ${method.toUpperCase()} \\\n  '${url}' \\\n  -H 'Accept: application/json'${endpoint.security?.some(s => s.type === 'http') ? " \\\n  -H 'Authorization: Bearer YOUR_TOKEN'" : ''}`,
         javascript: `const response = await fetch('${url}', {\n  method: '${method.toUpperCase()}',\n  headers: {\n    'Accept': 'application/json',${endpoint.security?.some(s => s.type === 'http') ? "\n    'Authorization': \`Bearer \${token}\`," : ''}\n  },\n});\n\nconst data = await response.json();`,
         php: `$response = Http::${endpoint.security?.some(s => s.type === 'http') ? "withToken('YOUR_TOKEN')->" : ''}${method}('${url}');\n\n$data = $response->json();`,
-        python: `import requests\n\nheaders = {'Accept': 'application/json'}${endpoint.security?.some(s => s.type === 'http') ? "\nheaders['Authorization'] = 'Bearer YOUR_TOKEN'" : ''}\n\nresponse = requests.${method}('${url}', headers=headers)\nresult = response.json()`
+        python: `import requests\n\nheaders = {'Accept': 'application/json'}${endpoint.security?.some(s => s.type === 'http') ? "\nheaders['Authorization'] = 'Bearer YOUR_TOKEN'" : ''}\n\nresponse = requests.${method}('${url}', headers=headers)\nresult = response.json()`,
+        dart: `import 'package:http/http.dart' as http;\nimport 'dart:convert';\n\nvar url = Uri.parse('${url}');\nvar headers = {'Accept': 'application/json'};${endpoint.security?.some(s => s.type === 'http') ? "\nheaders['Authorization'] = 'Bearer YOUR_TOKEN';" : ''}\n\nvar response = await http.${method}(url, headers: headers);\nvar data = jsonDecode(response.body);`,
+        swift: `import Foundation\n\nvar request = URLRequest(url: URL(string: "${url}")!)\nrequest.httpMethod = "${method.toUpperCase()}"\nrequest.addValue("application/json", forHTTPHeaderField: "Accept")${endpoint.security?.some(s => s.type === 'http') ? "\nrequest.addValue(\"Bearer YOUR_TOKEN\", forHTTPHeaderField: \"Authorization\")" : ''}\n\nlet task = URLSession.shared.dataTask(with: request) { data, response, error in\n    guard let data = data else { return }\n    print(String(data: data, encoding: .utf8)!)\n}\ntask.resume()`,
+        go: `package main\n\nimport (\n\t"fmt"\n\t"net/http"\n\t"io"\n)\n\nfunc main() {\n\treq, _ := http.NewRequest("${method.toUpperCase()}", "${url}", nil)\n\treq.Header.Add("Accept", "application/json")${endpoint.security?.some(s => s.type === 'http') ? "\n\treq.Header.Add(\"Authorization\", \"Bearer YOUR_TOKEN\")" : ''}\n\tres, _ := http.DefaultClient.Do(req)\n\tdefer res.Body.Close()\n\trespBody, _ := io.ReadAll(res.Body)\n\tfmt.Println(string(respBody))\n}`
     };
 }
 
@@ -491,4 +497,255 @@ function showWebhooksPanel() {
             </div>
         </div>
     `;
+}
+
+// ─── Realtime Events ───
+function renderEventsBadge() {
+    const keys = Object.keys(schema.events || {});
+    if (keys.length > 0) {
+        const container = document.querySelector('#endpoints-list');
+        if (container) {
+            const eventSection = document.createElement('div');
+            eventSection.className = 'mt-4 mb-2';
+            eventSection.innerHTML = `
+                <button onclick="showEventsPanel()" class="w-full text-left px-3 py-2 rounded-lg flex items-center justify-between text-xs font-semibold text-slate-400 uppercase tracking-wider group-header hover:bg-white/5">
+                    <span><i class="fas fa-bolt mr-2 text-yellow-400/60"></i>WebSockets</span>
+                    <span class="text-xs font-normal normal-case text-slate-600">${keys.length}</span>
+                </button>
+            `;
+            container.prepend(eventSection);
+        }
+    }
+}
+
+function showEventsPanel() {
+    const keys = Object.keys(schema.events || {});
+    if (keys.length === 0) return;
+
+    selectedPath = null;
+    selectedMethod = null;
+
+    closeActiveWebSocket();
+    
+    const container = document.getElementById('content-area');
+    container.innerHTML = `
+        <div class="space-y-6 max-w-4xl mx-auto w-full">
+            <div class="bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-white/5 overflow-hidden shadow-xl shadow-black/20">
+                <div class="px-4 lg:px-6 py-4 border-b border-white/5 bg-slate-800/20 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-bolt text-yellow-400"></i>
+                        <h3 class="text-lg font-semibold text-white">WebSocket Events (Broadcasts)</h3>
+                    </div>
+                </div>
+                <div class="p-4 lg:px-6 bg-yellow-500/10 border-b border-yellow-500/20 text-yellow-400 text-sm flex gap-3">
+                    <i class="fas fa-info-circle mt-0.5"></i>
+                    <div>
+                        <strong>Realtime Events:</strong> Clients can subscribe to these channels to receive real-time updates via Laravel Reverb, Pusher, or Soketi. 
+                    </div>
+                </div>
+                <div class="divide-y divide-slate-700/50">
+                    ${keys.map(key => {
+                        const e = schema.events[key];
+                        return `
+                        <div class="px-4 lg:px-6 py-4 hover:bg-slate-800/20 transition-colors">
+                            <div class="flex items-center gap-3 mb-2">
+                                <code class="text-sm text-yellow-400 font-mono bg-yellow-400/10 px-2 py-0.5 rounded">${escapeHtml(e.name)}</code>
+                                <span class="text-xs text-slate-500 font-mono"><i class="fas fa-tv mr-1"></i>${escapeHtml(e.channel)}</span>
+                            </div>
+                            ${e.description ? `<p class="text-sm text-slate-400 mb-2">${escapeHtml(e.description)}</p>` : ''}
+                            ${e.payload ? `<div class="mt-3"><span class="text-xs text-slate-500 mb-1 block uppercase tracking-wider font-semibold">Payload</span><pre class="text-xs text-green-400 bg-slate-950 rounded-lg p-3 overflow-x-auto border border-white/5"><code>${JSON.stringify(e.payload, null, 2)}</code></pre></div>` : ''}
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+
+            <!-- WebSocket Live Tester -->
+            <div class="bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-white/5 overflow-hidden shadow-xl shadow-black/20 flex flex-col h-[500px]">
+                <div class="px-4 py-3 border-b border-white/5 bg-slate-800/20 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-stethoscope text-cyan-400"></i>
+                        <h3 class="font-semibold text-white text-sm">WebSocket Live Tester</h3>
+                    </div>
+                    <div id="ws-status" class="flex items-center gap-2 text-xs font-mono text-slate-500">
+                        <div class="w-2 h-2 rounded-full bg-red-500"></div> Disconnected
+                    </div>
+                </div>
+                
+                <div class="p-4 border-b border-white/5 flex gap-2">
+                    <input type="text" id="ws-url" value="ws://localhost:8080" class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-300 focus:outline-none focus:border-indigo-500" placeholder="ws:// or wss:// URL">
+                    <button id="ws-connect-btn" onclick="toggleWebSocket()" class="px-4 py-1.5 bg-indigo-500 text-white rounded-lg text-sm font-medium hover:bg-indigo-600 transition-colors">
+                        Connect
+                    </button>
+                    <button onclick="document.getElementById('ws-log').innerHTML=''" class="px-3 py-1.5 bg-slate-800 text-slate-300 rounded-lg text-sm hover:bg-slate-700 transition-colors" title="Clear Logs">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+
+                <div id="ws-log" class="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-xs bg-slate-950/50">
+                    <div class="text-slate-500 italic">Enter a WebSocket URL and click Connect.</div>
+                </div>
+                
+                <div class="p-3 border-t border-white/5 bg-slate-800/20 flex gap-2">
+                    <input type="text" id="ws-message" class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-300 focus:outline-none focus:border-indigo-500 disabled:opacity-50" placeholder="Message payload (JSON or text)" disabled onkeypress="if(event.key === 'Enter') sendWsMessage()">
+                    <button id="ws-send-btn" onclick="sendWsMessage()" class="px-4 py-1.5 bg-slate-700 text-white rounded-lg text-sm font-medium hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        Send
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    if (window.innerWidth < 1024) {
+        closeMobileSidebar();
+    }
+}
+
+let activeWebSocket = null;
+
+// ─── WebSocket Cleanup Helper ───
+function closeActiveWebSocket() {
+    if (activeWebSocket) {
+        activeWebSocket.onclose = null; // prevent reconnect attempts or UI updates
+        activeWebSocket.onerror = null;
+        activeWebSocket.onmessage = null;
+        activeWebSocket.onopen = null;
+        activeWebSocket.close();
+        activeWebSocket = null;
+    }
+}
+
+// Clean up WebSocket on page unload
+window.addEventListener('beforeunload', () => {
+    closeActiveWebSocket();
+});
+
+function toggleWebSocket() {
+    if (activeWebSocket) {
+        // Manually close the WebSocket by clearing handlers and closing
+        const ws = activeWebSocket;
+        ws.onclose = null;
+        ws.onerror = null;
+        ws.onmessage = null;
+        ws.onopen = null;
+        ws.close();
+        activeWebSocket = null;
+
+        // Reset UI
+        const btn = document.getElementById('ws-connect-btn');
+        const status = document.getElementById('ws-status');
+        const msgInput = document.getElementById('ws-message');
+        const sendBtn = document.getElementById('ws-send-btn');
+
+        btn.textContent = 'Connect';
+        btn.classList.replace('bg-red-500', 'bg-indigo-500');
+        btn.classList.replace('hover:bg-red-600', 'hover:bg-indigo-600');
+        btn.disabled = false;
+
+        status.innerHTML = `<div class="w-2 h-2 rounded-full bg-red-500"></div> Disconnected`;
+        msgInput.disabled = true;
+        sendBtn.disabled = true;
+
+        return;
+    }
+
+    const url = document.getElementById('ws-url').value.trim();
+    if (!url) return showToast('Please enter a WebSocket URL');
+
+    const btn = document.getElementById('ws-connect-btn');
+    const status = document.getElementById('ws-status');
+    const log = document.getElementById('ws-log');
+    const msgInput = document.getElementById('ws-message');
+    const sendBtn = document.getElementById('ws-send-btn');
+
+    btn.textContent = 'Connecting...';
+    btn.disabled = true;
+
+    try {
+        activeWebSocket = new WebSocket(url);
+
+        activeWebSocket.onopen = () => {
+            btn.textContent = 'Disconnect';
+            btn.classList.replace('bg-indigo-500', 'bg-red-500');
+            btn.classList.replace('hover:bg-indigo-600', 'hover:bg-red-600');
+            btn.disabled = false;
+
+            status.innerHTML = `<div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div> Connected`;
+            msgInput.disabled = false;
+            sendBtn.disabled = false;
+
+            appendWsLog('Connected to ' + url, 'text-green-400');
+        };
+
+        activeWebSocket.onclose = () => {
+            btn.textContent = 'Connect';
+            btn.classList.replace('bg-red-500', 'bg-indigo-500');
+            btn.classList.replace('hover:bg-red-600', 'hover:bg-indigo-600');
+            btn.disabled = false;
+
+            status.innerHTML = `<div class="w-2 h-2 rounded-full bg-red-500"></div> Disconnected`;
+            msgInput.disabled = true;
+            sendBtn.disabled = true;
+            activeWebSocket = null;
+
+            appendWsLog('Disconnected', 'text-slate-500');
+        };
+
+        activeWebSocket.onerror = (err) => {
+            console.error('WebSocket Error', err);
+            appendWsLog('Error: Connection failed. Check console for details.', 'text-red-400');
+            if (activeWebSocket) activeWebSocket.close();
+        };
+
+        activeWebSocket.onmessage = (event) => {
+            let data = event.data;
+            try {
+                // Try to format nice JSON
+                const parsed = JSON.parse(data);
+                data = JSON.stringify(parsed, null, 2);
+            } catch (e) {}
+            appendWsLog('↓ ' + data, 'text-cyan-400');
+        };
+
+    } catch (err) {
+        btn.textContent = 'Connect';
+        btn.disabled = false;
+        appendWsLog('Invalid URL: ' + err.message, 'text-red-400');
+        showToast('Invalid WebSocket URL');
+    }
+}
+
+function sendWsMessage() {
+    if (!activeWebSocket || activeWebSocket.readyState !== WebSocket.OPEN) return;
+    const input = document.getElementById('ws-message');
+    const data = input.value;
+    if (!data) return;
+
+    activeWebSocket.send(data);
+    appendWsLog('↑ ' + data, 'text-slate-300');
+    input.value = '';
+}
+
+function appendWsLog(message, colorClass) {
+    const log = document.getElementById('ws-log');
+    if (!log) return;
+    
+    // Remove initial placeholder if present
+    if (log.children.length === 1 && log.children[0].classList.contains('italic')) {
+        log.innerHTML = '';
+    }
+
+    const time = new Date().toLocaleTimeString([], { hour12: false });
+    const line = document.createElement('div');
+    line.className = 'border-b border-white/5 pb-2 mb-2 last:border-0';
+    
+    // Check if multiline to wrap in pre/code
+    if (message.includes('\n') || message.includes('{\n')) {
+        line.innerHTML = `<span class="text-slate-600 mr-2">[${time}]</span><pre class="${colorClass} mt-1 ml-4 whitespace-pre-wrap"><code>${escapeHtml(message)}</code></pre>`;
+    } else {
+        line.innerHTML = `<span class="text-slate-600 mr-2">[${time}]</span><span class="${colorClass} break-all">${escapeHtml(message)}</span>`;
+    }
+    
+    log.appendChild(line);
+    log.scrollTop = log.scrollHeight;
 }

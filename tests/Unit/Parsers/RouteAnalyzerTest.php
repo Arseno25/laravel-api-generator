@@ -322,3 +322,50 @@ describe('resource name extraction', function () {
         expect($parsed['summary'])->toContain('Product');
     });
 });
+
+describe('custom attributes parsing', function () {
+    it('skips routes marked with ApiMagicHide attribute', function () {
+        Route::middleware('api')->get('/api/hidden', [DummyHideController::class, 'hiddenMethod']);
+        Route::middleware('api')->get('/api/visible', [DummyHideController::class, 'visibleMethod']);
+
+        $routes = $this->routeAnalyzer->getApiRoutes();
+
+        $hiddenRoute = collect($routes)->first(fn ($r) => $r->uri === 'api/hidden');
+        $visibleRoute = collect($routes)->first(fn ($r) => $r->uri === 'api/visible');
+
+        expect($this->routeAnalyzer->parseRoute($hiddenRoute, $this->requestAnalyzer))->toBeNull();
+        expect($this->routeAnalyzer->parseRoute($visibleRoute, $this->requestAnalyzer))->not->toBeNull();
+    });
+    it('skips routes marked with ApiMagicHide attribute at the class level', function () {
+        Route::middleware('api')->get('/api/hidden-class', [DummyHideControllerClassLevel::class, 'anyMethod']);
+
+        $routes = $this->routeAnalyzer->getApiRoutes();
+
+        $hiddenRoute = collect($routes)->first(fn ($r) => $r->uri === 'api/hidden-class');
+
+        expect($this->routeAnalyzer->parseRoute($hiddenRoute, $this->requestAnalyzer))->toBeNull();
+    });
+});
+
+class DummyHideController
+{
+    #[\Arseno25\LaravelApiMagic\Attributes\ApiMagicHide]
+    public function hiddenMethod()
+    {
+        return response()->json([]);
+    }
+
+    public function visibleMethod()
+    {
+        return response()->json([]);
+    }
+}
+
+#[\Arseno25\LaravelApiMagic\Attributes\ApiMagicHide]
+class DummyHideControllerClassLevel
+{
+    public function anyMethod()
+    {
+        return response()->json([]);
+    }
+}
