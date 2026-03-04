@@ -2,6 +2,36 @@
 
 All notable changes to `laravel-api-magic` will be documented in this file.
 
+## Release v1.5.0 - 2026-03-04
+
+### Laravel API Magic v1.5.0
+
+Laravel API Magic adalah package untuk generate REST API lengkap dengan satu command.
+
+#### Installation
+
+```bash
+composer require arseno/laravel-api-magic:1.5.0
+
+```
+#### Quick Start
+
+```bash
+php artisan api:magic
+
+```
+#### What's Changed
+
+#### Features
+
+- One Command API Generation
+- Interactive Mode
+- Relationship Support (BelongsTo, HasMany, BelongsToMany)
+- API Versioning
+- Pest Testing
+- API Documentation UI
+- OpenAPI Export
+
 ## Release v1.4.1 - 2026-03-04
 
 ### Laravel API Magic v1.4.1
@@ -13,11 +43,13 @@ Laravel API Magic adalah package untuk generate REST API lengkap dengan satu com
 ```bash
 composer require arseno/laravel-api-magic:1.4.1
 
+
 ```
 #### Quick Start
 
 ```bash
 php artisan api:magic
+
 
 ```
 #### What's Changed
@@ -44,11 +76,13 @@ Laravel API Magic adalah package untuk generate REST API lengkap dengan satu com
 composer require arseno/laravel-api-magic:1.4.0
 
 
+
 ```
 #### Quick Start
 
 ```bash
 php artisan api:magic
+
 
 
 ```
@@ -77,11 +111,13 @@ composer require arseno/laravel-api-magic:1.3.0
 
 
 
+
 ```
 #### Quick Start
 
 ```bash
 php artisan api:magic
+
 
 
 
@@ -112,11 +148,13 @@ composer require arseno/laravel-api-magic:1.2.0
 
 
 
+
 ```
 #### Quick Start
 
 ```bash
 php artisan api:magic
+
 
 
 
@@ -149,11 +187,13 @@ composer require arseno/laravel-api-magic:1.1.0
 
 
 
+
 ```
 #### Quick Start
 
 ```bash
 php artisan api:magic
+
 
 
 
