@@ -32,6 +32,31 @@ final class ResourceAnalyzer
 
             $resourceClass = $returnType->getName();
 
+            // Handle AnonymousResourceCollection
+            if ($resourceClass === 'Illuminate\Http\Resources\Json\AnonymousResourceCollection') {
+                $innerResource = $this->extractInnerResourceFromMethodBody($controller, $method);
+
+                if ($innerResource) {
+                    $properties = $this->extractProperties($innerResource);
+                    return [
+                        'name' => class_basename($innerResource) . 'Collection',
+                        'schema' => [
+                            'type' => 'object',
+                            'description' => 'Collection of ' . class_basename($innerResource),
+                            'properties' => [
+                                'data' => [
+                                    'type' => 'array',
+                                    'items' => [
+                                        'type' => 'object',
+                                        'properties' => empty((array) $properties) ? (object) [] : $properties,
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ];
+                }
+            }
+
             // Check if it's a ResourceCollection
             if (class_exists($resourceClass) && is_subclass_of($resourceClass, ResourceCollection::class)) {
                 $innerResource = $this->resolveCollectionResource($resourceClass);
@@ -98,6 +123,71 @@ final class ResourceAnalyzer
         }
 
         return (object) $properties;
+    }
+
+    /**
+     * Attempt to extract the inner resource class from the method body
+     * when it returns AnonymousResourceCollection.
+     */
+    private function extractInnerResourceFromMethodBody(string $controller, string $methodName): ?string
+    {
+        try {
+            $reflection = new ReflectionClass($controller);
+            $method = $reflection->getMethod($methodName);
+
+            $filename = $method->getFileName();
+            if (! $filename || ! file_exists($filename)) {
+                return null;
+            }
+
+            $startLine = $method->getStartLine();
+            $endLine = $method->getEndLine();
+
+            /** @var string $fileContents */
+            $fileContents = file_get_contents($filename);
+            $lines = explode("\n", $fileContents);
+            $methodBody = implode("\n", array_slice($lines, $startLine - 1, $endLine - $startLine + 1));
+
+            // Match pattern like `return UserResource::collection(...)`
+            if (preg_match('/return\s+([a-zA-Z0-9_\\\\]+)::collection\s*\(/', $methodBody, $matches)) {
+                $resourceName = $matches[1];
+
+                // If it's fully qualified, use it
+                if (str_starts_with($resourceName, '\\')) {
+                    return ltrim($resourceName, '\\');
+                }
+
+                // Otherwise, try to resolve via namespace imports or same namespace
+                // We'll simplify and check if it exists in same namespace or common ones
+                $namespace = $reflection->getNamespaceName();
+                $possibleNamespaces = [
+                    $namespace . '\\' . $resourceName,
+                    'App\\Http\\Resources\\' . $resourceName,
+                    'App\\Http\\Resources\\' . str_replace('Controller', 'Resource', class_basename($controller)), // Fallback guess
+                ];
+
+                foreach ($possibleNamespaces as $ns) {
+                    if (class_exists($ns)) {
+                        return $ns;
+                    }
+                }
+
+                // Read use statements if possible (naive approach)
+                if (preg_match_all('/use\s+([a-zA-Z0-9_\\\\]+)(?:\s+as\s+([a-zA-Z0-9_]+))?;/', $fileContents, $useMatches, PREG_SET_ORDER)) {
+                    foreach ($useMatches as $useMatch) {
+                        $fullClass = $useMatch[1];
+                        $alias = $useMatch[2] ?? class_basename($fullClass);
+                        if ($alias === $resourceName && class_exists($fullClass)) {
+                            return $fullClass;
+                        }
+                    }
+                }
+            }
+
+            return null;
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**
