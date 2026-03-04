@@ -14,9 +14,9 @@ it('generates graphql types and queries', function () {
                 'get' => [
                     'summary' => 'Get Users',
                     'responses' => [
-                        ['status' => 200, 'resource' => 'App\\Http\\Resources\\UserResource', 'is_array' => true]
+                        ['status' => 200, 'resource' => 'App\\Http\\Resources\\UserResource', 'is_array' => true],
                     ],
-                ]
+                ],
             ],
             '/api/users/{id}' => [
                 'get' => [
@@ -25,7 +25,7 @@ it('generates graphql types and queries', function () {
                         'path' => [['name' => 'id', 'type' => 'integer']],
                     ],
                     'responses' => [
-                        ['status' => 200, 'resource' => 'App\\Http\\Resources\\UserResource', 'is_array' => false]
+                        ['status' => 200, 'resource' => 'App\\Http\\Resources\\UserResource', 'is_array' => false],
                     ],
                 ],
                 'post' => [
@@ -35,14 +35,14 @@ it('generates graphql types and queries', function () {
                         'body' => [
                             'name' => ['type' => 'string', 'required' => true],
                             'email' => ['type' => 'string', 'required' => false],
-                        ]
+                        ],
                     ],
                     'responses' => [
-                        ['status' => 200, 'resource' => 'App\\Http\\Resources\\UserResource', 'is_array' => false]
-                    ]
-                ]
-            ]
-        ]
+                        ['status' => 200, 'resource' => 'App\\Http\\Resources\\UserResource', 'is_array' => false],
+                    ],
+                ],
+            ],
+        ],
     ];
 
     $resources = [
@@ -50,10 +50,10 @@ it('generates graphql types and queries', function () {
             'id' => ['type' => 'integer'],
             'name' => ['type' => 'string'],
             'email' => ['type' => 'string'],
-        ]
+        ],
     ];
 
-    $generator = new GraphqlGenerator();
+    $generator = new GraphqlGenerator;
     $result = $generator->generate($schema, $resources);
 
     // Assert that the generated schema contains Query and Mutation types
@@ -64,7 +64,7 @@ it('generates graphql types and queries', function () {
     expect($result)->toContain('type User {');
     expect($result)->toContain('id: ID!');
     expect($result)->toContain('name: String');
-    
+
     // Assert queries (auto-generated based on path/method)
     expect($result)->toContain('users: [User!]!');
     expect($result)->toContain('user(id: ID!): User');

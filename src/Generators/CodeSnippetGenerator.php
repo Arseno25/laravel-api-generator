@@ -138,16 +138,17 @@ final class CodeSnippetGenerator
         $body = [];
 
         $bodyParams = $endpoint['parameters']['body'] ?? [];
-        if (!is_array($bodyParams)) {
+        if (! is_array($bodyParams)) {
             return $body;
         }
 
         foreach ($bodyParams as $key => $field) {
-            if (!is_array($field)) {
+            if (! is_array($field)) {
                 $body[$key] = $field;
+
                 continue;
             }
-            
+
             $name = is_string($key) ? $key : ($field['name'] ?? 'unknown');
             $body[$name] = $this->getExampleValue($field);
         }
