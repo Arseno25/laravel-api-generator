@@ -22,10 +22,23 @@ final class DocsController extends Controller
     ) {}
 
     /**
-     * Get the package version from composer.json.
+     * Get the package version from Composer's installed packages data.
      */
     private function getPackageVersion(): string
     {
+        // 1. Try Composer runtime API (works for installed packages via Packagist)
+        if (class_exists(\Composer\InstalledVersions::class)) {
+            try {
+                $version = \Composer\InstalledVersions::getPrettyVersion('arseno25/laravel-api-magic');
+                if ($version !== null) {
+                    return $version;
+                }
+            } catch (\Throwable) {
+                // Package not installed via Composer, fall through
+            }
+        }
+
+        // 2. Fallback: read version from composer.json (for local development)
         try {
             $composerJson = dirname(__DIR__, 2).'/composer.json';
             if (File::exists($composerJson)) {
@@ -34,7 +47,7 @@ final class DocsController extends Controller
                 return $composer['version'] ?? '1.0.0';
             }
         } catch (\Throwable) {
-            // Fall back to default version
+            // Ignore
         }
 
         return '1.0.0';
@@ -82,8 +95,8 @@ final class DocsController extends Controller
     {
         $format = strtolower((string) $request->query('format', 'openapi'));
 
-        if (! in_array($format, ['openapi', 'postman'])) {
-            return response()->json(['error' => 'Invalid format. Supported formats are: openapi, postman'], 400);
+        if (! in_array($format, ['openapi', 'postman', 'insomnia'])) {
+            return response()->json(['error' => 'Invalid format. Supported formats are: openapi, postman, insomnia'], 400);
         }
 
         if ($format === 'postman') {
@@ -93,6 +106,15 @@ final class DocsController extends Controller
 
             return response()->json($postman)
                 ->header('Content-Disposition', 'attachment; filename="postman-collection-'.date('Y-m-d').'.json"');
+        }
+
+        if ($format === 'insomnia') {
+            $schema = $this->generateSchema($request);
+            $exporter = app(\Arseno25\LaravelApiMagic\Exporters\InsomniaExporter::class);
+            $insomnia = $exporter->export($schema, $request->getSchemeAndHttpHost());
+
+            return response()->json($insomnia)
+                ->header('Content-Disposition', 'attachment; filename="insomnia-collection-'.date('Y-m-d').'.json"');
         }
 
         $openApi = $this->getOpenApiSchema($request);
@@ -109,6 +131,78 @@ final class DocsController extends Controller
     public function generateSchemaPublic(Request $request): array
     {
         return $this->generateSchema($request);
+    }
+
+    /**
+     * Get API health metrics.
+     */
+    public function health(): JsonResponse
+    {
+        if (! config('laravel-api-magic.health.enabled', false)) {
+            return response()->json(['message' => 'Health telemetry is disabled.'], 404);
+        }
+
+        $metrics = \Arseno25\LaravelApiMagic\Http\Middleware\ApiHealthMiddleware::getMetrics();
+
+        return response()->json([
+            'metrics' => $metrics,
+            'generated_at' => now()->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * Get API changelog (diff between schema snapshots).
+     */
+    public function changelog(): JsonResponse
+    {
+        if (! config('laravel-api-magic.changelog.enabled', false)) {
+            return response()->json(['message' => 'Changelog is disabled.'], 404);
+        }
+
+        $service = new \Arseno25\LaravelApiMagic\Services\ChangelogService;
+        $snapshots = $service->getSnapshots();
+
+        if (count($snapshots) < 2) {
+            return response()->json([
+                'message' => 'Not enough snapshots for comparison. Run: php artisan api-magic:snapshot',
+                'snapshots' => count($snapshots),
+            ]);
+        }
+
+        // Compare last two snapshots
+        $current = json_decode(file_get_contents($snapshots[0]['path']), true);
+        $previous = json_decode(file_get_contents($snapshots[1]['path']), true);
+
+        $diff = $service->computeDiff($previous, $current);
+
+        return response()->json([
+            'diff' => $diff,
+            'current_snapshot' => $snapshots[0]['date'],
+            'previous_snapshot' => $snapshots[1]['date'],
+            'total_snapshots' => count($snapshots),
+        ]);
+    }
+
+    /**
+     * Generate code snippet for a specific endpoint.
+     */
+    public function codeSnippet(Request $request): JsonResponse
+    {
+        $method = $request->query('method', 'get');
+        $path = $request->query('path', '/');
+        $baseUrl = $request->query('base_url', $request->getSchemeAndHttpHost());
+
+        $schema = $this->generateSchema($request);
+        $endpoint = $schema['endpoints'][$path][$method] ?? null;
+
+        if (! $endpoint) {
+            return response()->json(['message' => 'Endpoint not found.'], 404);
+        }
+
+        $generator = new \Arseno25\LaravelApiMagic\Generators\CodeSnippetGenerator;
+        $snippets = $generator->generate($method, $path, $endpoint, $baseUrl);
+
+        return response()->json(['snippets' => $snippets]);
     }
 
     /**
@@ -176,13 +270,28 @@ final class DocsController extends Controller
             ->map(fn ($group) => $group->groupBy('path')->map(fn ($methods) => $methods->keyBy('method'))->toArray())
             ->toArray();
 
+        // Collect all webhooks from all endpoints
+        $webhooks = $parsedRoutes
+            ->pluck('webhooks')
+            ->filter()
+            ->flatten(1)
+            ->unique('event')
+            ->values()
+            ->toArray();
+
         return [
             'title' => config('app.name', 'Laravel API').' Documentation',
             'version' => $this->getPackageVersion(),
             'baseUrl' => $request->getSchemeAndHttpHost(),
+            'servers' => config('laravel-api-magic.servers', []),
             'endpoints' => $endpoints,
             'endpointsByVersion' => $endpointsByVersion,
             'versions' => array_keys($endpointsByVersion),
+            'webhooks' => $webhooks,
+            'features' => [
+                'health' => config('laravel-api-magic.health.enabled', false),
+                'changelog' => config('laravel-api-magic.changelog.enabled', false),
+            ],
             'generated_at' => now()->toIso8601String(),
         ];
     }
@@ -216,6 +325,39 @@ final class DocsController extends Controller
                     'tags' => $endpoint['tags'] ?? ['default'],
                     'responses' => $this->buildOpenApiResponses($method, $endpoint['response'] ?? null),
                 ];
+
+                // Add deprecated flag
+                if (! empty($endpoint['deprecated'])) {
+                    $operation['deprecated'] = true;
+                    if (! empty($endpoint['deprecated_info']['message'])) {
+                        $operation['description'] = trim(
+                            ($operation['description'] ? $operation['description']."\n\n" : '')
+                            .'⚠️ **Deprecated**: '.($endpoint['deprecated_info']['message'] ?? '')
+                            .($endpoint['deprecated_info']['alternative'] ? "\n\nUse `".$endpoint['deprecated_info']['alternative'].'` instead.' : '')
+                        );
+                    }
+                }
+
+                // Override responses with #[ApiResponse] definitions if present
+                if (! empty($endpoint['responses'])) {
+                    $operation['responses'] = [];
+                    foreach ($endpoint['responses'] as $resp) {
+                        $statusCode = (string) $resp['status'];
+                        $responseContent = [
+                            'description' => $resp['description'] ?: "Status {$statusCode}",
+                        ];
+
+                        if ($resp['example']) {
+                            $responseContent['content'] = [
+                                'application/json' => [
+                                    'example' => $resp['example'],
+                                ],
+                            ];
+                        }
+
+                        $operation['responses'][$statusCode] = $responseContent;
+                    }
+                }
 
                 // Add security if endpoint requires authentication
                 if (! empty($endpoint['security'] ?? [])) {
@@ -298,11 +440,23 @@ final class DocsController extends Controller
             }
         }
 
-        // Build servers for different API versions
-        $servers = [[
-            'url' => $baseUrl,
-            'description' => 'API v1',
-        ]];
+        // Build servers: use config first, then add version-based servers
+        $configServers = $schema['servers'] ?? [];
+        $servers = [];
+
+        if (! empty($configServers)) {
+            foreach ($configServers as $configServer) {
+                $servers[] = [
+                    'url' => $configServer['url'] ?? $baseUrl,
+                    'description' => $configServer['description'] ?? 'Server',
+                ];
+            }
+        } else {
+            $servers[] = [
+                'url' => $baseUrl,
+                'description' => 'API v1',
+            ];
+        }
 
         foreach ($schema['versions'] ?? ['1'] as $version) {
             if ($version !== '1') {

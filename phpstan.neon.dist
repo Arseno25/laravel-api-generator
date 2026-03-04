@@ -8,6 +8,7 @@ parameters:
         - config
         - database
     tmpDir: build/phpstan
+    reportUnmatchedIgnoredErrors: false
     ignoreErrors:
         -
             identifier: larastan.noEnvCallsOutsideOfConfig

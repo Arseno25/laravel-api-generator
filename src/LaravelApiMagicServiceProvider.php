@@ -5,8 +5,10 @@ namespace Arseno25\LaravelApiMagic;
 use Arseno25\LaravelApiMagic\Commands\CacheDocsCommand;
 use Arseno25\LaravelApiMagic\Commands\ExportDocsCommand;
 use Arseno25\LaravelApiMagic\Commands\GenerateApiCommand;
+use Arseno25\LaravelApiMagic\Commands\GenerateGraphqlCommand;
 use Arseno25\LaravelApiMagic\Commands\GenerateTypescriptCommand;
 use Arseno25\LaravelApiMagic\Commands\ReverseEngineerCommand;
+use Arseno25\LaravelApiMagic\Commands\SnapshotSchemaCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -24,7 +26,9 @@ class LaravelApiMagicServiceProvider extends PackageServiceProvider
             ->hasCommand(CacheDocsCommand::class)
             ->hasCommand(ExportDocsCommand::class)
             ->hasCommand(GenerateTypescriptCommand::class)
-            ->hasCommand(ReverseEngineerCommand::class);
+            ->hasCommand(ReverseEngineerCommand::class)
+            ->hasCommand(SnapshotSchemaCommand::class)
+            ->hasCommand(GenerateGraphqlCommand::class);
     }
 
     public function packageRegistered(): void
@@ -44,5 +48,6 @@ class LaravelApiMagicServiceProvider extends PackageServiceProvider
         $router = $this->app->make(\Illuminate\Routing\Router::class);
         $router->aliasMiddleware('api.mock', \Arseno25\LaravelApiMagic\Http\Middleware\MockApiMiddleware::class);
         $router->aliasMiddleware('api.cache', \Arseno25\LaravelApiMagic\Http\Middleware\ApiCacheMiddleware::class);
+        $router->aliasMiddleware('api.health', \Arseno25\LaravelApiMagic\Http\Middleware\ApiHealthMiddleware::class);
     }
 }
