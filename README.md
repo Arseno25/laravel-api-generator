@@ -495,7 +495,7 @@ vendor/bin/phpstan analyse
 
 ## 🐛 Issues
 
-If you discover any bugs, missing features, or issues, please [open an issue](https://github.com/Arseno25/laravel-api-magic/issues) on the GitHub repository.
+If you discover any bugs, missing features, or issues, please [open an issue](https://github.com/Arseno25/laravel-api-generator/issues) on the GitHub repository.
 
 When reporting an issue, please try to include:
 - Your Laravel version
@@ -512,7 +512,7 @@ Contributions are completely welcome! Whether it's adding a new feature, fixing 
 ### How to Contribute:
 1. **Fork** the repository.
 2. Create a new branch for your feature or bugfix (`git checkout -b feature/amazing-feature`).
-3. Make your changes and ensure all tests are passing (`vendor/bin/pest` & `vendor/bin/phpstan analyse`).
+3. Make your changes and ensure all tests are passing (`vendor/bin/pest && vendor/bin/phpstan analyse`).
 4. Commit your changes with descriptive messages (`git commit -m 'feat: add amazing feature'`).
 5. Push to your branch (`git push origin feature/amazing-feature`).
 6. Open a **Pull Request** against the main repository.
