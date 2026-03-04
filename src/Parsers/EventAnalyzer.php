@@ -82,16 +82,20 @@ final class EventAnalyzer
         if ($reflection->hasMethod('broadcastOn')) {
             // Read file content and extract channel name roughly
             $content = file_get_contents($reflection->getFileName());
-            if (preg_match("/new\s+(?:PrivateChannel|PresenceChannel|Channel)\(['\"]([^'\"]+)['\"]/", $content, $matches)) {
-                $channel = $matches[1];
+            if ($content !== false) {
+                if (preg_match("/new\s+(?:PrivateChannel|PresenceChannel|Channel)\(['\"]([^'\"]+)['\"]/", $content, $matches)) {
+                    $channel = $matches[1];
+                }
             }
         }
         
         $eventName = $reflection->getShortName();
         if ($reflection->hasMethod('broadcastAs')) {
             $content = file_get_contents($reflection->getFileName());
-            if (preg_match("/function\s+broadcastAs\b[^\{]*\{.*?return\s+['\"]([^'\"]+)['\"]/s", $content, $matches)) {
-                $eventName = $matches[1];
+            if ($content !== false) {
+                if (preg_match("/function\s+broadcastAs\b[^\{]*\{.*?return\s+['\"]([^'\"]+)['\"]/s", $content, $matches)) {
+                    $eventName = $matches[1];
+                }
             }
         }
 
@@ -124,6 +128,9 @@ final class EventAnalyzer
     private function extractClassFromFile(string $path): ?string
     {
         $content = file_get_contents($path);
+        if ($content === false) {
+            return null;
+        }
         
         if (! preg_match('/namespace\s+([^;]+);/i', $content, $matches)) {
             return null;

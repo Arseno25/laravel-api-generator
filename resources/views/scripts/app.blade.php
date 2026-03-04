@@ -58,7 +58,7 @@ function switchEnvironment(env) {
         url = url.replace('localhost', 'staging.api.example.com').replace('.test', '.staging.example.com');
     } else if (env === 'production') {
         url = url.replace('localhost', 'api.example.com').replace('.test', '.example.com');
-        url = url.replace('//api.', '//api.'); // Ensures https pattern if needed
+        url = url.replace(/^http:\/\//i, 'https://'); // Enforce HTTPS for production
     }
 
     const input = document.getElementById('base-url');
@@ -83,7 +83,7 @@ function updateStats() {
     const rate = requestCount > 0 ? Math.round((successCount / requestCount) * 100) : 100;
     document.getElementById('success-rate').textContent = rate + '%';
     document.getElementById('request-count').textContent = requestCount;
-    if (token) {
+    if (token || useSanctum) {
         document.getElementById('auth-status').textContent = 'Authenticated';
     }
 }
@@ -203,11 +203,23 @@ function startOAuthLogin() {
             toggleSanctumAuth(document.getElementById('auth-sanctum-cookie'));
             
             saveToken();
-            window.removeEventListener('message', messageListener);
+            cleanup();
             if (popup) popup.close();
             showToast('OAuth2 Login Successful!');
         }
     };
+    
+    const cleanup = () => {
+        window.removeEventListener('message', messageListener);
+        clearInterval(checkClosedInterval);
+    };
+
+    const checkClosedInterval = setInterval(() => {
+        if (popup && popup.closed) {
+            cleanup();
+            if (!token) showToast('OAuth2 Login Cancelled');
+        }
+    }, 1000);
     
     window.addEventListener('message', messageListener);
 }

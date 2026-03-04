@@ -1,6 +1,8 @@
 <?php
 
 use Arseno25\LaravelApiMagic\Parsers\ResourceAnalyzer;
+use Illuminate\Http\Resources\Json\JsonResource;
+use Arseno25\LaravelApiMagic\Attributes\ApiMagicSchema;
 
 uses()->group('unit', 'resource-analyzer');
 
@@ -52,9 +54,6 @@ it('prioritizes ApiMagicSchema attribute on the resource class', function () {
     expect($result['name'])->toBe('DummyClassSchemaResource');
     expect($result['schema']['properties']->bar['type'])->toBe('integer');
 });
-
-use Illuminate\Http\Resources\Json\JsonResource;
-use Arseno25\LaravelApiMagic\Attributes\ApiMagicSchema;
 
 class DummyMethodSchemaController
 {

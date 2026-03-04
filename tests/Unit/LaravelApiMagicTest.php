@@ -5,16 +5,8 @@ use Arseno25\LaravelApiMagic\LaravelApiMagic;
 uses()->group('core', 'hooks');
 
 beforeEach(function () {
-    // Reset static state between tests via reflection
-    $ref = new ReflectionClass(LaravelApiMagic::class);
-
-    $before = $ref->getProperty('beforeParseCallbacks');
-    $before->setAccessible(true);
-    $before->setValue(null, []);
-
-    $after = $ref->getProperty('afterParseCallbacks');
-    $after->setAccessible(true);
-    $after->setValue(null, []);
+    // Reset static state between tests
+    LaravelApiMagic::clearParseCallbacks();
 });
 
 describe('Plugin hooks', function () {

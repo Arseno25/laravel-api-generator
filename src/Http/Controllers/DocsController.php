@@ -98,7 +98,7 @@ final class DocsController extends Controller
         $schema['oauth'] = [
             'authUrl' => config('api-magic.oauth.auth_url', ''),
             'clientId' => config('api-magic.oauth.client_id', ''),
-            'scopes' => config('api-magic.oauth.scopes', ''),
+            'scopes' => config('api-magic.oauth.scopes', []),
         ];
 
         return response()->json($schema);

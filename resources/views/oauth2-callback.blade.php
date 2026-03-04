@@ -23,6 +23,7 @@
                 type: 'oauth2_token',
                 token: token
             }, window.location.origin);
+            window.close();
         } else if (window.opener) {
             // Some error occurred
             console.error('OAuth2 Error:', params.get('error_description') || 'No access token found');

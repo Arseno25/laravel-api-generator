@@ -525,6 +525,12 @@ function showEventsPanel() {
     selectedPath = null;
     selectedMethod = null;
     
+    if (activeWebSocket) {
+        activeWebSocket.onclose = null; // prevent reconnect attempts or UI updates
+        activeWebSocket.close();
+        activeWebSocket = null;
+    }
+    
     const container = document.getElementById('content-area');
     container.innerHTML = `
         <div class="space-y-6 max-w-4xl mx-auto w-full">
@@ -698,7 +704,7 @@ function appendWsLog(message, colorClass) {
     line.className = 'border-b border-white/5 pb-2 mb-2 last:border-0';
     
     // Check if multiline to wrap in pre/code
-    if (message.includes('\\n') || message.includes('{\\n')) {
+    if (message.includes('\n') || message.includes('{\n')) {
         line.innerHTML = `<span class="text-slate-600 mr-2">[${time}]</span><pre class="${colorClass} mt-1 ml-4 whitespace-pre-wrap"><code>${escapeHtml(message)}</code></pre>`;
     } else {
         line.innerHTML = `<span class="text-slate-600 mr-2">[${time}]</span><span class="${colorClass} break-all">${escapeHtml(message)}</span>`;

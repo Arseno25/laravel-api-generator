@@ -336,6 +336,15 @@ describe('custom attributes parsing', function () {
         expect($this->routeAnalyzer->parseRoute($hiddenRoute, $this->requestAnalyzer))->toBeNull();
         expect($this->routeAnalyzer->parseRoute($visibleRoute, $this->requestAnalyzer))->not->toBeNull();
     });
+    it('skips routes marked with ApiMagicHide attribute at the class level', function () {
+        Route::middleware('api')->get('/api/hidden-class', [DummyHideControllerClassLevel::class, 'anyMethod']);
+
+        $routes = $this->routeAnalyzer->getApiRoutes();
+        
+        $hiddenRoute = collect($routes)->first(fn ($r) => $r->uri === 'api/hidden-class');
+
+        expect($this->routeAnalyzer->parseRoute($hiddenRoute, $this->requestAnalyzer))->toBeNull();
+    });
 });
 
 class DummyHideController {
@@ -343,4 +352,9 @@ class DummyHideController {
     public function hiddenMethod() { return response()->json([]); }
     
     public function visibleMethod() { return response()->json([]); }
+}
+
+#[\Arseno25\LaravelApiMagic\Attributes\ApiMagicHide]
+class DummyHideControllerClassLevel {
+    public function anyMethod() { return response()->json([]); }
 }

@@ -37,6 +37,8 @@ class LaravelApiMagic
     /**
      * Get the exclude patterns for route analysis.
      *
+     * @return array<int, string>
+     */
     public function excludePatterns(): array
     {
         return (array) config('api-magic.docs.exclude_patterns', []);
@@ -51,6 +53,16 @@ class LaravelApiMagic
      * @var array<int, callable>
      */
     protected static array $beforeParseCallbacks = [];
+
+    /**
+     * Clear all registered parse callbacks.
+     * Useful for testing state reset.
+     */
+    public static function clearParseCallbacks(): void
+    {
+        static::$beforeParseCallbacks = [];
+        static::$afterParseCallbacks = [];
+    }
 
     /**
      * Register a callback to be executed before parsing the schema.

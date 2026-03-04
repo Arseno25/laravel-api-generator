@@ -26,7 +26,7 @@
                 </select>
             </div>
             <div class="flex-1">
-                <select id="env-switcher" onchange="switchEnvironment(this.value)" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <select id="env-switcher" aria-label="Environment" onchange="switchEnvironment(this.value)" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     <option value="local">Local</option>
                     <option value="staging">Staging</option>
                     <option value="production">Production</option>

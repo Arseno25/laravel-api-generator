@@ -325,7 +325,7 @@ final class ResourceAnalyzer
 
             // Match Polymorphic (MorphTo) conditional relations: 'field' => $this->type === 'x' ? new XResource : new YResource
             if (preg_match_all(
-                "/['\"](\w+)['\"]\s*=>\s*.*?\?.*?new\s+(\w+Resource).*?:.*?new\s+(\w+Resource)/",
+                "/['\"](\w+)['\"]\s*=>\s*.*?\?.*?new\s+(\w+Resource).*?:.*?new\s+(\w+Resource)/s",
                 $methodBody,
                 $matches,
                 PREG_SET_ORDER

@@ -30,7 +30,7 @@ async function sendRequest(btn) {
         options.credentials = 'include';
         // Ensure CSRF token is fetched before sending actual JSON request
         try {
-            await fetch(baseUrl + '/sanctum/csrf-cookie', { method: 'GET', headers: { 'Accept': 'application/json' } });
+            await fetch(baseUrl + '/sanctum/csrf-cookie', { method: 'GET', headers: { 'Accept': 'application/json' }, credentials: 'include' });
         } catch (e) {
             console.warn('Sanctum CSRF fetch failed:', e);
         }

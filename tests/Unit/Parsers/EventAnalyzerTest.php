@@ -9,6 +9,13 @@ beforeEach(function () {
     $this->analyzer = new EventAnalyzer();
 });
 
+afterEach(function () {
+    $tempPath = base_path('app/Events/TestUserCreated.php');
+    if (File::exists($tempPath)) {
+        File::delete($tempPath);
+    }
+});
+
 describe('Event analysis', function () {
     it('returns empty array if directory does not exist', function () {
         $result = $this->analyzer->analyze(base_path('app/NonExistentEvents'));
@@ -72,8 +79,5 @@ PHP;
         expect($eventData['payload']['properties']['userId']['type'])->toBe('integer');
         expect($eventData['payload']['properties'])->toHaveKey('username');
         expect($eventData['payload']['properties']['username']['type'])->toBe('string');
-
-        // Clean up
-        File::delete($tempPath);
     });
 });
