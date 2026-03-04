@@ -248,14 +248,19 @@ final class TypescriptGenerator
     /**
      * Build a TypeScript interface from request body fields.
      *
-     * @param  array<string, mixed>  $fields
+     * @param  array<int|string, mixed>  $fields
      */
     private function buildInterface(string $name, array $fields, string $method): string
     {
         $lines = ["interface {$name} {"];
 
-        foreach ($fields as $field) {
-            $fieldName = $field['name'] ?? 'unknown';
+        foreach ($fields as $key => $field) {
+            // Because body fields are structured as an associative array [$fieldName => $properties]
+            // but query/path properties are sequential arrays [['name' => 'foo']], we resolve correctly:
+            if (! is_array($field)) {
+                continue;
+            }
+            $fieldName = is_string($key) ? $key : ($field['name'] ?? 'unknown');
             $tsType = $this->mapToTsType($field['type'] ?? 'string', $field);
             $optional = $this->isOptional($field, $method) ? '?' : '';
             $comment = $this->buildFieldComment($field);

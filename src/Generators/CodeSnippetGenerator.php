@@ -133,17 +133,23 @@ final class CodeSnippetGenerator
         return implode("\n", $lines);
     }
 
-    /**
-     * Build example body from endpoint parameters.
-     *
-     * @return array<string, mixed>
-     */
     private function buildExampleBody(array $endpoint): array
     {
         $body = [];
 
-        foreach ($endpoint['parameters']['body'] ?? [] as $field) {
-            $name = $field['name'] ?? 'unknown';
+        $bodyParams = $endpoint['parameters']['body'] ?? [];
+        if (! is_array($bodyParams)) {
+            return $body;
+        }
+
+        foreach ($bodyParams as $key => $field) {
+            if (! is_array($field)) {
+                $body[$key] = $field;
+
+                continue;
+            }
+
+            $name = is_string($key) ? $key : ($field['name'] ?? 'unknown');
             $body[$name] = $this->getExampleValue($field);
         }
 
