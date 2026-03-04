@@ -53,12 +53,41 @@ function replayHistory(index) {
         selectedMethod = entry.method.toLowerCase();
         const endpoint = schema.endpoints[selectedPath][selectedMethod];
         renderEndpointDetail(selectedPath, selectedMethod, endpoint);
+        
+        // Restore request body
         if (entry.body) {
             setTimeout(() => {
                 const bodyField = document.getElementById('request-body');
                 if (bodyField) bodyField.value = entry.body;
             }, 100);
         }
+
+        // Restore past response immediately to the screen
+        if (entry.response) {
+            setTimeout(() => {
+                const responseDiv = document.getElementById('response');
+                if (responseDiv) {
+                    responseDiv.classList.remove('hidden');
+                    document.getElementById('response-status').textContent = entry.status + ' (From History)';
+                    document.getElementById('response-status').className = 'status-badge status-' + Math.floor(entry.status / 100) + 'xx';
+                    document.getElementById('response-time-val').textContent = entry.responseTime + 'ms';
+                    
+                    let data;
+                    try { 
+                        data = JSON.parse(entry.response); 
+                    } catch { 
+                        data = { raw: entry.response }; 
+                    }
+                    
+                    if (entry.status >= 400 || !data || (typeof data === 'object' && data.exception)) {
+                        displayErrorBody(entry.status, data);
+                    } else {
+                        displaySuccessBody(data);
+                    }
+                }
+            }, 150);
+        }
+
         showToast('Request loaded from history!');
     } else {
         showToast('Endpoint not found in current schema');
