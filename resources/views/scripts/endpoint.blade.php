@@ -521,15 +521,11 @@ function renderEventsBadge() {
 function showEventsPanel() {
     const keys = Object.keys(schema.events || {});
     if (keys.length === 0) return;
-    
+
     selectedPath = null;
     selectedMethod = null;
-    
-    if (activeWebSocket) {
-        activeWebSocket.onclose = null; // prevent reconnect attempts or UI updates
-        activeWebSocket.close();
-        activeWebSocket = null;
-    }
+
+    closeActiveWebSocket();
     
     const container = document.getElementById('content-area');
     container.innerHTML = `
@@ -607,9 +603,49 @@ function showEventsPanel() {
 
 let activeWebSocket = null;
 
+// ─── WebSocket Cleanup Helper ───
+function closeActiveWebSocket() {
+    if (activeWebSocket) {
+        activeWebSocket.onclose = null; // prevent reconnect attempts or UI updates
+        activeWebSocket.onerror = null;
+        activeWebSocket.onmessage = null;
+        activeWebSocket.onopen = null;
+        activeWebSocket.close();
+        activeWebSocket = null;
+    }
+}
+
+// Clean up WebSocket on page unload
+window.addEventListener('beforeunload', () => {
+    closeActiveWebSocket();
+});
+
 function toggleWebSocket() {
     if (activeWebSocket) {
-        activeWebSocket.close();
+        // Manually close the WebSocket by clearing handlers and closing
+        const ws = activeWebSocket;
+        ws.onclose = null;
+        ws.onerror = null;
+        ws.onmessage = null;
+        ws.onopen = null;
+        ws.close();
+        activeWebSocket = null;
+
+        // Reset UI
+        const btn = document.getElementById('ws-connect-btn');
+        const status = document.getElementById('ws-status');
+        const msgInput = document.getElementById('ws-message');
+        const sendBtn = document.getElementById('ws-send-btn');
+
+        btn.textContent = 'Connect';
+        btn.classList.replace('bg-red-500', 'bg-indigo-500');
+        btn.classList.replace('hover:bg-red-600', 'hover:bg-indigo-600');
+        btn.disabled = false;
+
+        status.innerHTML = `<div class="w-2 h-2 rounded-full bg-red-500"></div> Disconnected`;
+        msgInput.disabled = true;
+        sendBtn.disabled = true;
+
         return;
     }
 
@@ -633,11 +669,11 @@ function toggleWebSocket() {
             btn.classList.replace('bg-indigo-500', 'bg-red-500');
             btn.classList.replace('hover:bg-indigo-600', 'hover:bg-red-600');
             btn.disabled = false;
-            
+
             status.innerHTML = `<div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div> Connected`;
             msgInput.disabled = false;
             sendBtn.disabled = false;
-            
+
             appendWsLog('Connected to ' + url, 'text-green-400');
         };
 
@@ -646,12 +682,12 @@ function toggleWebSocket() {
             btn.classList.replace('bg-red-500', 'bg-indigo-500');
             btn.classList.replace('hover:bg-red-600', 'hover:bg-indigo-600');
             btn.disabled = false;
-            
+
             status.innerHTML = `<div class="w-2 h-2 rounded-full bg-red-500"></div> Disconnected`;
             msgInput.disabled = true;
             sendBtn.disabled = true;
             activeWebSocket = null;
-            
+
             appendWsLog('Disconnected', 'text-slate-500');
         };
 

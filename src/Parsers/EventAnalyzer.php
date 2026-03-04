@@ -101,6 +101,16 @@ final class EventAnalyzer
             }
         }
 
+        $eventName = $reflection->getShortName();
+        if ($reflection->hasMethod('broadcastAs')) {
+            $content = file_get_contents($reflection->getFileName());
+            if ($content !== false) {
+                if (preg_match("/function\s+broadcastAs\b[^\{]*\{.*?return\s+['\"]([^'\"]+)['\"]/s", $content, $matches)) {
+                    $eventName = $matches[1];
+                }
+            }
+        }
+
         return [
             'name' => $eventName,
             'description' => $reflection->getDocComment() ? $this->getSummaryFromDocBlock($reflection->getDocComment()) : '',

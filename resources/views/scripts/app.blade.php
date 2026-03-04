@@ -85,6 +85,8 @@ function updateStats() {
     document.getElementById('request-count').textContent = requestCount;
     if (token || useSanctum) {
         document.getElementById('auth-status').textContent = 'Authenticated';
+    } else {
+        document.getElementById('auth-status').textContent = 'Set Auth';
     }
 }
 

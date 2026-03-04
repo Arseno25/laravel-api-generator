@@ -69,6 +69,7 @@ final class ReverseEngineerCommand extends Command
         info('📊 Found '.count($tables).' table(s) to process.');
 
         // Get version
+        /** @var string|null $version */
         $version = $this->option('v');
         if ($version === null && ! $this->input->hasParameterOption('--no-interaction')) {
             $versionChoice = select(

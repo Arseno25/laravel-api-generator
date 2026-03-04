@@ -202,6 +202,28 @@ public function store(StoreOrderRequest $request) { ... }
 | `description` | `string` | What triggers this webhook |
 | `payload` | `?array` | Expected payload structure |
 
+### `#[ApiMagicSchema]` — Custom Resource Schema
+
+Override the auto-detected resource schema with a custom definition.
+
+```php
+#[ApiMagicSchema(['id' => ['type' => 'integer'], 'email' => ['type' => 'string', 'format' => 'email'])]
+public function index() { ... }
+```
+
+Can be applied to controller methods or resource classes.
+
+### `#[ApiMagicHide]` — Hide from Documentation
+
+Prevent a controller or method from appearing in the API documentation.
+
+```php
+#[ApiMagicHide]
+public function internalMethod() { ... }
+```
+
+Apply to individual methods or entire controllers.
+
 ### `#[ApiMock]` — Mock Server
 
 Return fake data based on your schema — no backend logic needed.
@@ -228,6 +250,82 @@ public function index() { ... }
 
 ---
 
+## 🔐 Authentication
+
+### Sanctum Support
+
+The docs UI supports Laravel Sanctum authentication. Toggle "Use Sanctum Cookie" in the auth modal to send credentials with requests.
+
+```php
+// In your routes/api.php
+Route::middleware('auth:sanctum')->group(function () {
+    Route::apiResource('products', ProductController::class);
+});
+```
+
+### OAuth2 Integration
+
+Configure OAuth2 for the documentation UI:
+
+```bash
+# .env
+API_MAGIC_OAUTH_AUTH_URL=https://example.com/oauth/authorize
+API_MAGIC_OAUTH_CLIENT_ID=your-client-id
+API_MAGIC_OAUTH_SCOPES=read,write
+```
+
+Or in `config/api-magic.php`:
+
+```php
+'oauth' => [
+    'auth_url' => 'https://example.com/oauth/authorize',
+    'client_id' => 'your-client-id',
+    'scopes' => ['read', 'write'],
+],
+```
+
+The docs UI will display a "Login with OAuth" button when configured.
+
+### Bearer Token Authentication
+
+Set a bearer token in the docs UI by clicking "Set Auth" and entering your token.
+
+---
+
+## 📡 WebSocket & Broadcasting Events
+
+Laravel API Magic automatically discovers and documents your broadcasting events:
+
+```php
+// app/Events/UserRegistered.php
+class UserRegistered implements ShouldBroadcast
+{
+    public int $userId;
+    public string $username;
+
+    public function broadcastOn(): Channel
+    {
+        return new Channel('users.'.$this->userId);
+    }
+
+    public function broadcastAs(): string
+    {
+        return 'user.registered';
+    }
+}
+```
+
+Events implementing `ShouldBroadcast` or `ShouldBroadcastNow` will appear in the **WebSockets** panel with:
+- Event name and channel
+- Auto-extracted public properties as payload schema
+- DocBlock descriptions via `@summary`
+
+### WebSocket Live Tester
+
+The docs UI includes a built-in WebSocket client for testing your broadcasting events in real-time.
+
+---
+
 ## ⚙️ Artisan Commands
 
 | Command | Description |
@@ -240,6 +338,7 @@ public function index() { ... }
 | `php artisan api-magic:reverse` | Reverse-engineer database tables into API stack |
 | `php artisan api-magic:snapshot` | Save API schema snapshot for changelog tracking |
 | `php artisan api-magic:graphql` | Generate GraphQL schema from REST API endpoints |
+| `php artisan install:api` | Create API routes file and install Laravel Sanctum/Passport |
 
 ### TypeScript SDK
 
@@ -308,16 +407,32 @@ curl http://localhost:8000/api/docs/export?format=postman -o postman.json
 
 ## 🔮 Advanced Features
 
+### Quick Installation
+
+```bash
+php artisan install:api
+```
+
+This command will:
+- Create `routes/api.php` if it doesn't exist
+- Offer to install Laravel Sanctum or Passport for authentication
+- Set up basic API structure
+
+---
+
 ### Code Snippets
 
 Every endpoint has a **"Snippets"** button generating ready-to-use code in:
 
-- **cURL** — Terminal commands
+- **cURL** — Terminal commands with proper headers and body
 - **JavaScript** — `fetch()` with async/await
-- **PHP** — Laravel `Http::` client
+- **PHP** — Laravel `Http::` facade
 - **Python** — `requests` library
+- **Dart** — `package:http/http.dart` with `dart:convert`
+- **Swift** — `URLSession` with `Foundation`
+- **Go** — `net/http` with `io` and `fmt`
 
-> Snippets auto-include your bearer token and request body.
+> Snippets auto-include your bearer token and request body. For POST/PUT/PATCH requests, example payloads are included.
 
 ### API Health Telemetry
 
@@ -445,21 +560,45 @@ Key options in `config/api-magic.php`:
 ```php
 return [
     'docs' => [
-        'prefix'     => 'docs',       // Route prefix (/api/docs)
-        'middleware'  => [],           // Middleware for docs routes
+        'enabled'     => env('API_MAGIC_DOCS_ENABLED', true),
+        'prefix'      => env('API_MAGIC_DOCS_PREFIX', 'docs'),  // Route prefix (/api/docs)
+        'middleware'  => [],                                     // Middleware for docs routes
+        'exclude_patterns' => ['sanctum', 'passport', 'telescope', 'horizon'],
+    ],
+
+    'generator' => [
+        'default_version' => null,   // Default API version for generated code
+        'seeder_count'     => 10,     // Default records per seeder
     ],
 
     'servers' => [
-        ['url' => env('APP_URL', 'http://localhost'), 'description' => 'Default Server'],
+        ['url' => env('APP_URL', 'http://localhost'), 'description' => 'Current Environment'],
+    ],
+
+    'mock' => [
+        'enabled' => env('API_MAGIC_MOCK_ENABLED', false),  // Mock API server
+    ],
+
+    'cache' => [
+        'enabled' => env('API_MAGIC_CACHE_ENABLED', true),    // Response caching
+        'store'   => env('API_MAGIC_CACHE_STORE', null),
     ],
 
     'health' => [
-        'enabled' => env('API_MAGIC_HEALTH_ENABLED', false),
+        'enabled' => env('API_MAGIC_HEALTH_ENABLED', false),  // Health telemetry
+        'store'   => env('API_MAGIC_HEALTH_STORE', null),
+        'window'  => 60,                                      // Metrics window (minutes)
     ],
 
     'changelog' => [
         'enabled'      => env('API_MAGIC_CHANGELOG_ENABLED', false),
         'storage_path' => storage_path('api-magic/changelog'),
+    ],
+
+    'oauth' => [
+        'auth_url'  => env('API_MAGIC_OAUTH_AUTH_URL', ''),
+        'client_id' => env('API_MAGIC_OAUTH_CLIENT_ID', ''),
+        'scopes'    => env('API_MAGIC_OAUTH_SCOPES', []),
     ],
 ];
 ```
@@ -474,22 +613,12 @@ php artisan vendor:publish --tag="api-magic-stubs"
 
 ## 🧪 Testing
 
-**179 tests** · **446+ assertions** · PHPStan Level 5
+**201 tests** · **525+ assertions** · PHPStan Level 5
 
 ```bash
 composer test          # or vendor/bin/pest
 vendor/bin/phpstan analyse
 ```
-
----
-
-## ✅ Recently Completed
-
-- **Deep Type Extraction** — `ResourceAnalyzer` parses toArray(), DocBlocks, and Model properties
-- **Insomnia Export** — Direct Insomnia v4 collection export
-- **Request Chaining** — Pipe response values between API requests in docs UI
-- **Request History** — Save, browse, and replay past API calls
-- **GraphQL Support** — Auto-generate `.graphql` schema with `php artisan api-magic:graphql`
 
 ---
 
@@ -502,7 +631,7 @@ use Arseno25\LaravelApiMagic\LaravelApiMagic;
 
 public function boot()
 {
-    // Modify schema generation before it runs
+    // Register hook before schema generation
     LaravelApiMagic::beforeParse(function () {
         // Prepare global configurations...
     });
@@ -510,9 +639,28 @@ public function boot()
     // Modify the generated OpenAPI schema array
     LaravelApiMagic::afterParse(function (array &$schema) {
         $schema['info']['termsOfService'] = 'https://example.com/terms';
+        $schema['info']['contact'] = [
+            'name'  => 'API Support',
+            'email' => 'support@example.com',
+        ];
     });
+
+    // Clear all registered hooks (useful for testing)
+    LaravelApiMagic::clearParseCallbacks();
 }
 ```
+
+### Facade Methods
+
+| Method | Description |
+|--------|-------------|
+| `LaravelApiMagic::version()` | Get package version |
+| `LaravelApiMagic::docsEnabled()` | Check if docs routes are enabled |
+| `LaravelApiMagic::docsPrefix()` | Get docs URL prefix |
+| `LaravelApiMagic::excludePatterns()` | Get excluded route patterns |
+| `LaravelApiMagic::beforeParse(callable)` | Register pre-parse hook |
+| `LaravelApiMagic::afterParse(callable)` | Register post-parse hook |
+| `LaravelApiMagic::clearParseCallbacks()` | Clear all hooks |
 
 ---
 
