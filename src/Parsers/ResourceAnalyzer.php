@@ -38,11 +38,12 @@ final class ResourceAnalyzer
 
                 if ($innerResource) {
                     $properties = $this->extractProperties($innerResource);
+
                     return [
-                        'name' => class_basename($innerResource) . 'Collection',
+                        'name' => class_basename($innerResource).'Collection',
                         'schema' => [
                             'type' => 'object',
-                            'description' => 'Collection of ' . class_basename($innerResource),
+                            'description' => 'Collection of '.class_basename($innerResource),
                             'properties' => [
                                 'data' => [
                                     'type' => 'array',
@@ -161,9 +162,9 @@ final class ResourceAnalyzer
                 // We'll simplify and check if it exists in same namespace or common ones
                 $namespace = $reflection->getNamespaceName();
                 $possibleNamespaces = [
-                    $namespace . '\\' . $resourceName,
-                    'App\\Http\\Resources\\' . $resourceName,
-                    'App\\Http\\Resources\\' . str_replace('Controller', 'Resource', class_basename($controller)), // Fallback guess
+                    $namespace.'\\'.$resourceName,
+                    'App\\Http\\Resources\\'.$resourceName,
+                    'App\\Http\\Resources\\'.str_replace('Controller', 'Resource', class_basename($controller)), // Fallback guess
                 ];
 
                 foreach ($possibleNamespaces as $ns) {
