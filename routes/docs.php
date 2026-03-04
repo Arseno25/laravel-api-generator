@@ -22,4 +22,3 @@ Route::prefix('api/'.config('api-magic.docs.prefix', 'docs'))
         Route::get('/changelog', [DocsController::class, 'changelog'])->name('api.docs.changelog');
         Route::get('/code-snippet', [DocsController::class, 'codeSnippet'])->name('api.docs.code-snippet');
     });
-

@@ -154,7 +154,7 @@ final class TypescriptGenerator
                 $paramStr = implode(', ', $params);
 
                 if ($deprecated) {
-                    $output .= "  /** @deprecated ".($endpoint['deprecated_info']['message'] ?? '')." */\n";
+                    $output .= '  /** @deprecated '.($endpoint['deprecated_info']['message'] ?? '')." */\n";
                 }
 
                 $output .= "  async {$methodName}({$paramStr}): Promise<{$interfaceName}Response> {\n";

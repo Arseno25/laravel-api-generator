@@ -6,7 +6,6 @@ use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Support\Str;
 use ReflectionClass;
-use ReflectionMethod;
 use ReflectionNamedType;
 
 final class ResourceAnalyzer

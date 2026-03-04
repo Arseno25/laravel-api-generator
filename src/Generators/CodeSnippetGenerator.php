@@ -23,7 +23,7 @@ final class CodeSnippetGenerator
     private function generateCurl(string $method, string $path, array $endpoint, string $baseUrl): string
     {
         $url = rtrim($baseUrl, '/').$path;
-        $lines = ["curl -X ".strtoupper($method)." \\"];
+        $lines = ['curl -X '.strtoupper($method).' \\'];
         $lines[] = "  '{$url}' \\";
         $lines[] = "  -H 'Accept: application/json' \\";
 
@@ -51,7 +51,7 @@ final class CodeSnippetGenerator
 
         $lines = ["const response = await fetch('{$url}', {"];
         $lines[] = "  method: '{$upperMethod}',";
-        $lines[] = "  headers: {";
+        $lines[] = '  headers: {';
         $lines[] = "    'Accept': 'application/json',";
 
         if (in_array(strtolower($method), ['post', 'put', 'patch'])) {

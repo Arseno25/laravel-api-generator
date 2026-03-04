@@ -34,7 +34,7 @@ class GenerateGraphqlCommand extends Command
         $controller = app(DocsController::class);
         $schema = $controller->generateSchemaPublic(Request::create('/'));
 
-        $generator = new GraphqlGenerator();
+        $generator = new GraphqlGenerator;
         $graphqlSchema = $generator->generate($schema);
 
         $output = $this->option('output')
@@ -53,7 +53,7 @@ class GenerateGraphqlCommand extends Command
         preg_match_all('/^type (?!Query|Mutation)\w+/m', $graphqlSchema, $typeMatches);
         $typeCount = count($typeMatches[0]);
 
-        $this->info("✅ Generated GraphQL schema!");
+        $this->info('✅ Generated GraphQL schema!');
         $this->info("   Types: {$typeCount} | Queries: ".($queryCount > 0 ? 'Yes' : 'No').' | Mutations: '.($mutationCount > 0 ? 'Yes' : 'No'));
         $this->info("   File saved to: {$output}");
 
