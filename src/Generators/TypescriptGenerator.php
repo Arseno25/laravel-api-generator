@@ -248,7 +248,7 @@ final class TypescriptGenerator
     /**
      * Build a TypeScript interface from request body fields.
      *
-     * @param  array<string, mixed>  $fields
+     * @param  array<int|string, mixed>  $fields
      */
     private function buildInterface(string $name, array $fields, string $method): string
     {
