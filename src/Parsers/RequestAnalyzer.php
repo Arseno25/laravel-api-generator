@@ -153,7 +153,6 @@ final class RequestAnalyzer
     private function rulesToString(array $rules): string
     {
         $stringRules = array_filter($rules, 'is_string');
-
         return implode('|', $stringRules);
     }
 
