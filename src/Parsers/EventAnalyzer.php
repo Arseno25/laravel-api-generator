@@ -131,14 +131,9 @@ final class EventAnalyzer
     private function extractClassFromFile(string $path): ?string
     {
         $content = file_get_contents($path);
-<<<<<<< HEAD
         if ($content === false) {
             return null;
         }
-        
-=======
-
->>>>>>> e98d5bf9a09385848f6e09df4f61219b1f8156ab
         if (! preg_match('/namespace\s+([^;]+);/i', $content, $matches)) {
             return null;
         }

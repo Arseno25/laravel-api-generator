@@ -203,17 +203,13 @@ final class CodeSnippetGenerator
         $url = rtrim($baseUrl, '/').$path;
         $upperMethod = strtoupper($method);
 
-<<<<<<< HEAD
-        $lines = ["package main", "", "import (", "\t\"fmt\"", "\t\"net/http\"", "\t\"io\""];
-=======
-        $lines = ['package main', '', 'import (', "\t\"fmt\"", "\t\"net/http\"", "\t\"io\"", "\t\"strings\"", ')', '', 'func main() {'];
->>>>>>> e98d5bf9a09385848f6e09df4f61219b1f8156ab
+        $lines = ['package main', '', 'import (', "\t\"fmt\"", "\t\"net/http\"", "\t\"io\""];
 
         if (in_array(strtolower($method), ['post', 'put', 'patch'])) {
             $lines[] = "\t\"strings\"";
-            $lines[] = ")";
-            $lines[] = "";
-            $lines[] = "func main() {";
+            $lines[] = ')';
+            $lines[] = '';
+            $lines[] = 'func main() {';
             $body = $this->buildExampleBody($endpoint);
             $goBody = ! empty($body) ? json_encode($body, JSON_UNESCAPED_SLASHES) : '{}';
             $goBodyEscaped = str_replace('"', '\"', $goBody);
@@ -221,9 +217,9 @@ final class CodeSnippetGenerator
             $lines[] = "\treq, _ := http.NewRequest(\"{$upperMethod}\", \"{$url}\", body)";
             $lines[] = "\treq.Header.Add(\"Content-Type\", \"application/json\")";
         } else {
-            $lines[] = ")";
-            $lines[] = "";
-            $lines[] = "func main() {";
+            $lines[] = ')';
+            $lines[] = '';
+            $lines[] = 'func main() {';
             $lines[] = "\treq, _ := http.NewRequest(\"{$upperMethod}\", \"{$url}\", nil)";
         }
 
