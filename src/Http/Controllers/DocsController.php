@@ -83,6 +83,22 @@ final class DocsController extends Controller
                 'bearerFormat' => 'JWT',
                 'description' => 'Laravel Sanctum Bearer Token authentication',
             ],
+            'oauth2' => [
+                'type' => 'oauth2',
+                'flows' => [
+                    'implicit' => [
+                        'authorizationUrl' => config('api-magic.oauth.auth_url', ''),
+                        'scopes' => config('api-magic.oauth.scopes', []),
+                    ]
+                ]
+            ]
+        ];
+
+        // Export custom config variables to frontend
+        $schema['oauth'] = [
+            'authUrl' => config('api-magic.oauth.auth_url', ''),
+            'clientId' => config('api-magic.oauth.client_id', ''),
+            'scopes' => config('api-magic.oauth.scopes', ''),
         ];
 
         return response()->json($schema);
@@ -247,6 +263,8 @@ final class DocsController extends Controller
      */
     private function generateSchema(Request $request): array
     {
+        \Arseno25\LaravelApiMagic\LaravelApiMagic::callBeforeParse();
+
         $routes = $this->routeAnalyzer->getApiRoutes();
 
         // Parse routes once, then group differently
@@ -279,7 +297,11 @@ final class DocsController extends Controller
             ->values()
             ->toArray();
 
-        return [
+        // Collect all broadcasting events
+        $eventAnalyzer = new \Arseno25\LaravelApiMagic\Parsers\EventAnalyzer;
+        $events = $eventAnalyzer->analyze();
+
+        $schema = [
             'title' => config('app.name', 'Laravel API').' Documentation',
             'version' => $this->getPackageVersion(),
             'baseUrl' => $request->getSchemeAndHttpHost(),
@@ -288,12 +310,17 @@ final class DocsController extends Controller
             'endpointsByVersion' => $endpointsByVersion,
             'versions' => array_keys($endpointsByVersion),
             'webhooks' => $webhooks,
+            'events' => $events,
             'features' => [
                 'health' => config('laravel-api-magic.health.enabled', false),
                 'changelog' => config('laravel-api-magic.changelog.enabled', false),
             ],
             'generated_at' => now()->toIso8601String(),
         ];
+
+        \Arseno25\LaravelApiMagic\LaravelApiMagic::callAfterParse($schema);
+
+        return $schema;
     }
 
     /**

@@ -8,6 +8,7 @@ let schema = { endpoints: {}, baseUrl: window.location.origin };
 let selectedPath = null;
 let selectedMethod = null;
 let token = localStorage.getItem('api-docs-token') || '';
+let useSanctum = localStorage.getItem('api-docs-sanctum') === 'true';
 let requestCount = 0;
 let successCount = 0;
 let selectedVersion = 'all';
@@ -48,7 +49,28 @@ function copyWithFeedback(btnId, text) {
     showToast('Copied to clipboard!');
 }
 
-// ─── Stats ───
+// ─── Stats & Environment ───
+function switchEnvironment(env) {
+    let url = schema.baseUrl || window.location.origin;
+    
+    // Naive heuristic if environments aren't completely defined in schema
+    if (env === 'staging') {
+        url = url.replace('localhost', 'staging.api.example.com').replace('.test', '.staging.example.com');
+    } else if (env === 'production') {
+        url = url.replace('localhost', 'api.example.com').replace('.test', '.example.com');
+        url = url.replace('//api.', '//api.'); // Ensures https pattern if needed
+    }
+
+    const input = document.getElementById('base-url');
+    if (input) {
+        input.value = url;
+        // Trigger visual feedback
+        input.classList.add('ring-2', 'ring-indigo-500');
+        setTimeout(() => input.classList.remove('ring-2', 'ring-indigo-500'), 500);
+    }
+    showToast(`Environment set to ${env.toUpperCase()}`);
+}
+
 function countEndpoints() {
     let count = 0;
     for (const path in schema.endpoints) {
@@ -101,6 +123,11 @@ function closeMobileSidebar() {
 function openAuthModal() {
     document.getElementById('auth-modal').classList.remove('hidden');
     document.getElementById('auth-token').value = token;
+    
+    const sanctumCheck = document.getElementById('auth-sanctum-cookie');
+    if (sanctumCheck) {
+        sanctumCheck.checked = useSanctum;
+    }
 }
 
 function closeAuthModal() {
@@ -109,18 +136,25 @@ function closeAuthModal() {
 
 function saveToken() {
     token = document.getElementById('auth-token').value;
+    const sanctumCheck = document.getElementById('auth-sanctum-cookie');
+    useSanctum = sanctumCheck ? sanctumCheck.checked : false;
+
     localStorage.setItem('api-docs-token', token);
-    document.getElementById('auth-status').textContent = token ? 'Authenticated' : 'Set Token';
+    localStorage.setItem('api-docs-sanctum', useSanctum);
+    
+    document.getElementById('auth-status').textContent = (token || useSanctum) ? 'Authenticated' : 'Set Auth';
     closeAuthModal();
-    showToast('Token saved!');
+    showToast('Auth settings saved!');
 }
 
 function clearToken() {
     token = '';
+    useSanctum = false;
     localStorage.removeItem('api-docs-token');
-    document.getElementById('auth-status').textContent = 'Set Token';
+    localStorage.removeItem('api-docs-sanctum');
+    document.getElementById('auth-status').textContent = 'Set Auth';
     closeAuthModal();
-    showToast('Token cleared!');
+    showToast('Auth cleared!');
 }
 
 // ─── Keyboard Shortcuts ───
@@ -137,6 +171,47 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+// ─── OAuth 2.0 ───
+function startOAuthLogin() {
+    const oauthConfig = schema.oauth || {};
+    if (!oauthConfig.authUrl || !oauthConfig.clientId) {
+        showToast('OAuth2 is not configured in api-magic.php');
+        return;
+    }
+    
+    const clientId = oauthConfig.clientId;
+    const redirectUri = window.location.origin + '/api/docs/oauth2-callback';
+    
+    // Using implicit flow for SPAs to quickly get token without backend secret
+    const authUrl = `${oauthConfig.authUrl}?response_type=token&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(oauthConfig.scopes || '')}`;
+    
+    const width = 600, height = 700;
+    const left = (window.innerWidth / 2) - (width / 2);
+    const top = (window.innerHeight / 2) - (height / 2);
+    const popup = window.open(authUrl, 'oauth2', `width=${width},height=${height},top=${top},left=${left}`);
+    
+    // Listen for messages from the popup callback
+    const messageListener = (event) => {
+        if (event.origin !== window.location.origin) return;
+        if (event.data && event.data.type === 'oauth2_token') {
+            document.getElementById('auth-token').value = event.data.token;
+            
+            const sanctumCheck = document.getElementById('auth-sanctum-cookie');
+            if (sanctumCheck) {
+                sanctumCheck.checked = false;
+            }
+            toggleSanctumAuth(document.getElementById('auth-sanctum-cookie'));
+            
+            saveToken();
+            window.removeEventListener('message', messageListener);
+            if (popup) popup.close();
+            showToast('OAuth2 Login Successful!');
+        }
+    };
+    
+    window.addEventListener('message', messageListener);
+}
+
 // ─── Initialize ───
 async function init() {
     try {
@@ -150,6 +225,7 @@ async function init() {
         setupVersionFilter();
         renderEndpoints();
         renderWebhooksBadge();
+        renderEventsBadge();
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('main-content').classList.remove('hidden');
     } catch (e) {

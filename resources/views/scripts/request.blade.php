@@ -25,7 +25,18 @@ async function sendRequest(btn) {
     const qs = params.toString();
     if (qs) url += '?' + qs;
     const options = { method: selectedMethod.toUpperCase(), headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' } };
-    if (token && endpoint.security && endpoint.security.length > 0) options.headers['Authorization'] = 'Bearer ' + token;
+    
+    if (useSanctum) {
+        options.credentials = 'include';
+        // Ensure CSRF token is fetched before sending actual JSON request
+        try {
+            await fetch(baseUrl + '/sanctum/csrf-cookie', { method: 'GET', headers: { 'Accept': 'application/json' } });
+        } catch (e) {
+            console.warn('Sanctum CSRF fetch failed:', e);
+        }
+    } else if (token && endpoint.security && endpoint.security.length > 0) {
+        options.headers['Authorization'] = 'Bearer ' + token;
+    }
     if (endpoint.parameters?.body && ['post', 'put', 'patch'].includes(selectedMethod)) options.body = document.getElementById('request-body')?.value;
     const start = performance.now();
     try {

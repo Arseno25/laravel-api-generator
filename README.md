@@ -493,6 +493,29 @@ vendor/bin/phpstan analyse
 
 ---
 
+## 🔌 Extensibility & Plugins
+
+You can hook into the parsing engine to modify the generated schema or register your own parsers using `LaravelApiMagic` hooks. Add this inside your `AppServiceProvider::boot` method:
+
+```php
+use Arseno25\LaravelApiMagic\LaravelApiMagic;
+
+public function boot()
+{
+    // Modify schema generation before it runs
+    LaravelApiMagic::beforeParse(function () {
+        // Prepare global configurations...
+    });
+
+    // Modify the generated OpenAPI schema array
+    LaravelApiMagic::afterParse(function (array &$schema) {
+        $schema['info']['termsOfService'] = 'https://example.com/terms';
+    });
+}
+```
+
+---
+
 ## 🐛 Issues
 
 If you discover any bugs, missing features, or issues, please [open an issue](https://github.com/Arseno25/laravel-api-generator/issues) on the GitHub repository.
