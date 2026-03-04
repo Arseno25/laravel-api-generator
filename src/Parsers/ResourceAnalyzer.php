@@ -3,7 +3,11 @@
 namespace Arseno25\LaravelApiMagic\Parsers;
 
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Http\Resources\Json\ResourceCollection;
+use Illuminate\Support\Str;
 use ReflectionClass;
+use ReflectionMethod;
+use ReflectionNamedType;
 
 final class ResourceAnalyzer
 {
@@ -23,31 +27,395 @@ final class ResourceAnalyzer
             $methodReflection = $reflection->getMethod($method);
             $returnType = $methodReflection->getReturnType();
 
-            if (! $returnType || ! $returnType instanceof \ReflectionNamedType) {
+            if (! $returnType || ! $returnType instanceof ReflectionNamedType) {
                 return null;
             }
 
             $resourceClass = $returnType->getName();
+
+            // Check if it's a ResourceCollection
+            if (class_exists($resourceClass) && is_subclass_of($resourceClass, ResourceCollection::class)) {
+                $innerResource = $this->resolveCollectionResource($resourceClass);
+                $properties = $innerResource
+                    ? $this->extractProperties($innerResource)
+                    : (object) [];
+
+                return [
+                    'name' => class_basename($resourceClass),
+                    'schema' => [
+                        'type' => 'object',
+                        'description' => 'Response mapped by '.class_basename($resourceClass),
+                        'properties' => empty((array) $properties) ? (object) [] : $properties,
+                    ],
+                ];
+            }
 
             // We only analyze valid JsonResource classes
             if (! class_exists($resourceClass) || ! is_subclass_of($resourceClass, JsonResource::class)) {
                 return null;
             }
 
+            $properties = $this->extractProperties($resourceClass);
+
             return [
                 'name' => class_basename($resourceClass),
                 'schema' => [
                     'type' => 'object',
                     'description' => 'Response mapped by '.class_basename($resourceClass),
-                    // For a robust implementation, this could parse the DB schema or the model
-                    // to determine properties. For now, we return empty properties which
-                    // Swagger accepts as a generic JSON object.
-                    'properties' => (object) [],
+                    'properties' => empty((array) $properties) ? (object) [] : $properties,
                 ],
             ];
 
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    /**
+     * Extract properties from a JsonResource class by parsing its toArray() method.
+     *
+     * @return array<string, array<string, mixed>>|object
+     */
+    private function extractProperties(string $resourceClass): array|object
+    {
+        $properties = [];
+
+        // Strategy 1: Parse toArray() source code for $this->field patterns
+        $fromSource = $this->extractFromSource($resourceClass);
+        if (! empty($fromSource)) {
+            return $fromSource;
+        }
+
+        // Strategy 2: Parse DocBlock @property annotations
+        $fromDocBlock = $this->extractFromDocBlock($resourceClass);
+        if (! empty($fromDocBlock)) {
+            return $fromDocBlock;
+        }
+
+        // Strategy 3: Resolve from the underlying model's fillable/casts
+        $fromModel = $this->extractFromModel($resourceClass);
+        if (! empty($fromModel)) {
+            return $fromModel;
+        }
+
+        return (object) $properties;
+    }
+
+    /**
+     * Parse the toArray() method source for $this->field references.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    private function extractFromSource(string $resourceClass): array
+    {
+        try {
+            $reflection = new ReflectionClass($resourceClass);
+            if (! $reflection->hasMethod('toArray')) {
+                return [];
+            }
+
+            $method = $reflection->getMethod('toArray');
+
+            // Only analyze if the class itself declares toArray (not inherited)
+            if ($method->getDeclaringClass()->getName() !== $resourceClass) {
+                return [];
+            }
+
+            $filename = $method->getFileName();
+            if (! $filename || ! file_exists($filename)) {
+                return [];
+            }
+
+            $startLine = $method->getStartLine();
+            $endLine = $method->getEndLine();
+
+            /** @var string $fileContents */
+            $fileContents = file_get_contents($filename);
+            $lines = explode("\n", $fileContents);
+            $methodBody = implode("\n", array_slice($lines, $startLine - 1, $endLine - $startLine + 1));
+
+            $properties = [];
+
+            // Match patterns like 'field_name' => $this->field_name
+            if (preg_match_all(
+                "/['\"](\w+)['\"]\s*=>\s*\\\$this->(\w+)/",
+                $methodBody,
+                $matches,
+                PREG_SET_ORDER
+            )) {
+                foreach ($matches as $match) {
+                    $key = $match[1];
+                    $field = $match[2];
+                    $properties[$key] = [
+                        'type' => $this->guessTypeFromFieldName($field),
+                        'description' => Str::headline($key),
+                    ];
+                }
+            }
+
+            // Match patterns like 'field_name' => $this->field->format(...)  (dates)
+            if (preg_match_all(
+                "/['\"](\w+)['\"]\s*=>\s*\\\$this->(\w+)->format/",
+                $methodBody,
+                $matches,
+                PREG_SET_ORDER
+            )) {
+                foreach ($matches as $match) {
+                    $key = $match[1];
+                    $properties[$key] = [
+                        'type' => 'string',
+                        'format' => 'date-time',
+                        'description' => Str::headline($key),
+                    ];
+                }
+            }
+
+            // Match patterns like 'field' => SomeResource::make($this->relation)
+            if (preg_match_all(
+                "/['\"](\w+)['\"]\s*=>\s*(\w+Resource)::(?:make|collection)\s*\(\s*\\\$this->(\w+)/",
+                $methodBody,
+                $matches,
+                PREG_SET_ORDER
+            )) {
+                foreach ($matches as $match) {
+                    $key = $match[1];
+                    $resourceName = $match[2];
+                    $isCollection = str_contains($methodBody, $resourceName.'::collection');
+                    $properties[$key] = $isCollection
+                        ? ['type' => 'array', 'items' => ['type' => 'object'], 'description' => Str::headline($key)]
+                        : ['type' => 'object', 'description' => Str::headline($key)];
+                }
+            }
+
+            return $properties;
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    /**
+     * Extract properties from class DocBlock @property annotations.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    private function extractFromDocBlock(string $resourceClass): array
+    {
+        try {
+            $reflection = new ReflectionClass($resourceClass);
+            $docComment = $reflection->getDocComment();
+
+            if ($docComment === false) {
+                return [];
+            }
+
+            $properties = [];
+
+            // Match @property type $name patterns
+            if (preg_match_all(
+                '/@property\s+([\w|\\\\]+)\s+\$(\w+)/',
+                $docComment,
+                $matches,
+                PREG_SET_ORDER
+            )) {
+                foreach ($matches as $match) {
+                    $type = $match[1];
+                    $name = $match[2];
+                    $properties[$name] = [
+                        'type' => $this->phpTypeToOpenApiType($type),
+                        'description' => Str::headline($name),
+                    ];
+                }
+            }
+
+            return $properties;
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    /**
+     * Extract properties from the underlying Eloquent model.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    private function extractFromModel(string $resourceClass): array
+    {
+        try {
+            $reflection = new ReflectionClass($resourceClass);
+
+            // Try to determine the model from the resource class name
+            $resourceBaseName = class_basename($resourceClass);
+            $modelName = str_replace(['Resource', 'Collection'], '', $resourceBaseName);
+
+            // Common model namespace patterns
+            $modelNamespaces = [
+                "App\\Models\\{$modelName}",
+                "App\\{$modelName}",
+            ];
+
+            $modelClass = null;
+            foreach ($modelNamespaces as $ns) {
+                if (class_exists($ns)) {
+                    $modelClass = $ns;
+                    break;
+                }
+            }
+
+            if (! $modelClass) {
+                return [];
+            }
+
+            $modelReflection = new ReflectionClass($modelClass);
+            $model = $modelReflection->newInstanceWithoutConstructor();
+
+            $properties = [];
+
+            // Get fillable fields
+            if ($modelReflection->hasProperty('fillable')) {
+                $prop = $modelReflection->getProperty('fillable');
+                $prop->setAccessible(true);
+                /** @var array<int, string> $fillable */
+                $fillable = $prop->getValue($model);
+
+                foreach ($fillable as $field) {
+                    $properties[$field] = [
+                        'type' => $this->guessTypeFromFieldName($field),
+                        'description' => Str::headline($field),
+                    ];
+                }
+            }
+
+            // Override types using $casts
+            if ($modelReflection->hasProperty('casts')) {
+                $castProp = $modelReflection->getProperty('casts');
+                $castProp->setAccessible(true);
+                /** @var array<string, string> $casts */
+                $casts = $castProp->getValue($model);
+
+                foreach ($casts as $field => $cast) {
+                    if (isset($properties[$field])) {
+                        $properties[$field]['type'] = $this->castToOpenApiType($cast);
+                    }
+                }
+            }
+
+            // Always add 'id' at the beginning
+            if (! isset($properties['id'])) {
+                $properties = array_merge(['id' => ['type' => 'integer', 'description' => 'Id']], $properties);
+            }
+
+            // Add timestamps if model uses them
+            if ($modelReflection->hasProperty('timestamps')) {
+                $tsProp = $modelReflection->getProperty('timestamps');
+                $tsProp->setAccessible(true);
+                if ($tsProp->getValue($model) !== false) {
+                    $properties['created_at'] = ['type' => 'string', 'format' => 'date-time', 'description' => 'Created At'];
+                    $properties['updated_at'] = ['type' => 'string', 'format' => 'date-time', 'description' => 'Updated At'];
+                }
+            }
+
+            return $properties;
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    /**
+     * Resolve the inner resource class from a ResourceCollection.
+     */
+    private function resolveCollectionResource(string $collectionClass): ?string
+    {
+        try {
+            // Convention: FooCollection -> FooResource
+            $baseName = class_basename($collectionClass);
+            $namespace = (new ReflectionClass($collectionClass))->getNamespaceName();
+            $resourceName = str_replace('Collection', 'Resource', $baseName);
+            $fullClass = $namespace.'\\'.$resourceName;
+
+            if (class_exists($fullClass) && is_subclass_of($fullClass, JsonResource::class)) {
+                return $fullClass;
+            }
+
+            return null;
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Guess OpenAPI type from field name conventions.
+     */
+    private function guessTypeFromFieldName(string $field): string
+    {
+        if ($field === 'id' || Str::endsWith($field, '_id')) {
+            return 'integer';
+        }
+        if (Str::startsWith($field, 'is_') || Str::startsWith($field, 'has_')) {
+            return 'boolean';
+        }
+        if (Str::contains($field, ['price', 'amount', 'total', 'cost', 'balance', 'rate'])) {
+            return 'number';
+        }
+        if (Str::contains($field, ['count', 'quantity', 'qty', 'age', 'number'])) {
+            return 'integer';
+        }
+        if (Str::endsWith($field, '_at') || Str::contains($field, ['date', 'time'])) {
+            return 'string';
+        }
+
+        return 'string';
+    }
+
+    /**
+     * Convert PHP type hint to OpenAPI type.
+     */
+    private function phpTypeToOpenApiType(string $phpType): string
+    {
+        $typeMap = [
+            'int' => 'integer',
+            'integer' => 'integer',
+            'float' => 'number',
+            'double' => 'number',
+            'bool' => 'boolean',
+            'boolean' => 'boolean',
+            'string' => 'string',
+            'array' => 'array',
+            'object' => 'object',
+        ];
+
+        $cleanType = ltrim(explode('|', $phpType)[0], '?\\');
+
+        return $typeMap[strtolower($cleanType)] ?? 'string';
+    }
+
+    /**
+     * Convert Laravel cast type to OpenAPI type.
+     */
+    private function castToOpenApiType(string $cast): string
+    {
+        $castMap = [
+            'int' => 'integer',
+            'integer' => 'integer',
+            'real' => 'number',
+            'float' => 'number',
+            'double' => 'number',
+            'decimal' => 'number',
+            'string' => 'string',
+            'bool' => 'boolean',
+            'boolean' => 'boolean',
+            'object' => 'object',
+            'array' => 'array',
+            'collection' => 'array',
+            'json' => 'object',
+            'date' => 'string',
+            'datetime' => 'string',
+            'immutable_date' => 'string',
+            'immutable_datetime' => 'string',
+            'timestamp' => 'integer',
+        ];
+
+        $cleanCast = strtolower(explode(':', $cast)[0]);
+
+        return $castMap[$cleanCast] ?? 'string';
     }
 }

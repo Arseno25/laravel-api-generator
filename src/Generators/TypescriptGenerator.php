@@ -79,6 +79,148 @@ final class TypescriptGenerator
     }
 
     /**
+     * Generate a full TypeScript API client SDK.
+     *
+     * @param  array<string, mixed>  $schema
+     */
+    public function generateSdk(array $schema, string $baseUrl = ''): string
+    {
+        $generatedAt = $schema['generated_at'] ?? 'unknown';
+        $output = "// Auto-generated API Client by Laravel API Magic\n";
+        $output .= "// Generated at: {$generatedAt}\n";
+        $output .= "// Do not edit manually — re-run `php artisan api-magic:ts --sdk` to regenerate.\n\n";
+
+        // ApiClient class
+        $output .= "export interface ApiConfig {\n";
+        $output .= "  baseUrl: string;\n";
+        $output .= "  token?: string;\n";
+        $output .= "  headers?: Record<string, string>;\n";
+        $output .= "}\n\n";
+
+        $output .= "export class ApiClient {\n";
+        $output .= "  private config: ApiConfig;\n\n";
+        $output .= "  constructor(config: ApiConfig) {\n";
+        $output .= "    this.config = config;\n";
+        $output .= "  }\n\n";
+
+        $output .= "  private async request<T>(method: string, path: string, data?: any, params?: Record<string, any>): Promise<T> {\n";
+        $output .= "    const url = new URL(path, this.config.baseUrl);\n";
+        $output .= "    if (params) {\n";
+        $output .= "      Object.entries(params).forEach(([key, value]) => {\n";
+        $output .= "        if (value !== undefined && value !== null) url.searchParams.set(key, String(value));\n";
+        $output .= "      });\n";
+        $output .= "    }\n\n";
+        $output .= "    const headers: Record<string, string> = {\n";
+        $output .= "      'Accept': 'application/json',\n";
+        $output .= "      'Content-Type': 'application/json',\n";
+        $output .= "      ...this.config.headers,\n";
+        $output .= "    };\n\n";
+        $output .= "    if (this.config.token) {\n";
+        $output .= "      headers['Authorization'] = `Bearer \${this.config.token}`;\n";
+        $output .= "    }\n\n";
+        $output .= "    const response = await fetch(url.toString(), {\n";
+        $output .= "      method: method.toUpperCase(),\n";
+        $output .= "      headers,\n";
+        $output .= "      body: data ? JSON.stringify(data) : undefined,\n";
+        $output .= "    });\n\n";
+        $output .= "    if (!response.ok) {\n";
+        $output .= "      throw new Error(`API Error: \${response.status} \${response.statusText}`);\n";
+        $output .= "    }\n\n";
+        $output .= "    return response.json();\n";
+        $output .= "  }\n\n";
+
+        // Generate typed methods
+        foreach ($schema['endpoints'] ?? [] as $path => $methods) {
+            foreach ($methods as $method => $endpoint) {
+                $methodName = $this->generateMethodName($method, $path);
+                $interfaceName = $this->generateInterfaceName($method, $path);
+
+                $hasBody = ! empty($endpoint['parameters']['body']);
+                $hasQuery = ! empty($endpoint['parameters']['query']);
+                $hasPath = ! empty($endpoint['parameters']['path']);
+                $deprecated = $endpoint['deprecated'] ?? false;
+
+                $params = [];
+                if ($hasPath) {
+                    $params[] = "params: {$interfaceName}Params";
+                }
+                if ($hasBody) {
+                    $params[] = "data: {$interfaceName}Request";
+                }
+                if ($hasQuery) {
+                    $params[] = "query?: {$interfaceName}Query";
+                }
+
+                $paramStr = implode(', ', $params);
+
+                if ($deprecated) {
+                    $output .= "  /** @deprecated ".($endpoint['deprecated_info']['message'] ?? '')." */\n";
+                }
+
+                $output .= "  async {$methodName}({$paramStr}): Promise<{$interfaceName}Response> {\n";
+
+                // Build the path with interpolation
+                $pathExpr = $this->buildPathExpression($path, $hasPath);
+                $dataArg = $hasBody ? 'data' : 'undefined';
+                $queryArg = $hasQuery ? 'query' : 'undefined';
+
+                $output .= "    return this.request<{$interfaceName}Response>('{$method}', {$pathExpr}, {$dataArg}, {$queryArg});\n";
+                $output .= "  }\n\n";
+            }
+        }
+
+        $output .= "}\n\n";
+
+        // Create default factory
+        $output .= "export function createApiClient(baseUrl: string, token?: string): ApiClient {\n";
+        $output .= "  return new ApiClient({ baseUrl, token });\n";
+        $output .= "}\n";
+
+        return $output;
+    }
+
+    /**
+     * Generate a camelCase method name from HTTP method and path.
+     */
+    private function generateMethodName(string $method, string $path): string
+    {
+        $segments = array_filter(explode('/', $path), fn ($s) => $s && ! str_starts_with($s, '{') && $s !== 'api');
+
+        $name = match ($method) {
+            'get' => 'get',
+            'post' => 'create',
+            'put', 'patch' => 'update',
+            'delete' => 'delete',
+            default => $method,
+        };
+
+        foreach ($segments as $segment) {
+            $name .= Str::studly($segment);
+        }
+
+        // If it has path params and is GET, prefix with 'get' instead of list
+        if (str_contains($path, '{') && $method === 'get') {
+            $name = preg_replace('/^get/', 'get', $name);
+        }
+
+        return $name;
+    }
+
+    /**
+     * Build a path expression for TypeScript template literals.
+     */
+    private function buildPathExpression(string $path, bool $hasParams): string
+    {
+        if (! $hasParams) {
+            return "'{$path}'";
+        }
+
+        $expr = preg_replace('/\{(\w+)\}/', '\${params.$1}', $path);
+
+        return "`{$expr}`";
+    }
+
+    /**
      * Generate an interface name from method and path.
      */
     private function generateInterfaceName(string $method, string $path): string

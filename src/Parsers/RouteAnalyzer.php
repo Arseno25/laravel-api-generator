@@ -179,6 +179,15 @@ final class RouteAnalyzer
             'tags' => $this->generateTags($uri, $version, $attributes),
             'security' => $this->analyzeSecurity($route),
             'version' => $version,
+            'deprecated' => $attributes['deprecated'] ?? false,
+            'deprecated_info' => ($attributes['deprecated'] ?? false) ? [
+                'message' => $attributes['deprecated_message'] ?? '',
+                'since' => $attributes['deprecated_since'] ?? null,
+                'alternative' => $attributes['deprecated_alternative'] ?? null,
+            ] : null,
+            'responses' => $attributes['responses'] ?? null,
+            'example' => $attributes['example'] ?? null,
+            'webhooks' => $attributes['webhooks'] ?? null,
         ];
     }
 
@@ -211,8 +220,11 @@ final class RouteAnalyzer
             if ($reflection->hasMethod($method)) {
                 $methodReflection = $reflection->getMethod($method);
 
-                // Check for ApiGroup Attribute
+                // Check for ApiGroup Attribute (method then class)
                 $groupAttributes = $methodReflection->getAttributes(\Arseno25\LaravelApiMagic\Attributes\ApiGroup::class);
+                if (empty($groupAttributes)) {
+                    $groupAttributes = $reflection->getAttributes(\Arseno25\LaravelApiMagic\Attributes\ApiGroup::class);
+                }
                 if (! empty($groupAttributes)) {
                     $attributes['group'] = $groupAttributes[0]->newInstance()->name;
                 }
@@ -221,6 +233,61 @@ final class RouteAnalyzer
                 $descAttributes = $methodReflection->getAttributes(\Arseno25\LaravelApiMagic\Attributes\ApiDescription::class);
                 if (! empty($descAttributes)) {
                     $attributes['description'] = $descAttributes[0]->newInstance()->description;
+                }
+
+                // Check for ApiDeprecated Attribute (method then class)
+                $deprecatedAttributes = $methodReflection->getAttributes(\Arseno25\LaravelApiMagic\Attributes\ApiDeprecated::class);
+                if (empty($deprecatedAttributes)) {
+                    $deprecatedAttributes = $reflection->getAttributes(\Arseno25\LaravelApiMagic\Attributes\ApiDeprecated::class);
+                }
+                if (! empty($deprecatedAttributes)) {
+                    $dep = $deprecatedAttributes[0]->newInstance();
+                    $attributes['deprecated'] = true;
+                    $attributes['deprecated_message'] = $dep->message;
+                    $attributes['deprecated_since'] = $dep->since;
+                    $attributes['deprecated_alternative'] = $dep->alternative;
+                }
+
+                // Check for ApiResponse Attribute (repeatable)
+                $responseAttributes = $methodReflection->getAttributes(\Arseno25\LaravelApiMagic\Attributes\ApiResponse::class);
+                if (! empty($responseAttributes)) {
+                    $responses = [];
+                    foreach ($responseAttributes as $ra) {
+                        $resp = $ra->newInstance();
+                        $responses[] = [
+                            'status' => $resp->status,
+                            'resource' => $resp->resource,
+                            'description' => $resp->description,
+                            'example' => $resp->example,
+                            'is_array' => $resp->isArray,
+                        ];
+                    }
+                    $attributes['responses'] = $responses;
+                }
+
+                // Check for ApiExample Attribute
+                $exampleAttributes = $methodReflection->getAttributes(\Arseno25\LaravelApiMagic\Attributes\ApiExample::class);
+                if (! empty($exampleAttributes)) {
+                    $ex = $exampleAttributes[0]->newInstance();
+                    $attributes['example'] = [
+                        'request' => $ex->request,
+                        'response' => $ex->response,
+                    ];
+                }
+
+                // Check for ApiWebhook Attribute (repeatable)
+                $webhookAttributes = $methodReflection->getAttributes(\Arseno25\LaravelApiMagic\Attributes\ApiWebhook::class);
+                if (! empty($webhookAttributes)) {
+                    $webhooks = [];
+                    foreach ($webhookAttributes as $wa) {
+                        $wh = $wa->newInstance();
+                        $webhooks[] = [
+                            'event' => $wh->event,
+                            'description' => $wh->description,
+                            'payload' => $wh->payload,
+                        ];
+                    }
+                    $attributes['webhooks'] = $webhooks;
                 }
             }
         } catch (\Throwable) {
