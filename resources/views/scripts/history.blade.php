@@ -64,13 +64,22 @@ function replayHistory(index) {
 
         // Restore past response immediately to the screen
         if (entry.response) {
-            setTimeout(() => {
+            const checkExist = setInterval(() => {
                 const responseDiv = document.getElementById('response');
                 if (responseDiv) {
+                    clearInterval(checkExist);
                     responseDiv.classList.remove('hidden');
-                    document.getElementById('response-status').textContent = entry.status + ' (From History)';
-                    document.getElementById('response-status').className = 'status-badge status-' + Math.floor(entry.status / 100) + 'xx';
-                    document.getElementById('response-time-val').textContent = entry.responseTime + 'ms';
+
+                    const statusEl = document.getElementById('response-status');
+                    if (statusEl) {
+                        statusEl.textContent = entry.status + ' (From History)';
+                        statusEl.className = 'status-badge status-' + Math.floor(entry.status / 100) + 'xx';
+                    }
+
+                    const timeEl = document.getElementById('response-time-val');
+                    if (timeEl) {
+                        timeEl.textContent = entry.responseTime + 'ms';
+                    }
                     
                     let data;
                     try { 
@@ -80,12 +89,25 @@ function replayHistory(index) {
                     }
                     
                     if (entry.status >= 400 || !data || (typeof data === 'object' && data.exception)) {
-                        displayErrorBody(entry.status, data);
+                        if (typeof displayErrorBody === 'function') displayErrorBody(entry.status, data);
                     } else {
-                        displaySuccessBody(data);
+                        if (typeof displaySuccessBody === 'function') displaySuccessBody(data);
+                    }
+
+                    if (entry.response.length >= 2000) {
+                        const responseBody = document.getElementById('response-body');
+                        if (responseBody) {
+                            const notice = document.createElement('div');
+                            notice.className = 'bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-xs px-3 py-2 rounded-lg mt-3 flex items-center gap-2';
+                            notice.innerHTML = '<i class="fas fa-exclamation-triangle"></i> <span><strong>Notice:</strong> This response was truncated to save local storage space. Replay the request to see the full payload.</span>';
+                            responseBody.appendChild(notice);
+                        }
                     }
                 }
-            }, 150);
+            }, 50);
+
+            // Safety fail-safe to avoid infinite polling
+            setTimeout(() => clearInterval(checkExist), 3000);
         }
 
         showToast('Request loaded from history!');
