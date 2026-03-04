@@ -11,7 +11,7 @@ class ApiMagicSchema
      * Manually define the OpenAPI schema for an endpoint's response.
      * Useful when the automated reflection parser fails on edge cases.
      *
-     * @param array<string, mixed> $schema
+     * @param  array<string, mixed>  $schema
      */
     public function __construct(
         public array $schema

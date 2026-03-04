@@ -329,7 +329,7 @@ describe('custom attributes parsing', function () {
         Route::middleware('api')->get('/api/visible', [DummyHideController::class, 'visibleMethod']);
 
         $routes = $this->routeAnalyzer->getApiRoutes();
-        
+
         $hiddenRoute = collect($routes)->first(fn ($r) => $r->uri === 'api/hidden');
         $visibleRoute = collect($routes)->first(fn ($r) => $r->uri === 'api/visible');
 
@@ -338,9 +338,16 @@ describe('custom attributes parsing', function () {
     });
 });
 
-class DummyHideController {
+class DummyHideController
+{
     #[\Arseno25\LaravelApiMagic\Attributes\ApiMagicHide]
-    public function hiddenMethod() { return response()->json([]); }
-    
-    public function visibleMethod() { return response()->json([]); }
+    public function hiddenMethod()
+    {
+        return response()->json([]);
+    }
+
+    public function visibleMethod()
+    {
+        return response()->json([]);
+    }
 }

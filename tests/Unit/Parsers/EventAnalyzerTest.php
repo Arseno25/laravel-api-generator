@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\File;
 uses()->group('parsers', 'event-analyzer');
 
 beforeEach(function () {
-    $this->analyzer = new EventAnalyzer();
+    $this->analyzer = new EventAnalyzer;
 });
 
 describe('Event analysis', function () {
@@ -53,9 +53,9 @@ PHP;
         $tempPath = base_path('app/Events/TestUserCreated.php');
         File::ensureDirectoryExists(dirname($tempPath));
         File::put($tempPath, $eventContent);
-        
+
         // Ensure class is required so reflection can find it
-        if (!class_exists('App\Events\TestUserCreated')) {
+        if (! class_exists('App\Events\TestUserCreated')) {
             require_once $tempPath;
         }
 
@@ -63,7 +63,7 @@ PHP;
 
         expect($result)->not->toBeEmpty();
         expect($result)->toHaveKey('user.created');
-        
+
         $eventData = $result['user.created'];
         expect($eventData['name'])->toBe('user.created');
         expect($eventData['description'])->toBe('A test user created event');
