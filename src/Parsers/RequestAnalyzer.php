@@ -87,11 +87,12 @@ final class RequestAnalyzer
     /**
      * Guess the field type from validation rules.
      *
-     * @param  array<string>  $rules
+     * @param  array<mixed>  $rules
      */
     private function guessType(array $rules): string
     {
-        $rulesString = implode('|', $rules);
+        $stringRules = array_filter($rules, 'is_string');
+        $rulesString = implode('|', $stringRules);
 
         if (str_contains($rulesString, 'integer') || str_contains($rulesString, 'numeric')) {
             return 'integer';
@@ -127,43 +128,45 @@ final class RequestAnalyzer
     /**
      * Check if field is required.
      *
-     * @param  array<string>  $rules
+     * @param  array<mixed>  $rules
      */
     private function isRequired(array $rules): bool
     {
-        return in_array('required', $rules);
+        return in_array('required', $rules, true);
     }
 
     /**
      * Check if field is a file or image.
      *
-     * @param  array<string>  $rules
+     * @param  array<mixed>  $rules
      */
     private function isFile(array $rules): bool
     {
-        return in_array('file', $rules) || in_array('image', $rules) || collect($rules)->contains(fn ($rule) => str_starts_with($rule, 'mimes:'));
+        return in_array('file', $rules, true) || in_array('image', $rules, true) || collect($rules)->contains(fn ($rule) => is_string($rule) && str_starts_with($rule, 'mimes:'));
     }
 
     /**
      * Convert rules array back to string.
      *
-     * @param  array<string>  $rules
+     * @param  array<mixed>  $rules
      */
     private function rulesToString(array $rules): string
     {
-        return implode('|', $rules);
+        $stringRules = array_filter($rules, 'is_string');
+
+        return implode('|', $stringRules);
     }
 
     /**
      * Extract enum values if present.
      *
-     * @param  array<string>  $rules
+     * @param  array<mixed>  $rules
      * @return array<int, string>|null
      */
     private function extractEnum(array $rules): ?array
     {
         foreach ($rules as $rule) {
-            if (str_starts_with($rule, 'in:')) {
+            if (is_string($rule) && str_starts_with($rule, 'in:')) {
                 $values = substr($rule, 3);
                 $enumValues = array_map('trim', explode(',', $values));
 
@@ -177,19 +180,20 @@ final class RequestAnalyzer
     /**
      * Generate human-readable description from rules.
      *
-     * @param  array<string>  $rules
+     * @param  array<mixed>  $rules
      */
     private function generateDescription(array $rules): string
     {
         $description = [];
+        $stringRules = array_filter($rules, 'is_string');
 
-        if (in_array('required', $rules)) {
+        if (in_array('required', $stringRules)) {
             $description[] = 'Required';
-        } elseif (in_array('nullable', $rules)) {
+        } elseif (in_array('nullable', $stringRules)) {
             $description[] = 'Optional';
         }
 
-        foreach ($rules as $rule) {
+        foreach ($stringRules as $rule) {
             if (str_starts_with($rule, 'min:')) {
                 $description[] = 'Min: '.substr($rule, 4);
             }
