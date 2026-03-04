@@ -29,7 +29,7 @@ final class EventAnalyzer
 
         foreach ($files as $file) {
             $class = $this->extractClassFromFile($file->getPathname());
-            
+
             if (! $class || ! class_exists($class)) {
                 continue;
             }
@@ -51,7 +51,7 @@ final class EventAnalyzer
     private function analyzeEventClass(ReflectionClass $reflection): array
     {
         $payload = [];
-        
+
         // Use broadcastWith method if available
         if ($reflection->hasMethod('broadcastWith')) {
             $payload = ['type' => 'object', 'description' => 'Custom payload from broadcastWith()', 'properties' => []];
@@ -60,9 +60,11 @@ final class EventAnalyzer
             $properties = $reflection->getProperties(ReflectionProperty::IS_PUBLIC);
             $schemaProperties = [];
             foreach ($properties as $prop) {
-                if ($prop->isStatic()) continue;
+                if ($prop->isStatic()) {
+                    continue;
+                }
                 $type = $prop->hasType() && $prop->getType() instanceof \ReflectionNamedType ? $prop->getType()->getName() : 'mixed';
-                
+
                 $swaggerType = match ($type) {
                     'int', 'integer' => 'integer',
                     'float', 'double' => 'number',
@@ -71,7 +73,7 @@ final class EventAnalyzer
                     'string' => 'string',
                     default => 'object',
                 };
-                
+
                 $schemaProperties[$prop->getName()] = ['type' => $swaggerType];
             }
             $payload = ['type' => 'object', 'properties' => $schemaProperties];
@@ -88,7 +90,7 @@ final class EventAnalyzer
                 }
             }
         }
-        
+
         $eventName = $reflection->getShortName();
         if ($reflection->hasMethod('broadcastAs')) {
             $content = file_get_contents($reflection->getFileName());
@@ -113,7 +115,7 @@ final class EventAnalyzer
         if (isset($matches[1])) {
             return trim($matches[1]);
         }
-        
+
         // Fallback to first line
         $lines = explode("\n", $docBlock);
         foreach ($lines as $line) {
@@ -122,16 +124,21 @@ final class EventAnalyzer
                 return $line;
             }
         }
+
         return '';
     }
 
     private function extractClassFromFile(string $path): ?string
     {
         $content = file_get_contents($path);
+<<<<<<< HEAD
         if ($content === false) {
             return null;
         }
         
+=======
+
+>>>>>>> e98d5bf9a09385848f6e09df4f61219b1f8156ab
         if (! preg_match('/namespace\s+([^;]+);/i', $content, $matches)) {
             return null;
         }
@@ -142,6 +149,6 @@ final class EventAnalyzer
         }
         $className = trim($matches[1]);
 
-        return $namespace . '\\' . $className;
+        return $namespace.'\\'.$className;
     }
 }

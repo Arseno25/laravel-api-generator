@@ -141,7 +141,7 @@ final class CodeSnippetGenerator
         $url = rtrim($baseUrl, '/').$path;
         $httpMethod = strtolower($method);
 
-        $lines = ["import 'package:http/http.dart' as http;", "import 'dart:convert';", ""];
+        $lines = ["import 'package:http/http.dart' as http;", "import 'dart:convert';", ''];
         $lines[] = "var url = Uri.parse('{$url}');";
         $lines[] = "var headers = {'Accept': 'application/json'};";
 
@@ -159,7 +159,7 @@ final class CodeSnippetGenerator
             $lines[] = "var response = await http.{$httpMethod}(url, headers: headers);";
         }
 
-        $lines[] = "var data = jsonDecode(response.body);";
+        $lines[] = 'var data = jsonDecode(response.body);';
 
         return implode("\n", $lines);
     }
@@ -168,32 +168,32 @@ final class CodeSnippetGenerator
     {
         $url = rtrim($baseUrl, '/').$path;
         $upperMethod = strtoupper($method);
-        
-        $lines = ["import Foundation", ""];
+
+        $lines = ['import Foundation', ''];
         $lines[] = "var request = URLRequest(url: URL(string: \"{$url}\")!)";
         $lines[] = "request.httpMethod = \"{$upperMethod}\"";
-        $lines[] = "request.addValue(\"application/json\", forHTTPHeaderField: \"Accept\")";
+        $lines[] = 'request.addValue("application/json", forHTTPHeaderField: "Accept")';
 
         if (! empty($endpoint['security'])) {
-            $lines[] = "request.addValue(\"Bearer YOUR_TOKEN\", forHTTPHeaderField: \"Authorization\")";
+            $lines[] = 'request.addValue("Bearer YOUR_TOKEN", forHTTPHeaderField: "Authorization")';
         }
 
         if (in_array(strtolower($method), ['post', 'put', 'patch'])) {
-            $lines[] = "request.addValue(\"application/json\", forHTTPHeaderField: \"Content-Type\")";
+            $lines[] = 'request.addValue("application/json", forHTTPHeaderField: "Content-Type")';
             $body = $this->buildExampleBody($endpoint);
             $swiftBody = ! empty($body) ? json_encode($body, JSON_UNESCAPED_SLASHES) : '{}';
             // Simple escape for Swift multiline or single line string
             $swiftBodyEscaped = str_replace('"', '\"', $swiftBody);
             $lines[] = "let bodyString = \"{$swiftBodyEscaped}\"";
-            $lines[] = "request.httpBody = bodyString.data(using: .utf8)";
+            $lines[] = 'request.httpBody = bodyString.data(using: .utf8)';
         }
 
-        $lines[] = "";
-        $lines[] = "let task = URLSession.shared.dataTask(with: request) { data, response, error in";
-        $lines[] = "    guard let data = data else { return }";
-        $lines[] = "    print(String(data: data, encoding: .utf8)!)";
-        $lines[] = "}";
-        $lines[] = "task.resume()";
+        $lines[] = '';
+        $lines[] = 'let task = URLSession.shared.dataTask(with: request) { data, response, error in';
+        $lines[] = '    guard let data = data else { return }';
+        $lines[] = '    print(String(data: data, encoding: .utf8)!)';
+        $lines[] = '}';
+        $lines[] = 'task.resume()';
 
         return implode("\n", $lines);
     }
@@ -203,7 +203,11 @@ final class CodeSnippetGenerator
         $url = rtrim($baseUrl, '/').$path;
         $upperMethod = strtoupper($method);
 
+<<<<<<< HEAD
         $lines = ["package main", "", "import (", "\t\"fmt\"", "\t\"net/http\"", "\t\"io\""];
+=======
+        $lines = ['package main', '', 'import (', "\t\"fmt\"", "\t\"net/http\"", "\t\"io\"", "\t\"strings\"", ')', '', 'func main() {'];
+>>>>>>> e98d5bf9a09385848f6e09df4f61219b1f8156ab
 
         if (in_array(strtolower($method), ['post', 'put', 'patch'])) {
             $lines[] = "\t\"strings\"";
@@ -233,7 +237,7 @@ final class CodeSnippetGenerator
         $lines[] = "\tdefer res.Body.Close()";
         $lines[] = "\trespBody, _ := io.ReadAll(res.Body)";
         $lines[] = "\tfmt.Println(string(respBody))";
-        $lines[] = "}";
+        $lines[] = '}';
 
         return implode("\n", $lines);
     }

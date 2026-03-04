@@ -89,9 +89,9 @@ final class DocsController extends Controller
                     'implicit' => [
                         'authorizationUrl' => config('api-magic.oauth.auth_url', ''),
                         'scopes' => config('api-magic.oauth.scopes', []),
-                    ]
-                ]
-            ]
+                    ],
+                ],
+            ],
         ];
 
         // Export custom config variables to frontend

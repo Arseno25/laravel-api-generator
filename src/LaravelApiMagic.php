@@ -94,7 +94,7 @@ class LaravelApiMagic
     /**
      * Execute all registered afterParse callbacks.
      *
-     * @param array<string, mixed> $schema
+     * @param  array<string, mixed>  $schema
      */
     public static function callAfterParse(array &$schema): void
     {

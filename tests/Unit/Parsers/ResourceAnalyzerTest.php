@@ -55,6 +55,12 @@ it('prioritizes ApiMagicSchema attribute on the resource class', function () {
     expect($result['schema']['properties']->bar['type'])->toBe('integer');
 });
 
+<<<<<<< HEAD
+=======
+use Arseno25\LaravelApiMagic\Attributes\ApiMagicSchema;
+use Illuminate\Http\Resources\Json\JsonResource;
+
+>>>>>>> e98d5bf9a09385848f6e09df4f61219b1f8156ab
 class DummyMethodSchemaController
 {
     #[ApiMagicSchema(['foo' => ['type' => 'boolean']])]
@@ -65,9 +71,7 @@ class DummyMethodSchemaController
 }
 
 #[ApiMagicSchema(['bar' => ['type' => 'integer']])]
-class DummyClassSchemaResource extends JsonResource
-{
-}
+class DummyClassSchemaResource extends JsonResource {}
 
 class DummyClassSchemaController
 {
