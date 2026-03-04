@@ -17,9 +17,9 @@ it('exports to insomnia format', function () {
                     'parameters' => [
                         'query' => [
                             ['name' => 'page', 'type' => 'integer'],
-                        ]
+                        ],
                     ],
-                ]
+                ],
             ],
             '/api/users/{id}' => [
                 'post' => [
@@ -33,14 +33,14 @@ it('exports to insomnia format', function () {
                         'body' => [
                             'name' => ['type' => 'string', 'required' => true],
                             'avatar' => ['type' => 'file', 'is_file' => true, 'required' => false],
-                        ]
+                        ],
                     ],
-                ]
-            ]
-        ]
+                ],
+            ],
+        ],
     ];
 
-    $exporter = new InsomniaExporter();
+    $exporter = new InsomniaExporter;
     $result = $exporter->export($schema, $schema['baseUrl']);
 
     // Verify root structure
@@ -49,7 +49,7 @@ it('exports to insomnia format', function () {
     expect($result['__export_format'])->toBe(4);
 
     $resources = $result['resources'];
-    
+
     // Verify Workspace exists
     $workspace = collect($resources)->firstWhere('_type', 'workspace');
     expect($workspace)->not->toBeNull();
