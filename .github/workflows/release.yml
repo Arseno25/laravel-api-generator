@@ -27,7 +27,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.4'
+          php-version: "8.4"
           extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, bcmath, soap, intl, gd, exif, iconv, fileinfo
           coverage: none
 
@@ -127,8 +127,13 @@ jobs:
           generate_release_notes: true
 
       - name: Update Packagist
-        if: steps.bump_type.outputs.type != 'none' && secrets.PACKAGIST_TOKEN != ''
+        if: steps.bump_type.outputs.type != 'none'
         run: |
+          if [ -z "${{ secrets.PACKAGIST_TOKEN }}" ]; then
+            echo "PACKAGIST_TOKEN is not configured. Skipping Packagist update."
+            exit 0
+          fi
+
           curl --fail --show-error --silent \
             -X POST \
             -H "Content-Type: application/json" \
