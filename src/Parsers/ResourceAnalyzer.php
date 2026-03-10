@@ -11,6 +11,80 @@ use ReflectionNamedType;
 final class ResourceAnalyzer
 {
     /**
+     * Analyze a resource class directly.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function analyzeResourceClass(string $resourceClass): ?array
+    {
+        try {
+            if (
+                class_exists($resourceClass) &&
+                is_subclass_of($resourceClass, ResourceCollection::class)
+            ) {
+                $innerResource = $this->resolveCollectionResource(
+                    $resourceClass,
+                );
+                $properties = $innerResource
+                    ? $this->extractProperties($innerResource)
+                    : (object) [];
+
+                return [
+                    'name' => class_basename($resourceClass),
+                    'schema' => [
+                        'type' => 'object',
+                        'description' => 'Response mapped by '.
+                            class_basename($resourceClass),
+                        'properties' => empty((array) $properties)
+                            ? (object) []
+                            : $properties,
+                    ],
+                ];
+            }
+
+            if (
+                ! class_exists($resourceClass) ||
+                ! is_subclass_of($resourceClass, JsonResource::class)
+            ) {
+                return null;
+            }
+
+            $resourceReflection = new ReflectionClass($resourceClass);
+            $schemaAttributes = $resourceReflection->getAttributes(
+                \Arseno25\LaravelApiMagic\Attributes\ApiMagicSchema::class,
+            );
+            if (! empty($schemaAttributes)) {
+                $customSchema = $schemaAttributes[0]->newInstance()->schema;
+
+                return [
+                    'name' => class_basename($resourceClass),
+                    'schema' => [
+                        'type' => 'object',
+                        'description' => 'Response mapped by '.
+                            class_basename($resourceClass),
+                        'properties' => (object) $customSchema,
+                    ],
+                ];
+            }
+
+            $properties = $this->extractProperties($resourceClass);
+
+            return [
+                'name' => class_basename($resourceClass),
+                'schema' => [
+                    'type' => 'object',
+                    'description' => 'Response mapped by '.class_basename($resourceClass),
+                    'properties' => empty((array) $properties)
+                        ? (object) []
+                        : $properties,
+                ],
+            ];
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
      * Analyze a controller method's return type to extract Resource schema properties.
      *
      * @return array<string, mixed>|null
@@ -26,7 +100,9 @@ final class ResourceAnalyzer
             $methodReflection = $reflection->getMethod($method);
 
             // Check for ApiMagicSchema Attribute on the Method
-            $schemaAttributes = $methodReflection->getAttributes(\Arseno25\LaravelApiMagic\Attributes\ApiMagicSchema::class);
+            $schemaAttributes = $methodReflection->getAttributes(
+                \Arseno25\LaravelApiMagic\Attributes\ApiMagicSchema::class,
+            );
             if (! empty($schemaAttributes)) {
                 $customSchema = $schemaAttributes[0]->newInstance()->schema;
 
@@ -45,8 +121,14 @@ final class ResourceAnalyzer
             $resourceClass = $returnType->getName();
 
             // Handle AnonymousResourceCollection
-            if ($resourceClass === 'Illuminate\Http\Resources\Json\AnonymousResourceCollection') {
-                $innerResource = $this->extractInnerResourceFromMethodBody($controller, $method);
+            if (
+                $resourceClass ===
+                "Illuminate\Http\Resources\Json\AnonymousResourceCollection"
+            ) {
+                $innerResource = $this->extractInnerResourceFromMethodBody(
+                    $controller,
+                    $method,
+                );
 
                 if ($innerResource) {
                     $properties = $this->extractProperties($innerResource);
@@ -55,13 +137,18 @@ final class ResourceAnalyzer
                         'name' => class_basename($innerResource).'Collection',
                         'schema' => [
                             'type' => 'object',
-                            'description' => 'Collection of '.class_basename($innerResource),
+                            'description' => 'Collection of '.
+                                class_basename($innerResource),
                             'properties' => [
                                 'data' => [
                                     'type' => 'array',
                                     'items' => [
                                         'type' => 'object',
-                                        'properties' => empty((array) $properties) ? (object) [] : $properties,
+                                        'properties' => empty(
+                                            (array) $properties
+                                        )
+                                            ? (object) []
+                                            : $properties,
                                     ],
                                 ],
                             ],
@@ -70,55 +157,7 @@ final class ResourceAnalyzer
                 }
             }
 
-            // Check if it's a ResourceCollection
-            if (class_exists($resourceClass) && is_subclass_of($resourceClass, ResourceCollection::class)) {
-                $innerResource = $this->resolveCollectionResource($resourceClass);
-                $properties = $innerResource
-                    ? $this->extractProperties($innerResource)
-                    : (object) [];
-
-                return [
-                    'name' => class_basename($resourceClass),
-                    'schema' => [
-                        'type' => 'object',
-                        'description' => 'Response mapped by '.class_basename($resourceClass),
-                        'properties' => empty((array) $properties) ? (object) [] : $properties,
-                    ],
-                ];
-            }
-
-            // We only analyze valid JsonResource classes
-            if (! class_exists($resourceClass) || ! is_subclass_of($resourceClass, JsonResource::class)) {
-                return null;
-            }
-
-            // Check if resource class itself has ApiMagicSchema Attribute
-            $resourceReflection = new ReflectionClass($resourceClass);
-            $schemaAttributes = $resourceReflection->getAttributes(\Arseno25\LaravelApiMagic\Attributes\ApiMagicSchema::class);
-            if (! empty($schemaAttributes)) {
-                $customSchema = $schemaAttributes[0]->newInstance()->schema;
-
-                return [
-                    'name' => class_basename($resourceClass),
-                    'schema' => [
-                        'type' => 'object',
-                        'description' => 'Response mapped by '.class_basename($resourceClass),
-                        'properties' => (object) $customSchema,
-                    ],
-                ];
-            }
-
-            $properties = $this->extractProperties($resourceClass);
-
-            return [
-                'name' => class_basename($resourceClass),
-                'schema' => [
-                    'type' => 'object',
-                    'description' => 'Response mapped by '.class_basename($resourceClass),
-                    'properties' => empty((array) $properties) ? (object) [] : $properties,
-                ],
-            ];
-
+            return $this->analyzeResourceClass($resourceClass);
         } catch (\Throwable) {
             return null;
         }
@@ -158,8 +197,10 @@ final class ResourceAnalyzer
      * Attempt to extract the inner resource class from the method body
      * when it returns AnonymousResourceCollection.
      */
-    private function extractInnerResourceFromMethodBody(string $controller, string $methodName): ?string
-    {
+    private function extractInnerResourceFromMethodBody(
+        string $controller,
+        string $methodName,
+    ): ?string {
         try {
             $reflection = new ReflectionClass($controller);
             $method = $reflection->getMethod($methodName);
@@ -175,10 +216,19 @@ final class ResourceAnalyzer
             /** @var string $fileContents */
             $fileContents = file_get_contents($filename);
             $lines = explode("\n", $fileContents);
-            $methodBody = implode("\n", array_slice($lines, $startLine - 1, $endLine - $startLine + 1));
+            $methodBody = implode(
+                "\n",
+                array_slice($lines, $startLine - 1, $endLine - $startLine + 1),
+            );
 
             // Match pattern like `return UserResource::collection(...)`
-            if (preg_match('/return\s+([a-zA-Z0-9_\\\\]+)::collection\s*\(/', $methodBody, $matches)) {
+            if (
+                preg_match(
+                    "/return\s+([a-zA-Z0-9_\\\\]+)::collection\s*\(/",
+                    $methodBody,
+                    $matches,
+                )
+            ) {
                 $resourceName = $matches[1];
 
                 // If it's fully qualified, use it
@@ -192,7 +242,12 @@ final class ResourceAnalyzer
                 $possibleNamespaces = [
                     $namespace.'\\'.$resourceName,
                     'App\\Http\\Resources\\'.$resourceName,
-                    'App\\Http\\Resources\\'.str_replace('Controller', 'Resource', class_basename($controller)), // Fallback guess
+                    'App\\Http\\Resources\\'.
+                    str_replace(
+                        'Controller',
+                        'Resource',
+                        class_basename($controller),
+                    ), // Fallback guess
                 ];
 
                 foreach ($possibleNamespaces as $ns) {
@@ -202,11 +257,21 @@ final class ResourceAnalyzer
                 }
 
                 // Read use statements if possible (naive approach)
-                if (preg_match_all('/use\s+([a-zA-Z0-9_\\\\]+)(?:\s+as\s+([a-zA-Z0-9_]+))?;/', $fileContents, $useMatches, PREG_SET_ORDER)) {
+                if (
+                    preg_match_all(
+                        "/use\s+([a-zA-Z0-9_\\\\]+)(?:\s+as\s+([a-zA-Z0-9_]+))?;/",
+                        $fileContents,
+                        $useMatches,
+                        PREG_SET_ORDER,
+                    )
+                ) {
                     foreach ($useMatches as $useMatch) {
                         $fullClass = $useMatch[1];
                         $alias = $useMatch[2] ?? class_basename($fullClass);
-                        if ($alias === $resourceName && class_exists($fullClass)) {
+                        if (
+                            $alias === $resourceName &&
+                            class_exists($fullClass)
+                        ) {
                             return $fullClass;
                         }
                     }
@@ -250,17 +315,22 @@ final class ResourceAnalyzer
             /** @var string $fileContents */
             $fileContents = file_get_contents($filename);
             $lines = explode("\n", $fileContents);
-            $methodBody = implode("\n", array_slice($lines, $startLine - 1, $endLine - $startLine + 1));
+            $methodBody = implode(
+                "\n",
+                array_slice($lines, $startLine - 1, $endLine - $startLine + 1),
+            );
 
             $properties = [];
 
             // Match patterns like 'field_name' => $this->field_name
-            if (preg_match_all(
-                "/['\"](\w+)['\"]\s*=>\s*\\\$this->(\w+)/",
-                $methodBody,
-                $matches,
-                PREG_SET_ORDER
-            )) {
+            if (
+                preg_match_all(
+                    "/['\"](\w+)['\"]\s*=>\s*\\\$this->(\w+)/",
+                    $methodBody,
+                    $matches,
+                    PREG_SET_ORDER,
+                )
+            ) {
                 foreach ($matches as $match) {
                     $key = $match[1];
                     $field = $match[2];
@@ -272,12 +342,14 @@ final class ResourceAnalyzer
             }
 
             // Match patterns like 'field_name' => $this->field->format(...)  (dates)
-            if (preg_match_all(
-                "/['\"](\w+)['\"]\s*=>\s*\\\$this->(\w+)->format/",
-                $methodBody,
-                $matches,
-                PREG_SET_ORDER
-            )) {
+            if (
+                preg_match_all(
+                    "/['\"](\w+)['\"]\s*=>\s*\\\$this->(\w+)->format/",
+                    $methodBody,
+                    $matches,
+                    PREG_SET_ORDER,
+                )
+            ) {
                 foreach ($matches as $match) {
                     $key = $match[1];
                     $properties[$key] = [
@@ -289,29 +361,43 @@ final class ResourceAnalyzer
             }
 
             // Match patterns like 'field' => SomeResource::make($this->relation)
-            if (preg_match_all(
-                "/['\"](\w+)['\"]\s*=>\s*(\w+Resource)::(?:make|collection)\s*\(\s*\\\$this->(\w+)/",
-                $methodBody,
-                $matches,
-                PREG_SET_ORDER
-            )) {
+            if (
+                preg_match_all(
+                    "/['\"](\w+)['\"]\s*=>\s*(\w+Resource)::(?:make|collection)\s*\(\s*\\\$this->(\w+)/",
+                    $methodBody,
+                    $matches,
+                    PREG_SET_ORDER,
+                )
+            ) {
                 foreach ($matches as $match) {
                     $key = $match[1];
                     $resourceName = $match[2];
-                    $isCollection = str_contains($methodBody, $resourceName.'::collection');
+                    $isCollection = str_contains(
+                        $methodBody,
+                        $resourceName.'::collection',
+                    );
                     $properties[$key] = $isCollection
-                        ? ['type' => 'array', 'items' => ['type' => 'object'], 'description' => Str::headline($key)]
-                        : ['type' => 'object', 'description' => Str::headline($key)];
+                        ? [
+                            'type' => 'array',
+                            'items' => ['type' => 'object'],
+                            'description' => Str::headline($key),
+                        ]
+                        : [
+                            'type' => 'object',
+                            'description' => Str::headline($key),
+                        ];
                 }
             }
 
             // Match nested arrays or objects: 'field' => [ ...
-            if (preg_match_all(
-                "/['\"](\w+)['\"]\s*=>\s*(?:\[|array\s*\()/",
-                $methodBody,
-                $matches,
-                PREG_SET_ORDER
-            )) {
+            if (
+                preg_match_all(
+                    "/['\"](\w+)['\"]\s*=>\s*(?:\[|array\s*\()/",
+                    $methodBody,
+                    $matches,
+                    PREG_SET_ORDER,
+                )
+            ) {
                 foreach ($matches as $match) {
                     $key = $match[1];
                     if (! isset($properties[$key])) {
@@ -324,17 +410,28 @@ final class ResourceAnalyzer
             }
 
             // Match Polymorphic (MorphTo) conditional relations: 'field' => $this->type === 'x' ? new XResource : new YResource
-            if (preg_match_all(
-                "/['\"](\w+)['\"]\s*=>\s*.*?\?.*?new\s+(\w+Resource).*?:.*?new\s+(\w+Resource)/s",
-                $methodBody,
-                $matches,
-                PREG_SET_ORDER
-            )) {
+            if (
+                preg_match_all(
+                    "/['\"](\w+)['\"]\s*=>\s*.*?\?.*?new\s+(\w+Resource).*?:.*?new\s+(\w+Resource)/s",
+                    $methodBody,
+                    $matches,
+                    PREG_SET_ORDER,
+                )
+            ) {
                 foreach ($matches as $match) {
                     $key = $match[1];
                     $properties[$key] = [
-                        'type' => 'object',
-                        'description' => Str::headline($key).' (Polymorphic: '.$match[2].' / '.$match[3].')',
+                        'oneOf' => [
+                            [
+                                'type' => 'object',
+                                'title' => $match[2],
+                            ],
+                            [
+                                'type' => 'object',
+                                'title' => $match[3],
+                            ],
+                        ],
+                        'description' => Str::headline($key).' (Polymorphic response)',
                     ];
                 }
             }
@@ -363,12 +460,14 @@ final class ResourceAnalyzer
             $properties = [];
 
             // Match @property type $name patterns
-            if (preg_match_all(
-                '/@property\s+([\w|\\\\]+)\s+\$(\w+)/',
-                $docComment,
-                $matches,
-                PREG_SET_ORDER
-            )) {
+            if (
+                preg_match_all(
+                    '/@property\s+([\w|\\\\]+)\s+\$(\w+)/',
+                    $docComment,
+                    $matches,
+                    PREG_SET_ORDER,
+                )
+            ) {
                 foreach ($matches as $match) {
                     $type = $match[1];
                     $name = $match[2];
@@ -397,7 +496,11 @@ final class ResourceAnalyzer
 
             // Try to determine the model from the resource class name
             $resourceBaseName = class_basename($resourceClass);
-            $modelName = str_replace(['Resource', 'Collection'], '', $resourceBaseName);
+            $modelName = str_replace(
+                ['Resource', 'Collection'],
+                '',
+                $resourceBaseName,
+            );
 
             // Common model namespace patterns
             $modelNamespaces = [
@@ -446,14 +549,19 @@ final class ResourceAnalyzer
 
                 foreach ($casts as $field => $cast) {
                     if (isset($properties[$field])) {
-                        $properties[$field]['type'] = $this->castToOpenApiType($cast);
+                        $properties[$field]['type'] = $this->castToOpenApiType(
+                            $cast,
+                        );
                     }
                 }
             }
 
             // Always add 'id' at the beginning
             if (! isset($properties['id'])) {
-                $properties = array_merge(['id' => ['type' => 'integer', 'description' => 'Id']], $properties);
+                $properties = array_merge(
+                    ['id' => ['type' => 'integer', 'description' => 'Id']],
+                    $properties,
+                );
             }
 
             // Add timestamps if model uses them
@@ -461,8 +569,16 @@ final class ResourceAnalyzer
                 $tsProp = $modelReflection->getProperty('timestamps');
                 $tsProp->setAccessible(true);
                 if ($tsProp->getValue($model) !== false) {
-                    $properties['created_at'] = ['type' => 'string', 'format' => 'date-time', 'description' => 'Created At'];
-                    $properties['updated_at'] = ['type' => 'string', 'format' => 'date-time', 'description' => 'Updated At'];
+                    $properties['created_at'] = [
+                        'type' => 'string',
+                        'format' => 'date-time',
+                        'description' => 'Created At',
+                    ];
+                    $properties['updated_at'] = [
+                        'type' => 'string',
+                        'format' => 'date-time',
+                        'description' => 'Updated At',
+                    ];
                 }
             }
 
@@ -480,11 +596,16 @@ final class ResourceAnalyzer
         try {
             // Convention: FooCollection -> FooResource
             $baseName = class_basename($collectionClass);
-            $namespace = (new ReflectionClass($collectionClass))->getNamespaceName();
+            $namespace = new ReflectionClass(
+                $collectionClass,
+            )->getNamespaceName();
             $resourceName = str_replace('Collection', 'Resource', $baseName);
             $fullClass = $namespace.'\\'.$resourceName;
 
-            if (class_exists($fullClass) && is_subclass_of($fullClass, JsonResource::class)) {
+            if (
+                class_exists($fullClass) &&
+                is_subclass_of($fullClass, JsonResource::class)
+            ) {
                 return $fullClass;
             }
 
@@ -505,13 +626,27 @@ final class ResourceAnalyzer
         if (Str::startsWith($field, 'is_') || Str::startsWith($field, 'has_')) {
             return 'boolean';
         }
-        if (Str::contains($field, ['price', 'amount', 'total', 'cost', 'balance', 'rate'])) {
+        if (
+            Str::contains($field, [
+                'price',
+                'amount',
+                'total',
+                'cost',
+                'balance',
+                'rate',
+            ])
+        ) {
             return 'number';
         }
-        if (Str::contains($field, ['count', 'quantity', 'qty', 'age', 'number'])) {
+        if (
+            Str::contains($field, ['count', 'quantity', 'qty', 'age', 'number'])
+        ) {
             return 'integer';
         }
-        if (Str::endsWith($field, '_at') || Str::contains($field, ['date', 'time'])) {
+        if (
+            Str::endsWith($field, '_at') ||
+            Str::contains($field, ['date', 'time'])
+        ) {
             return 'string';
         }
 

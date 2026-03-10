@@ -14,16 +14,30 @@
     body { background: var(--api-magic-bg); }
 
     .am-icon {
-        width: 1em;
-        height: 1em;
+        width: 1.2em;
+        height: 1.2em;
         display: inline-block;
         flex-shrink: 0;
-        vertical-align: -0.125em;
+        vertical-align: -0.18em;
         fill: none;
         stroke: currentColor;
-        stroke-width: 1.85;
+        stroke-width: 2.15;
         stroke-linecap: round;
         stroke-linejoin: round;
+    }
+
+    button .am-icon,
+    a .am-icon,
+    .sidebar-item .am-icon,
+    .group-header .am-icon {
+        width: 1.3em;
+        height: 1.3em;
+    }
+
+    .error-icon-wrapper .am-icon,
+    .success-icon-wrapper .am-icon {
+        width: 1.5rem;
+        height: 1.5rem;
     }
 
     ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -153,6 +167,27 @@
         padding: 0.125rem 0.375rem;
         border-radius: 0.25rem;
         font-size: 0.75rem;
+    }
+
+    .overview-step-index {
+        width: 2.5rem;
+        height: 2.5rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        border-radius: 9999px;
+        border: 1px solid rgba(125, 211, 252, 0.24);
+        background:
+            radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.18), transparent 45%),
+            linear-gradient(135deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.92));
+        color: #f8fafc;
+        font-size: 0.95rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.08),
+            0 0 0 0.35rem rgba(14, 165, 233, 0.06);
     }
 
     .toast {

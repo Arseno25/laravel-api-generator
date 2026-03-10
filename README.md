@@ -10,6 +10,43 @@
 
 ---
 
+## ✨ Main Features
+
+- Generate a full Laravel REST API in one command: Model, Migration, Controller, Store/Update Requests, Resource, Policy, casts, and Pest tests.
+- Ship a built-in Swagger-like docs UI at `/api/docs` with auth, request history, request chaining, code snippets, health telemetry, and changelog support.
+- Export a reusable OpenAPI 3.0 spec with component schemas, response envelopes, examples, Postman/Insomnia support, and validation via `php artisan api-magic:validate`.
+- Generate typed frontend artifacts from the same schema: TypeScript interfaces, full SDK client, and GraphQL schema output.
+- Support real Laravel workflows: versioned APIs, relationships, reverse engineering from database tables, PHP 8 attributes, and multi-database schema parsing.
+
+## ⚡ Quick Start
+
+```bash
+composer require arseno25/laravel-api-magic
+php artisan api-magic:install
+php artisan api:magic Post \
+  "title:string|required|max:255,content:text|required,is_published:boolean|default:false" \
+  --belongsTo="User" --hasMany="Comment" --test --policy --v=1
+```
+
+What you get immediately:
+
+- Generated CRUD API scaffolding with Laravel-style requests and tests.
+- Interactive docs UI at `/api/docs`.
+- OpenAPI export via `php artisan api-magic:export --format=json`.
+- OpenAPI validation via `php artisan api-magic:validate`.
+- Optional TypeScript SDK via `php artisan api-magic:ts --sdk`.
+
+## 🛠 Core Capabilities
+
+| Area | What It Covers |
+|------|-----------------|
+| **API Scaffolding** | One-command CRUD generation, schema parsing, relationships, policies, factories, seeders, soft deletes, versioning |
+| **Docs & OpenAPI** | Interactive docs UI, OpenAPI export, Postman/Insomnia export, code snippets, auth helpers, server environments |
+| **Schema Intelligence** | Request rule parsing, deep `JsonResource` extraction, reusable component schemas, nested request bodies, response envelopes |
+| **Observability** | Request history, request chaining, API health telemetry, changelog snapshots |
+| **Frontend Artifacts** | TypeScript interfaces, full SDK generation, GraphQL schema generation |
+| **Laravel Integration** | PHP 8 attributes, middleware/security detection, reverse engineering, multi-database support |
+
 ## ⚡ Installation
 
 ```bash
@@ -21,33 +58,6 @@ Publish the config file (optional):
 ```bash
 php artisan vendor:publish --tag="api-magic-config"
 ```
-
----
-
-## 🛠 Features
-
-| # | Feature | Description |
-|---|---------|-------------|
-| 1 | **One-Command API** | Generate Model, Migration, Controller, Store/Update Requests, Resource, casts, Policy, and Test in one command |
-| 2 | **Schema Parsing** | Define fields as `title:string\|required\|max:255` with automatic validation |
-| 3 | **Relationships** | `--belongsTo`, `--hasMany`, `--belongsToMany` with auto foreign keys |
-| 4 | **API Versioning** | Multi-version endpoints with `--v=2` flag |
-| 5 | **Auto Testing** | Pest Feature test generation with `--test` flag |
-| 6 | **Docs UI** | Swagger-like interactive documentation at `/api/docs` |
-| 7 | **OpenAPI 3.0 Export** | Export to JSON/YAML for Postman, Insomnia, Redoc |
-| 8 | **`#[ApiDeprecated]`** | Mark endpoints deprecated with migration hints |
-| 9 | **`#[ApiResponse]`** | Define multiple response schemas per endpoint |
-| 10 | **`#[ApiExample]`** | Attach request/response example payloads |
-| 11 | **`#[ApiWebhook]`** | Document webhook events & payloads |
-| 12 | **Code Snippets** | Auto-generated cURL, JavaScript, PHP, Python examples |
-| 13 | **TypeScript SDK** | Full typed API client with `php artisan api-magic:ts --sdk` |
-| 14 | **Health Telemetry** | Track response times, error rates per endpoint |
-| 15 | **API Changelog** | Schema diff tracking between releases |
-| 16 | **Deep Type Extraction** | Auto-extract `JsonResource` properties from `toArray()`, DocBlocks, and Model |
-| 17 | **Insomnia Export** | Direct Insomnia v4 collection export with `format=insomnia` |
-| 18 | **Request Chaining** | Pipe response values into the next request via `{{response.field}}` |
-| 19 | **Request History** | Save, browse, and replay past API calls from the docs UI |
-| 20 | **GraphQL Schema** | Auto-generate `.graphql` schema from REST endpoints |
 
 ---
 
@@ -335,6 +345,7 @@ The docs UI includes a built-in WebSocket client for testing your broadcasting e
 | `php artisan api-magic:ts` | Generate TypeScript interfaces from your API schema |
 | `php artisan api-magic:ts --sdk` | Generate a full TypeScript API client SDK |
 | `php artisan api-magic:export` | Export as OpenAPI 3.0 JSON/YAML or Postman Collection |
+| `php artisan api-magic:validate` | Validate the generated OpenAPI schema for interoperability issues |
 | `php artisan api-magic:cache` | Cache API documentation schema for production |
 | `php artisan api-magic:reverse` | Reverse-engineer database tables into API stack |
 | `php artisan api-magic:snapshot` | Save API schema snapshot for changelog tracking |
@@ -403,6 +414,8 @@ php artisan api-magic:reverse --table=products --policy
 ```bash
 php artisan api-magic:export --format=json
 php artisan api-magic:export --format=yaml
+php artisan api-magic:export --format=json --strict
+php artisan api-magic:validate
 
 # Postman Collection via URL:
 curl http://localhost:8000/api/docs/export?format=postman -o postman.json

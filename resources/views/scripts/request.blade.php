@@ -72,7 +72,17 @@ function displayResponse(status, text, responseTime) {
 }
 
 function displaySuccessBody(data) {
-    document.getElementById('response-body').innerHTML = `<div class="p-4"><div class="flex items-center gap-3 p-4 rounded-2xl success-card"><div class="success-icon-wrapper flex-shrink-0"><i class="fas fa-check text-green-400 text-xl"></i></div><div><h4 class="font-bold text-green-400 text-lg">Success!</h4><p class="text-sm text-slate-300">Request completed successfully</p></div></div><div class="mt-4 p-3 bg-slate-950/80 rounded-xl overflow-x-auto border border-white/5"><pre class="text-xs text-green-400"><code class="font-mono">${JSON.stringify(data, null, 2)}</code></pre></div></div>`;
+    document.getElementById('response-body').innerHTML = `
+        <div class="space-y-3 p-4">
+            <div class="rounded-2xl border border-emerald-400/15 bg-emerald-400/10 px-4 py-3">
+                <div class="flex items-center gap-2 text-sm font-medium text-emerald-300">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Request completed successfully.</span>
+                </div>
+            </div>
+            <pre class="overflow-x-auto rounded-2xl border border-white/6 bg-slate-950/80 p-3 text-xs text-green-400"><code class="font-mono">${JSON.stringify(data, null, 2)}</code></pre>
+        </div>
+    `;
 }
 
 function displayErrorBody(status, data) {
@@ -85,7 +95,33 @@ function displayErrorBody(status, data) {
     if (errors && typeof errors === 'object') {
         errorDetails = Object.entries(errors).map(([field, msgs]) => `<div class="flex items-start gap-2 text-sm"><span class="text-red-400 font-mono text-xs flex-shrink-0">${field}:</span><div class="flex-1 flex flex-wrap gap-1">${(Array.isArray(msgs) ? msgs : [msgs]).map(msg => `<span class="inline-block px-2 py-1 rounded bg-red-400/10 text-red-400 text-xs">${msg}</span>`).join('')}</div></div>`).join('');
     }
-    document.getElementById('response-body').innerHTML = `<div class="p-4 space-y-4"><div class="error-card p-4"><div class="flex items-start gap-3"><div class="error-icon-wrapper flex-shrink-0"><i class="fas fa-exclamation-triangle text-red-400 text-lg"></i></div><div class="flex-1 min-w-0"><h4 class="text-lg font-bold text-red-400 mb-2">${getStatusTitle(status)}</h4><p class="text-slate-300 text-sm break-words">${message}</p>${exception !== 'Error' ? `<span class="inline-flex items-center px-2 py-1 rounded text-sm bg-red-400/10 text-red-400 font-mono mt-2 break-all">${exception}</span>` : ''}</div></div>${errorDetails ? `<div class="mt-4 pt-4 border-t border-red-400/20"><h5 class="text-sm font-semibold text-slate-300 mb-3"><i class="fas fa-exclamation-circle text-yellow-400 mr-2"></i>Validation Errors</h5><div class="space-y-2">${errorDetails}</div></div>` : ''}${file ? `<div class="mt-4 pt-4 border-t border-red-400/20"><div class="flex items-center gap-2 text-xs text-slate-400"><i class="fas fa-file-code"></i><span class="code-inline break-all">${file}:${line}</span></div></div>` : ''}</div><div><button onclick="this.nextElementSibling.classList.toggle('hidden')" class="w-full flex items-center justify-between p-3 rounded-xl bg-slate-800/50 border border-white/5 text-sm text-slate-300 hover:bg-slate-700/50 transition-colors"><span class="flex items-center gap-2"><i class="fas fa-code"></i><span>View Raw Payload</span></span><i class="fas fa-chevron-down"></i></button><div class="hidden mt-2"><pre class="text-xs text-slate-400 p-3 bg-slate-950/80 rounded-xl overflow-x-auto border border-white/5"><code>${JSON.stringify(data, null, 2)}</code></pre></div></div></div>`;
+    document.getElementById('response-body').innerHTML = `
+        <div class="space-y-3 p-4">
+            <div class="rounded-2xl border border-red-400/15 bg-red-400/10 p-4">
+                <div class="flex items-start gap-3">
+                    <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-400/10 text-red-300">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <h4 class="text-base font-semibold text-red-300">${getStatusTitle(status)}</h4>
+                        <p class="mt-1 text-sm text-slate-300 break-words">${message}</p>
+                        ${exception !== 'Error' ? `<span class="mt-3 inline-flex items-center rounded-full border border-red-400/15 bg-red-400/10 px-3 py-1 text-xs font-mono text-red-300 break-all">${exception}</span>` : ''}
+                    </div>
+                </div>
+                ${errorDetails ? `<div class="mt-4 border-t border-red-400/15 pt-4"><p class="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-red-200/80">Validation</p><div class="space-y-2">${errorDetails}</div></div>` : ''}
+                ${file ? `<div class="mt-4 border-t border-red-400/15 pt-4"><div class="flex items-center gap-2 text-xs text-slate-400"><i class="fas fa-file-code"></i><span class="code-inline break-all">${file}:${line}</span></div></div>` : ''}
+            </div>
+            <div>
+                <button onclick="this.nextElementSibling.classList.toggle('hidden')" class="flex w-full items-center justify-between rounded-2xl border border-white/8 bg-white/5 p-3 text-sm text-slate-300 transition-colors hover:bg-white/8">
+                    <span class="flex items-center gap-2"><i class="fas fa-code text-slate-400"></i><span>View Raw Payload</span></span>
+                    <i class="fas fa-chevron-down text-slate-500"></i>
+                </button>
+                <div class="hidden mt-2">
+                    <pre class="overflow-x-auto rounded-2xl border border-white/6 bg-slate-950/80 p-3 text-xs text-slate-300"><code>${JSON.stringify(data, null, 2)}</code></pre>
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 function displayNetworkError(message) {
@@ -94,7 +130,22 @@ function displayNetworkError(message) {
     document.getElementById('response-status').textContent = 'ERROR';
     document.getElementById('response-status').className = 'status-badge status-5xx';
     document.getElementById('response-time-val').textContent = '-';
-    document.getElementById('response-body').innerHTML = `<div class="p-4"><div class="flex items-start gap-3 p-4 rounded-xl bg-slate-900 border border-slate-700"><div class="w-10 h-10 rounded-full bg-red-400/10 flex items-center justify-center flex-shrink-0"><i class="fas fa-wifi text-red-400 text-lg"></i></div><div class="min-w-0"><h4 class="text-lg font-bold text-red-400 mb-1">Network Error</h4><p class="text-slate-300 text-sm break-words">${message}</p><p class="text-xs text-slate-500 mt-2"><i class="fas fa-info-circle mr-1"></i>Check your connection and ensure the API server is running.</p></div></div></div>`;
+    document.getElementById('response-body').innerHTML = `
+        <div class="p-4">
+            <div class="rounded-2xl border border-red-400/15 bg-red-400/10 p-4">
+                <div class="flex items-start gap-3">
+                    <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-400/10 text-red-300">
+                        <i class="fas fa-wifi"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <h4 class="text-base font-semibold text-red-300">Network Error</h4>
+                        <p class="mt-1 text-sm text-slate-300 break-words">${message}</p>
+                        <p class="mt-2 text-xs text-slate-500"><i class="fas fa-info-circle mr-1"></i>Check your connection and ensure the API server is running.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 function getStatusTitle(status) {

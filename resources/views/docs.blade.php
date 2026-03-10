@@ -6,9 +6,15 @@
     <title>API Documentation</title>
     @php
         $localDocsStylesheet = public_path('vendor/api-magic/docs.css');
+        $packageDocsView = app('view')->getFinder()->find('api-magic::docs');
+        $packageDocsStylesheet = dirname($packageDocsView).'/../dist/docs.css';
+        $shouldInlinePackageStylesheet = file_exists($packageDocsStylesheet)
+            && (! file_exists($localDocsStylesheet) || filemtime($localDocsStylesheet) < filemtime($packageDocsStylesheet));
     @endphp
-    @if (file_exists($localDocsStylesheet))
+    @if (file_exists($localDocsStylesheet) && ! $shouldInlinePackageStylesheet)
         <link rel="stylesheet" href="{{ asset('vendor/api-magic/docs.css') }}">
+    @elseif ($shouldInlinePackageStylesheet)
+        <style>{!! file_get_contents($packageDocsStylesheet) !!}</style>
     @elseif ($tailwindCdn = config('api-magic.docs.assets.tailwind_cdn'))
         <script src="{{ $tailwindCdn }}"></script>
     @endif
@@ -70,14 +76,23 @@
 
     {{-- JavaScript Modules --}}
     @php
+        $docsBaseUrl = url('api/'.trim(config('api-magic.docs.prefix', 'docs'), '/'));
+        $resolveDocsUrl = static function (string $routeName, string $suffix = '') use ($docsBaseUrl): string {
+            if (\Illuminate\Support\Facades\Route::has($routeName)) {
+                return route($routeName);
+            }
+
+            return rtrim($docsBaseUrl, '/').$suffix;
+        };
+
         $docsConfig = [
             'urls' => [
-                'ui' => route('api.docs.ui'),
-                'json' => route('api.docs.json'),
-                'health' => route('api.docs.health'),
-                'changelog' => route('api.docs.changelog'),
-                'codeSnippet' => route('api.docs.code-snippet'),
-                'oauthCallback' => route('api.docs.oauth2-callback'),
+                'ui' => $resolveDocsUrl('api.docs.ui'),
+                'json' => $resolveDocsUrl('api.docs.json', '/json'),
+                'health' => $resolveDocsUrl('api.docs.health', '/health'),
+                'changelog' => $resolveDocsUrl('api.docs.changelog', '/changelog'),
+                'codeSnippet' => $resolveDocsUrl('api.docs.code-snippet', '/code-snippet'),
+                'oauthCallback' => $resolveDocsUrl('api.docs.oauth2-callback', '/oauth2/callback'),
             ],
         ];
     @endphp

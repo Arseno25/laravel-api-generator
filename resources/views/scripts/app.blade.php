@@ -241,6 +241,51 @@ function getEnabledFeatureLabels() {
     return labels;
 }
 
+function focusSearchBox() {
+    const searchInput = document.getElementById('search');
+
+    if (!searchInput) {
+        return;
+    }
+
+    searchInput.focus();
+    searchInput.select();
+}
+
+function openFirstEndpoint() {
+    const availablePaths = Object.keys(schema.endpoints || {});
+
+    if (availablePaths.length === 0) {
+        showToast('No API endpoints are available yet');
+
+        return;
+    }
+
+    const selectedPathCandidate = availablePaths.find((path) => {
+        const endpointGroup = schema.endpoints[path] || {};
+        return Object.keys(endpointGroup).length > 0;
+    });
+
+    if (!selectedPathCandidate) {
+        showToast('No API endpoints are available yet');
+
+        return;
+    }
+
+    const methods = Object.keys(schema.endpoints[selectedPathCandidate] || {});
+    const preferredMethod =
+        methods.find((method) => method === 'get') || methods[0];
+
+    if (!preferredMethod) {
+        showToast('No endpoint methods are available yet');
+
+        return;
+    }
+
+    selectEndpoint(selectedPathCandidate, preferredMethod);
+    showToast('Opened the first available endpoint');
+}
+
 function updateOverviewMetrics() {
     const endpointCount = countEndpoints();
     const servers = getAvailableServers();

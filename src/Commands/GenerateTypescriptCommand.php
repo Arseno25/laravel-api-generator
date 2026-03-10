@@ -3,7 +3,7 @@
 namespace Arseno25\LaravelApiMagic\Commands;
 
 use Arseno25\LaravelApiMagic\Generators\TypescriptGenerator;
-use Arseno25\LaravelApiMagic\Http\Controllers\DocsController;
+use Arseno25\LaravelApiMagic\Services\DocumentationSchemaBuilder;
 use Illuminate\Console\Command;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
@@ -17,17 +17,24 @@ final class GenerateTypescriptCommand extends Command
 
     protected $description = 'Generate TypeScript interfaces or a full API client SDK from your API schema';
 
-    public function handle(DocsController $docsController, TypescriptGenerator $generator): int
-    {
+    public function handle(
+        DocumentationSchemaBuilder $schemaBuilder,
+        TypescriptGenerator $generator,
+    ): int {
         $isSdk = $this->option('sdk');
 
-        $this->info($isSdk ? '🔧 Generating TypeScript API Client SDK...' : '🔧 Generating TypeScript interfaces...');
+        $this->info(
+            $isSdk
+                ? '🔧 Generating TypeScript API Client SDK...'
+                : '🔧 Generating TypeScript interfaces...',
+        );
 
         $request = Request::create(config('app.url', '/'));
-        $schema = $docsController->generateSchemaPublic($request);
+        $schema = $schemaBuilder->buildInternalSchema($request);
 
         if ($isSdk) {
-            $baseUrl = $schema['baseUrl'] ?? config('app.url', 'http://localhost');
+            $baseUrl =
+                $schema['baseUrl'] ?? config('app.url', 'http://localhost');
             $output = $generator->generateSdk($schema, $baseUrl);
             $defaultOutput = 'resources/js/api-client.ts';
         } else {
@@ -36,9 +43,11 @@ final class GenerateTypescriptCommand extends Command
             $defaultOutput = 'resources/js/api-types.d.ts';
         }
 
-        $outputPath = base_path($this->option('output') !== 'resources/js/api-types.d.ts' || ! $isSdk
-            ? (string) $this->option('output')
-            : $defaultOutput);
+        $outputPath = base_path(
+            $this->option('output') !== 'resources/js/api-types.d.ts' || ! $isSdk
+                ? (string) $this->option('output')
+                : $defaultOutput,
+        );
         $directory = dirname($outputPath);
 
         if (! File::isDirectory($directory)) {
@@ -55,10 +64,14 @@ final class GenerateTypescriptCommand extends Command
 
         if ($isSdk) {
             $methodCount = substr_count($output, 'async ') - 1; // subtract the private request method
-            $this->info("<fg=green>✅ Generated API Client with {$methodCount} typed methods!</>");
+            $this->info(
+                "<fg=green>✅ Generated API Client with {$methodCount} typed methods!</>",
+            );
         } else {
             $interfaceCount = substr_count($output, 'interface ');
-            $this->info("<fg=green>✅ Generated {$interfaceCount} TypeScript interfaces!</>");
+            $this->info(
+                "<fg=green>✅ Generated {$interfaceCount} TypeScript interfaces!</>",
+            );
         }
 
         $this->info("   File saved to: {$outputPath}");

@@ -10,6 +10,7 @@ use Arseno25\LaravelApiMagic\Commands\GenerateTypescriptCommand;
 use Arseno25\LaravelApiMagic\Commands\InstallCommand;
 use Arseno25\LaravelApiMagic\Commands\ReverseEngineerCommand;
 use Arseno25\LaravelApiMagic\Commands\SnapshotSchemaCommand;
+use Arseno25\LaravelApiMagic\Commands\ValidateOpenApiCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -30,7 +31,8 @@ class LaravelApiMagicServiceProvider extends PackageServiceProvider
             ->hasCommand(ReverseEngineerCommand::class)
             ->hasCommand(SnapshotSchemaCommand::class)
             ->hasCommand(GenerateGraphqlCommand::class)
-            ->hasCommand(InstallCommand::class);
+            ->hasCommand(InstallCommand::class)
+            ->hasCommand(ValidateOpenApiCommand::class);
     }
 
     public function packageRegistered(): void

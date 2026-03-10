@@ -115,6 +115,54 @@ describe('GET /api/docs', function () {
             }
         },
     );
+
+    it(
+        'inlines the package docs stylesheet when the published asset is stale',
+        function () {
+            $localStylesheet = public_path('vendor/api-magic/docs.css');
+            $packageStylesheet =
+                dirname(__DIR__, 4).'/resources/dist/docs.css';
+            $originalStylesheet = file_exists($localStylesheet)
+                ? file_get_contents($localStylesheet)
+                : null;
+            $originalModifiedAt = file_exists($localStylesheet)
+                ? filemtime($localStylesheet)
+                : null;
+            $packageModifiedAt = filemtime($packageStylesheet);
+
+            if (! is_dir(dirname($localStylesheet))) {
+                mkdir(dirname($localStylesheet), 0777, true);
+            }
+
+            file_put_contents($localStylesheet, '/* stale docs css */');
+            touch($packageStylesheet, time() + 60);
+
+            try {
+                $response = get('/api/docs');
+
+                $response->assertDontSee('vendor/api-magic/docs.css');
+                $response->assertDontSee('cdn.tailwindcss.com');
+                $response->assertSee('@layer properties', false);
+            } finally {
+                touch($packageStylesheet, $packageModifiedAt);
+
+                if ($originalStylesheet === null) {
+                    if (file_exists($localStylesheet)) {
+                        unlink($localStylesheet);
+                    }
+                } else {
+                    file_put_contents($localStylesheet, $originalStylesheet);
+
+                    if (
+                        $originalModifiedAt !== false &&
+                        $originalModifiedAt !== null
+                    ) {
+                        touch($localStylesheet, $originalModifiedAt);
+                    }
+                }
+            }
+        },
+    );
 });
 
 describe('GET /api/docs/json', function () {

@@ -3,7 +3,7 @@
 namespace Arseno25\LaravelApiMagic\Commands;
 
 use Arseno25\LaravelApiMagic\Generators\GraphqlGenerator;
-use Arseno25\LaravelApiMagic\Http\Controllers\DocsController;
+use Arseno25\LaravelApiMagic\Services\DocumentationSchemaBuilder;
 use Illuminate\Console\Command;
 use Illuminate\Http\Request;
 
@@ -27,18 +27,17 @@ class GenerateGraphqlCommand extends Command
     /**
      * Execute the console command.
      */
-    public function handle(): int
+    public function handle(DocumentationSchemaBuilder $schemaBuilder): int
     {
         $this->info('🔧 Generating GraphQL schema...');
 
-        $controller = app(DocsController::class);
-        $schema = $controller->generateSchemaPublic(Request::create('/'));
+        $schema = $schemaBuilder->buildInternalSchema(Request::create('/'));
 
         $generator = new GraphqlGenerator;
         $graphqlSchema = $generator->generate($schema);
 
-        $output = $this->option('output')
-            ?? resource_path('graphql/schema.graphql');
+        $output =
+            $this->option('output') ?? resource_path('graphql/schema.graphql');
 
         $dir = dirname($output);
         if (! is_dir($dir)) {
@@ -50,11 +49,20 @@ class GenerateGraphqlCommand extends Command
         $queryCount = substr_count($graphqlSchema, 'type Query');
         $mutationCount = substr_count($graphqlSchema, 'type Mutation');
         $typeMatches = [];
-        preg_match_all('/^type (?!Query|Mutation)\w+/m', $graphqlSchema, $typeMatches);
+        preg_match_all(
+            "/^type (?!Query|Mutation)\w+/m",
+            $graphqlSchema,
+            $typeMatches,
+        );
         $typeCount = count($typeMatches[0]);
 
         $this->info('✅ Generated GraphQL schema!');
-        $this->info("   Types: {$typeCount} | Queries: ".($queryCount > 0 ? 'Yes' : 'No').' | Mutations: '.($mutationCount > 0 ? 'Yes' : 'No'));
+        $this->info(
+            "   Types: {$typeCount} | Queries: ".
+                ($queryCount > 0 ? 'Yes' : 'No').
+                ' | Mutations: '.
+                ($mutationCount > 0 ? 'Yes' : 'No'),
+        );
         $this->info("   File saved to: {$output}");
 
         return self::SUCCESS;

@@ -211,46 +211,73 @@ function renderEndpointDetail(path, method, endpoint) {
     }
 
     const hasBody = endpoint.parameters?.body && Object.keys(endpoint.parameters.body).length > 0 && ['post', 'put', 'patch'].includes(method);
+    const responseCount = (endpoint.responses || []).length;
+    const roleCount = endpoint.security
+        ? endpoint.security
+            .filter((item) => item.type === 'role')
+            .reduce((total, item) => total + (item.roles?.length || 0), 0)
+        : 0;
+    const permissionCount = endpoint.security
+        ? endpoint.security
+            .filter((item) => item.type === 'permission')
+            .reduce((total, item) => total + (item.permissions?.length || 0), 0)
+        : 0;
+    const isProtectedEndpoint = endpoint.security?.some((item) => item.type === 'http');
+    const hasRateLimit = endpoint.security?.some((item) => item.type === 'rateLimit');
+    const securitySummary = [
+        isProtectedEndpoint
+            ? '<span class="inline-flex items-center gap-2 rounded-full border border-red-400/15 bg-red-400/10 px-3 py-1 text-[11px] font-medium text-red-200"><i class="fas fa-lock text-red-300"></i>Protected</span>'
+            : '',
+        roleCount > 0
+            ? `<span class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-slate-300"><i class="fas fa-user-shield text-slate-400"></i>${roleCount} role requirement${roleCount > 1 ? 's' : ''}</span>`
+            : '',
+        permissionCount > 0
+            ? `<span class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-slate-300"><i class="fas fa-key text-slate-400"></i>${permissionCount} permission${permissionCount > 1 ? 's' : ''}</span>`
+            : '',
+        hasRateLimit
+            ? '<span class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-slate-300"><i class="fas fa-gauge-high text-slate-400"></i>Rate limited</span>'
+            : '',
+    ].filter(Boolean).join('');
     const exampleSection = hasBody ? `
-        <div class="p-4 bg-slate-900 rounded-xl border border-slate-700 mb-4">
-            <div class="flex items-center justify-between mb-3">
+        <div class="rounded-2xl border border-white/8 bg-slate-950/35 p-4">
+            <div class="mb-3 flex items-center justify-between gap-3">
                 <div class="flex items-center gap-2">
-                    <i class="fas fa-file-code text-indigo-400"></i>
-                    <span class="text-sm font-semibold text-slate-200">Example Value</span>
+                    <i class="fas fa-file-code text-slate-400"></i>
+                    <span class="text-sm font-semibold text-slate-200">Example payload</span>
                 </div>
-                <button onclick="copyExample()" id="copy-example-btn" class="text-xs px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 flex items-center gap-1.5 transition-colors">
+                <button onclick="copyExample()" id="copy-example-btn" class="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300 transition-colors hover:bg-white/10">
                     <i class="fas fa-copy"></i> Copy
                 </button>
             </div>
-            <pre class="text-sm text-green-400 p-3 lg:p-4 bg-slate-950 rounded-lg overflow-x-auto"><code id="example-body">${generateSampleBody(endpoint)}</code></pre>
+            <pre class="overflow-x-auto rounded-xl border border-white/6 bg-slate-950/80 p-3 text-sm text-green-400"><code id="example-body">${generateSampleBody(endpoint)}</code></pre>
         </div>
     ` : '';
 
     const bodyInputSection = hasBody ? `
         <div>
-            <div class="flex items-center justify-between mb-2">
-                <label class="text-sm font-medium text-slate-300">Request Body (JSON)</label>
-                <button onclick="useExample()" class="text-xs px-3 py-1.5 rounded-lg bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 flex items-center gap-1.5 transition-colors">
+            <div class="mb-2 flex items-center justify-between gap-3">
+                <label class="text-sm font-medium text-slate-300">Request body</label>
+                <button onclick="useExample()" class="inline-flex items-center gap-1.5 rounded-lg border border-indigo-400/20 bg-indigo-400/10 px-3 py-1.5 text-xs text-indigo-300 transition-colors hover:bg-indigo-400/15">
                     <i class="fas fa-magic"></i> Fill with Example
                 </button>
             </div>
-            <textarea id="request-body" rows="6" class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y">{}</textarea>
+            <textarea id="request-body" rows="6" class="w-full resize-y rounded-2xl border border-white/8 bg-slate-950/70 px-4 py-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">{}</textarea>
         </div>
     ` : '';
 
     const queryParamsSection = ['get', 'delete'].includes(method) ? `
         <div>
-            <div class="flex items-center justify-between mb-2">
-                <label class="text-sm font-medium text-slate-300">Query Parameters</label>
-                <button onclick="addQueryParam()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 flex items-center gap-1.5 transition-colors">
+            <div class="mb-2 flex items-center justify-between gap-3">
+                <label class="text-sm font-medium text-slate-300">Query parameters</label>
+                <button onclick="addQueryParam()" class="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300 transition-colors hover:bg-white/10">
                     <i class="fas fa-plus"></i> Add
                 </button>
             </div>
             <div id="query-params" class="space-y-2">
                 ${endpoint.parameters?.query?.length ? endpoint.parameters.query.map(q => `
                     <div class="flex gap-2 query-param-row">
-                        <input type="text" value="${q.name}" placeholder="key" class="flex-1 min-w-0 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 query-key">
-                        <input type="text" value="${q.name === 'page' ? '1' : (q.name === 'per_page' ? '15' : '')}" placeholder="value" class="flex-1 min-w-0 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 query-value">
+                        <input type="text" value="${q.name}" placeholder="key" class="query-key min-w-0 flex-1 rounded-xl border border-white/8 bg-slate-950/70 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <input type="text" value="${q.name === 'page' ? '1' : (q.name === 'per_page' ? '15' : '')}" placeholder="value" class="query-value min-w-0 flex-1 rounded-xl border border-white/8 bg-slate-950/70 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         <button onclick="this.parentElement.remove()" class="px-2 text-slate-500 hover:text-red-400 flex-shrink-0"><i class="fas fa-times"></i></button>
                     </div>
                 `).join('') : ''}
@@ -259,9 +286,10 @@ function renderEndpointDetail(path, method, endpoint) {
     ` : '';
 
     container.innerHTML = `
-        <div class="space-y-4 max-w-4xl mx-auto w-full">
+        <div class="mx-auto flex w-full max-w-4xl flex-col gap-3 lg:gap-4">
             ${endpoint.deprecated ? `
-            <div class="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 flex items-start gap-3">
+            <div class="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-4">
+                <div class="flex items-start gap-3">
                 <i class="fas fa-exclamation-triangle text-yellow-400 mt-0.5 flex-shrink-0"></i>
                 <div class="min-w-0">
                     <span class="text-sm font-semibold text-yellow-400">Deprecated</span>
@@ -269,53 +297,53 @@ function renderEndpointDetail(path, method, endpoint) {
                     ${endpoint.deprecated_info?.since ? `<p class="text-xs text-slate-400 mt-1">Since: ${escapeHtml(endpoint.deprecated_info.since)}</p>` : ''}
                     ${endpoint.deprecated_info?.alternative ? `<p class="text-xs text-slate-400 mt-1">Use instead: <code class="code-inline text-indigo-400">${escapeHtml(endpoint.deprecated_info.alternative)}</code></p>` : ''}
                 </div>
+                </div>
             </div>
             ` : ''}
 
-            <div class="bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-white/5 overflow-hidden shadow-xl shadow-black/20">
-                <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-4 lg:px-6 py-4 border-b border-white/5 bg-slate-800/20">
+            <div class="overflow-hidden rounded-3xl border border-white/8 bg-slate-950/35">
+                <div class="flex flex-col gap-3 border-b border-white/6 px-4 py-4 sm:flex-row sm:items-center sm:justify-between lg:px-6">
                     <div class="flex items-center gap-3 min-w-0 flex-1">
                         <span class="method-badge method-${method}">${method.toUpperCase()}</span>
                         <code class="text-sm text-slate-200 font-mono truncate ${endpoint.deprecated ? 'line-through opacity-60' : ''}">${path}</code>
                     </div>
-                    <div class="flex items-center gap-1.5 flex-wrap">
-                        ${endpoint.deprecated ? `<span class="px-2 py-1 rounded-full text-[10px] bg-yellow-400/10 text-yellow-400 flex items-center gap-1 border border-yellow-400/20"><i class="fas fa-exclamation-triangle"></i> Deprecated</span>` : ''}
-                        ${endpoint.security && endpoint.security.some(s => s.type === 'http') ? `<span class="px-2 py-1 rounded-full text-[10px] bg-red-400/10 text-red-400 flex items-center gap-1 border border-red-400/20"><i class="fas fa-lock"></i> Auth</span>` : ''}
-                        ${endpoint.security && endpoint.security.filter(s => s.type === 'role').map(s => s.roles.map(r => `<span class="px-2 py-1 rounded-full text-[10px] bg-purple-400/10 text-purple-400 flex items-center gap-1 border border-purple-400/20"><i class="fas fa-user-shield"></i> ${escapeHtml(r)}</span>`).join('')).join('') || ''}
-                        ${endpoint.security && endpoint.security.filter(s => s.type === 'permission').map(s => s.permissions.map(p => `<span class="px-2 py-1 rounded-full text-[10px] bg-amber-400/10 text-amber-400 flex items-center gap-1 border border-amber-400/20"><i class="fas fa-key"></i> ${escapeHtml(p)}</span>`).join('')).join('') || ''}
-                        ${endpoint.security && endpoint.security.some(s => s.type === 'rateLimit') ? `<span class="px-2 py-1 rounded-full text-[10px] bg-cyan-400/10 text-cyan-400 flex items-center gap-1 border border-cyan-400/20"><i class="fas fa-tachometer-alt"></i> Rate</span>` : ''}
-                        <button onclick="loadCodeSnippets('${method}', '${path}')" class="px-2 py-1 rounded-full text-[10px] bg-violet-400/10 text-violet-400 flex items-center gap-1.5 border border-violet-400/20 hover:bg-violet-400/20 transition-colors cursor-pointer"><i class="fas fa-code"></i> Snippets</button>
-                    </div>
+                    <button onclick="loadCodeSnippets('${method}', '${path}')" class="inline-flex items-center gap-2 self-start rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-medium text-slate-200 transition-colors hover:bg-white/10 sm:self-auto"><i class="fas fa-code text-slate-400"></i>Code Snippets</button>
                 </div>
-                <div class="px-4 lg:px-6 py-4">
+                <div class="space-y-4 px-4 py-5 lg:px-6">
                     <h3 class="text-lg font-semibold text-white tracking-tight">${endpoint.summary || path}</h3>
                     ${endpoint.description ? `<p class="text-slate-400 text-sm mt-2 leading-relaxed">${endpoint.description}</p>` : ''}
-                    <div class="mt-4 flex flex-wrap gap-2">
-                        <span class="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-slate-300">
-                            <i class="fas fa-layer-group mr-1 text-cyan-400"></i>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-slate-300">
+                            <i class="fas fa-layer-group mr-1.5 text-slate-500"></i>
                             Version ${endpoint.version || '1'}
                         </span>
-                        <span class="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-slate-300">
-                            <i class="fas fa-reply mr-1 text-emerald-400"></i>
-                            ${(endpoint.responses || []).length} response definition(s)
+                        <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-slate-300">
+                            <i class="fas fa-reply mr-1.5 text-slate-500"></i>
+                            ${responseCount} response definition${responseCount === 1 ? '' : 's'}
                         </span>
                     </div>
+                    ${securitySummary ? `
+                    <div class="border-t border-white/6 pt-4">
+                        <p class="mb-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Access</p>
+                        <div class="flex flex-wrap gap-2">${securitySummary}</div>
+                    </div>
+                    ` : ''}
                 </div>
             </div>
 
             ${endpoint.responses && endpoint.responses.length > 0 ? `
-            <div class="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-4 lg:p-6 border border-white/5 shadow-xl shadow-black/20">
-                <h4 class="font-semibold mb-4 flex items-center gap-2 text-slate-200"><i class="fas fa-reply text-cyan-400"></i> Response Definitions</h4>
+            <div class="rounded-3xl border border-white/8 bg-slate-950/35 p-4 lg:p-5">
+                <h4 class="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-200"><i class="fas fa-reply text-slate-400"></i> Response Definitions</h4>
                 <div class="space-y-3">
                     ${endpoint.responses.map(r => `
-                        <div class="rounded-lg border border-slate-700 p-3 lg:p-4 bg-slate-800/30">
-                            <div class="flex flex-wrap items-center gap-2 mb-2">
+                        <div class="rounded-2xl border border-white/8 bg-white/[0.03] p-3.5 lg:p-4">
+                            <div class="mb-2 flex flex-wrap items-center gap-2">
                                 <span class="status-badge status-${Math.floor(r.status / 100)}xx">${r.status}</span>
                                 <span class="text-sm text-slate-300">${escapeHtml(r.description) || 'No description'}</span>
-                                ${r.resource ? `<span class="text-xs text-indigo-400 bg-indigo-400/10 px-2 py-0.5 rounded">${r.resource.split('\\\\').pop()}</span>` : ''}
-                                ${r.is_array ? '<span class="text-xs text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded">Array</span>' : ''}
+                                ${r.resource ? `<span class="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[11px] text-slate-300">${r.resource.split('\\\\').pop()}</span>` : ''}
+                                ${r.is_array ? '<span class="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[11px] text-slate-300">Array</span>' : ''}
                             </div>
-                            ${r.example ? `<pre class="text-xs text-green-400 bg-slate-950 rounded-lg p-3 mt-2 overflow-x-auto"><code>${JSON.stringify(r.example, null, 2)}</code></pre>` : ''}
+                            ${r.example ? `<pre class="mt-3 overflow-x-auto rounded-xl border border-white/6 bg-slate-950/80 p-3 text-xs text-green-400"><code>${JSON.stringify(r.example, null, 2)}</code></pre>` : ''}
                         </div>
                     `).join('')}
                 </div>
@@ -323,31 +351,31 @@ function renderEndpointDetail(path, method, endpoint) {
             ` : ''}
 
             ${endpoint.example ? `
-            <div class="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-4 lg:p-6 border border-white/5 shadow-xl shadow-black/20">
-                <h4 class="font-semibold mb-4 flex items-center gap-2 text-slate-200"><i class="fas fa-lightbulb text-amber-400"></i> Example</h4>
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="rounded-3xl border border-white/8 bg-slate-950/35 p-4 lg:p-5">
+                <h4 class="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-200"><i class="fas fa-lightbulb text-slate-400"></i> Reference Example</h4>
+                <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     ${endpoint.example.request ? `
                     <div>
-                        <span class="text-xs font-semibold text-slate-400 uppercase mb-2 block">Request</span>
-                        <pre class="text-xs text-green-400 bg-slate-950 rounded-lg p-3 overflow-x-auto"><code>${JSON.stringify(endpoint.example.request, null, 2)}</code></pre>
+                        <span class="mb-2 block text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Request</span>
+                        <pre class="overflow-x-auto rounded-xl border border-white/6 bg-slate-950/80 p-3 text-xs text-green-400"><code>${JSON.stringify(endpoint.example.request, null, 2)}</code></pre>
                     </div>
                     ` : ''}
                     ${endpoint.example.response ? `
                     <div>
-                        <span class="text-xs font-semibold text-slate-400 uppercase mb-2 block">Response</span>
-                        <pre class="text-xs text-cyan-400 bg-slate-950 rounded-lg p-3 overflow-x-auto"><code>${JSON.stringify(endpoint.example.response, null, 2)}</code></pre>
+                        <span class="mb-2 block text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Response</span>
+                        <pre class="overflow-x-auto rounded-xl border border-white/6 bg-slate-950/80 p-3 text-xs text-cyan-300"><code>${JSON.stringify(endpoint.example.response, null, 2)}</code></pre>
                     </div>
                     ` : ''}
                 </div>
             </div>
             ` : ''}
 
-            <div id="code-snippets-panel" class="hidden bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-white/5 shadow-xl shadow-black/20 overflow-hidden">
-                <div class="px-4 lg:px-5 py-3 border-b border-white/5 flex items-center justify-between bg-slate-800/20">
+            <div id="code-snippets-panel" class="hidden overflow-hidden rounded-3xl border border-white/8 bg-slate-950/35">
+                <div class="flex items-center justify-between border-b border-white/6 px-4 py-3 lg:px-5">
                     <h4 class="font-semibold flex items-center gap-2 text-slate-200 text-sm"><i class="fas fa-code text-violet-400"></i> Code Snippets</h4>
                     <button onclick="document.getElementById('code-snippets-panel').classList.add('hidden')" class="text-slate-400 hover:text-white p-1"><i class="fas fa-times"></i></button>
                 </div>
-                <div class="flex border-b border-white/5 bg-slate-800/10 overflow-x-auto">
+                <div class="flex overflow-x-auto border-b border-white/6">
                     <button onclick="showSnippetTab('curl')" class="snippet-tab px-4 py-2.5 text-xs font-semibold text-slate-400 hover:text-white border-b-2 border-transparent whitespace-nowrap" data-tab="curl">cURL</button>
                     <button onclick="showSnippetTab('javascript')" class="snippet-tab px-4 py-2.5 text-xs font-semibold text-slate-400 hover:text-white border-b-2 border-transparent whitespace-nowrap" data-tab="javascript">JavaScript</button>
                     <button onclick="showSnippetTab('php')" class="snippet-tab px-4 py-2.5 text-xs font-semibold text-slate-400 hover:text-white border-b-2 border-transparent whitespace-nowrap" data-tab="php">PHP</button>
@@ -357,34 +385,34 @@ function renderEndpointDetail(path, method, endpoint) {
                     <button onclick="showSnippetTab('go')" class="snippet-tab px-4 py-2.5 text-xs font-semibold text-slate-400 hover:text-white border-b-2 border-transparent whitespace-nowrap" data-tab="go">Go</button>
                 </div>
                 <div id="snippet-content" class="p-4">
-                    <pre class="text-xs text-green-400 bg-slate-950 rounded-lg p-4 overflow-x-auto"><code id="snippet-code">Loading...</code></pre>
+                    <pre class="overflow-x-auto rounded-xl border border-white/6 bg-slate-950/80 p-4 text-xs text-green-400"><code id="snippet-code">Loading...</code></pre>
                 </div>
             </div>
 
-            ${paramsHtml || bodyHtml ? `<div class="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-4 lg:p-6 border border-white/5 shadow-xl shadow-black/20">${paramsHtml}${bodyHtml}</div>` : ''}
+            ${paramsHtml || bodyHtml ? `<div class="rounded-3xl border border-white/8 bg-slate-950/35 p-4 lg:p-5">${paramsHtml}${bodyHtml}</div>` : ''}
 
-            <div class="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-4 lg:p-6 border border-white/5 shadow-xl shadow-black/20">
-                <h4 class="font-semibold mb-4 lg:mb-6 flex items-center gap-2 text-base lg:text-lg text-slate-200">
-                    <i class="fas fa-play-circle text-indigo-400"></i> Try it out
+            <div class="rounded-3xl border border-white/8 bg-slate-950/35 p-4 lg:p-5">
+                <h4 class="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-200">
+                    <i class="fas fa-play-circle text-slate-400"></i> Try It Out
                 </h4>
-                <div class="space-y-4">
+                <div class="space-y-4 lg:space-y-5">
                     <div>
-                        <label class="block text-sm font-medium text-slate-300 mb-2">Base URL</label>
+                        <label class="mb-2 block text-sm font-medium text-slate-300">Base URL</label>
                         ${availableServers.length > 1 ? `
-                            <select id="base-url-select" onchange="switchEnvironment(this.value)" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-2">
+                            <select id="base-url-select" onchange="switchEnvironment(this.value)" class="mb-2 w-full rounded-2xl border border-white/8 bg-slate-950/70 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 ${availableServers.map(s => `<option value="${escapeHtml(s.url)}" ${s.url === activeBaseUrl ? 'selected' : ''}>${escapeHtml(s.description)} (${escapeHtml(s.url)})</option>`).join('')}
                             </select>
                         ` : ''}
-                        <input type="text" id="base-url" value="${escapeHtml(activeBaseUrl)}" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <input type="text" id="base-url" value="${escapeHtml(activeBaseUrl)}" class="w-full rounded-2xl border border-white/8 bg-slate-950/70 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     </div>
                     ${endpoint.parameters?.path?.length ? `
                         <div>
-                            <label class="block text-sm font-medium text-slate-300 mb-2">Path Parameters</label>
+                            <label class="mb-2 block text-sm font-medium text-slate-300">Path Parameters</label>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 ${endpoint.parameters.path.map(p => `
                                     <div>
                                         <label class="block text-xs text-slate-500 mb-1.5">${p.name}</label>
-                                        <input type="text" id="param-${p.name}" placeholder="${p.type === 'integer' ? '1' : 'value'}" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <input type="text" id="param-${p.name}" placeholder="${p.type === 'integer' ? '1' : 'value'}" class="w-full rounded-xl border border-white/8 bg-slate-950/70 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                     </div>
                                 `).join('')}
                             </div>
@@ -393,25 +421,22 @@ function renderEndpointDetail(path, method, endpoint) {
                     ${queryParamsSection}
                     ${exampleSection}
                     ${bodyInputSection}
-                    <button onclick="sendRequest(this)" class="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-indigo-500 to-violet-600 shadow-lg shadow-indigo-500/25 text-white rounded-xl font-medium hover:from-indigo-400 hover:to-violet-500 flex items-center justify-center gap-2 transition-all transform hover:-translate-y-0.5 mt-4">
+                    <button onclick="sendRequest(this)" class="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-500 px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-indigo-400 sm:w-auto">
                         <i class="fas fa-paper-plane"></i> Send Request
                     </button>
-                    <div id="response" class="hidden rounded-2xl overflow-hidden border border-white/5 shadow-xl shadow-black/20 mt-4 bg-slate-900/40 backdrop-blur-xl">
-                        <div class="px-4 lg:px-6 py-3 bg-slate-800/40 flex items-center justify-between border-b border-white/5">
-                            <span class="text-sm font-semibold text-slate-200"><i class="fas fa-terminal mr-2 text-indigo-400"></i>Response</span>
+                    <div id="response" class="mt-4 hidden overflow-hidden rounded-3xl border border-white/8 bg-slate-950/45">
+                        <div class="flex items-center justify-between border-b border-white/6 px-4 py-3 lg:px-5">
+                            <span class="text-sm font-semibold text-slate-200"><i class="fas fa-terminal mr-2 text-slate-400"></i>Response</span>
                             <div class="flex items-center gap-2">
                                 <span id="response-status" class="status-badge"></span>
-                                <span id="response-time" class="text-xs text-slate-400 flex items-center gap-1 bg-slate-950/50 px-2 py-1 rounded-md border border-white/5">
+                                <span id="response-time" class="flex items-center gap-1 rounded-md border border-white/8 bg-white/5 px-2 py-1 text-xs text-slate-400">
                                     <i class="fas fa-clock"></i>
                                     <span id="response-time-val"></span>
                                 </span>
+                                <button onclick="copyResponse()" id="copy-response-btn" class="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300 transition-colors hover:bg-white/10">
+                                    <i class="fas fa-copy"></i> Copy
+                                </button>
                             </div>
-                        </div>
-                        <div class="flex justify-between items-center px-4 lg:px-6 py-2 bg-slate-900/60 border-b border-white/5">
-                            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Payload</span>
-                            <button onclick="copyResponse()" id="copy-response-btn" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center gap-1.5 transition-colors border border-white/5">
-                                <i class="fas fa-copy"></i> Copy
-                            </button>
                         </div>
                         <div id="response-body" class="max-h-96 overflow-auto"></div>
                     </div>
@@ -429,8 +454,8 @@ function addQueryParam() {
     const row = document.createElement('div');
     row.className = 'flex gap-2 query-param-row';
     row.innerHTML = `
-        <input type="text" placeholder="key" class="flex-1 min-w-0 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 query-key">
-        <input type="text" placeholder="value" class="flex-1 min-w-0 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 query-value">
+        <input type="text" placeholder="key" class="query-key min-w-0 flex-1 rounded-xl border border-white/8 bg-slate-950/70 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <input type="text" placeholder="value" class="query-value min-w-0 flex-1 rounded-xl border border-white/8 bg-slate-950/70 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500">
         <button onclick="this.parentElement.remove()" class="px-2 text-slate-500 hover:text-red-400 flex-shrink-0"><i class="fas fa-times"></i></button>
     `;
     container.appendChild(row);
