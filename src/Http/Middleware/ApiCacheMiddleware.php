@@ -19,7 +19,7 @@ class ApiCacheMiddleware
         }
 
         // Check if caching is disabled globally
-        if (! config('laravel-api-magic.cache.enabled', true)) {
+        if (! config('api-magic.cache.enabled', true)) {
             return $next($request);
         }
 
@@ -44,7 +44,9 @@ class ApiCacheMiddleware
         }
 
         $cacheKey = $this->buildCacheKey($request);
-        $store = $cacheAttribute->store ?? config('laravel-api-magic.cache.store', config('cache.default'));
+        $store =
+            $cacheAttribute->store ??
+            config('api-magic.cache.store', config('cache.default'));
 
         // Try to return cached response
         $cached = Cache::store($store)->get($cacheKey);
@@ -56,7 +58,7 @@ class ApiCacheMiddleware
                 array_merge($cached['headers'] ?? [], [
                     'X-Api-Cache' => 'HIT',
                     'X-Api-Cache-TTL' => $cacheAttribute->ttl,
-                ])
+                ]),
             );
         }
 
@@ -64,8 +66,21 @@ class ApiCacheMiddleware
         $response = $next($request);
 
         // Cache the response if it's successful
-        if ($response instanceof JsonResponse && $response->getStatusCode() >= 200 && $response->getStatusCode() < 300) {
-            $safeHeaders = ['Content-Type', 'Content-Length', 'Cache-Control', 'ETag', 'Last-Modified', 'Expires', 'Vary', 'Content-Language'];
+        if (
+            $response instanceof JsonResponse &&
+            $response->getStatusCode() >= 200 &&
+            $response->getStatusCode() < 300
+        ) {
+            $safeHeaders = [
+                'Content-Type',
+                'Content-Length',
+                'Cache-Control',
+                'ETag',
+                'Last-Modified',
+                'Expires',
+                'Vary',
+                'Content-Language',
+            ];
             $headersToCache = [];
             foreach ($safeHeaders as $header) {
                 if ($response->headers->has($header)) {
@@ -73,14 +88,21 @@ class ApiCacheMiddleware
                 }
             }
 
-            Cache::store($store)->put($cacheKey, [
-                'data' => json_decode($response->getContent(), true),
-                'status' => $response->getStatusCode(),
-                'headers' => $headersToCache,
-            ], $cacheAttribute->ttl);
+            Cache::store($store)->put(
+                $cacheKey,
+                [
+                    'data' => json_decode($response->getContent(), true),
+                    'status' => $response->getStatusCode(),
+                    'headers' => $headersToCache,
+                ],
+                $cacheAttribute->ttl,
+            );
 
             $response->headers->set('X-Api-Cache', 'MISS');
-            $response->headers->set('X-Api-Cache-TTL', (string) $cacheAttribute->ttl);
+            $response->headers->set(
+                'X-Api-Cache-TTL',
+                (string) $cacheAttribute->ttl,
+            );
         }
 
         return $response;
@@ -89,8 +111,10 @@ class ApiCacheMiddleware
     /**
      * Get the ApiCache attribute from a controller method.
      */
-    private function getCacheAttribute(string $controller, string $method): ?ApiCache
-    {
+    private function getCacheAttribute(
+        string $controller,
+        string $method,
+    ): ?ApiCache {
         try {
             if (! class_exists($controller)) {
                 return null;

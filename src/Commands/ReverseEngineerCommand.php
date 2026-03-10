@@ -28,15 +28,20 @@ final class ReverseEngineerCommand extends Command
         {--test : Generate Pest tests}
         {--factory : Generate factories}
         {--seeder : Generate seeders}
+        {--policy : Generate policies}
         {--force : Overwrite existing files}';
 
     protected $description = 'Reverse-engineer existing database tables into a full API stack (Model, Controller, FormRequest, Resource, etc.)';
 
-    public function handle(DatabaseSchemaParser $dbParser, StubManager $stubManager): int
-    {
+    public function handle(
+        DatabaseSchemaParser $dbParser,
+        StubManager $stubManager,
+    ): int {
         intro('🔮 API Magic — Reverse Engineering');
 
-        $exclude = array_filter(explode(',', (string) $this->option('exclude')));
+        $exclude = array_filter(
+            explode(',', (string) $this->option('exclude')),
+        );
 
         // Determine which tables to process
         if ($this->option('all')) {
@@ -71,7 +76,10 @@ final class ReverseEngineerCommand extends Command
         // Get version
         /** @var string|null $version */
         $version = $this->option('v');
-        if ($version === null && ! $this->input->hasParameterOption('--no-interaction')) {
+        if (
+            $version === null &&
+            ! $this->input->hasParameterOption('--no-interaction')
+        ) {
             $versionChoice = select(
                 label: 'API versioning?',
                 options: [
@@ -79,7 +87,7 @@ final class ReverseEngineerCommand extends Command
                     '1' => 'v1 (e.g., /api/v1/products)',
                     '2' => 'v2 (e.g., /api/v2/products)',
                 ],
-                default: 'none'
+                default: 'none',
             );
             $version = $versionChoice === 'none' ? null : $versionChoice;
         }
@@ -87,6 +95,7 @@ final class ReverseEngineerCommand extends Command
         $generateTest = $this->option('test');
         $generateFactory = $this->option('factory');
         $generateSeeder = $this->option('seeder');
+        $generatePolicy = $this->option('policy');
         $force = $this->option('force');
 
         $generatedCount = 0;
@@ -95,7 +104,9 @@ final class ReverseEngineerCommand extends Command
             $schema = $dbParser->parseTable($tableName);
 
             if (empty($schema['fields'])) {
-                warning("⏭️  Skipped table '{$tableName}': no usable fields found.");
+                warning(
+                    "⏭️  Skipped table '{$tableName}': no usable fields found.",
+                );
 
                 continue;
             }
@@ -105,32 +116,60 @@ final class ReverseEngineerCommand extends Command
             // Display schema summary
             table(
                 ['Column', 'Type', 'Nullable'],
-                array_map(fn ($f) => [
-                    $f['name'],
-                    $f['db_type'],
-                    $f['nullable'] ? '✓' : '✗',
-                ], $schema['fields'])
+                array_map(
+                    fn ($f) => [
+                        $f['name'],
+                        $f['db_type'],
+                        $f['nullable'] ? '✓' : '✗',
+                    ],
+                    $schema['fields'],
+                ),
             );
 
             if (! empty($schema['relationships'])) {
-                info('  🔗 Relationships: '.implode(', ', array_map(
-                    fn ($r) => $r['type'].' → '.$r['model'],
-                    $schema['relationships']
-                )));
+                info(
+                    '  🔗 Relationships: '.
+                        implode(
+                            ', ',
+                            array_map(
+                                fn ($r) => $r['type'].' → '.$r['model'],
+                                $schema['relationships'],
+                            ),
+                        ),
+                );
             }
 
-            if (! $force && ! $this->input->hasParameterOption('--no-interaction')) {
-                if (! confirm("Generate API for '{$model}' from table '{$tableName}'?", true)) {
+            if (
+                ! $force &&
+                ! $this->input->hasParameterOption('--no-interaction')
+            ) {
+                if (
+                    ! confirm(
+                        "Generate API for '{$model}' from table '{$tableName}'?",
+                        true,
+                    )
+                ) {
                     continue;
                 }
             }
 
-            $this->generateFromSchema($schema, $version, $generateTest, $generateFactory, $generateSeeder, $force, $stubManager);
+            $this->generateFromSchema(
+                $schema,
+                $version,
+                $generateTest,
+                $generateFactory,
+                $generateSeeder,
+                $generatePolicy,
+                $force,
+                $stubManager,
+            );
             $generatedCount++;
         }
 
         if ($generatedCount > 0) {
-            outro("✨ Reverse engineered {$generatedCount} table(s) successfully!");
+            outro(
+                "✨ Reverse engineered {$generatedCount} table(s) successfully!",
+            );
 
             $routeLines = [];
             foreach ($tables as $tableName) {
@@ -139,7 +178,10 @@ final class ReverseEngineerCommand extends Command
                 $routeLines[] = "Route::apiResource('{$routePrefix}{$tableName}', {$model}Controller::class);";
             }
 
-            note("Add to routes/api.php:\n".implode("\n", $routeLines), '📌 Next Steps');
+            note(
+                "Add to routes/api.php:\n".implode("\n", $routeLines),
+                '📌 Next Steps',
+            );
         }
 
         return self::SUCCESS;
@@ -156,6 +198,7 @@ final class ReverseEngineerCommand extends Command
         bool $generateTest,
         bool $generateFactory,
         bool $generateSeeder,
+        bool $generatePolicy,
         bool $force,
         StubManager $stubManager,
     ): void {
@@ -163,7 +206,10 @@ final class ReverseEngineerCommand extends Command
         $table = $schema['table'];
 
         // Build field strings for stubs
-        $migrationFields = $this->buildMigrationFields($schema['fields'], $schema['hasSoftDeletes']);
+        $migrationFields = $this->buildMigrationFields(
+            $schema['fields'],
+            $schema['hasSoftDeletes'],
+        );
         $fillableStr = $this->buildFillable($schema['fillable']);
         $rulesStr = $this->buildRules($schema['rules']);
         $resourceProps = $this->buildResourceProperties($schema['fillable']);
@@ -171,10 +217,18 @@ final class ReverseEngineerCommand extends Command
         $foreignKeys = $this->buildForeignKeys($schema['relationships']);
         $factoryDefs = $this->buildFactoryDefinitions($schema['fields']);
         $searchConditions = $this->buildSearchConditions($schema['fillable']);
-        $relationImports = $this->buildRelationImports($schema['relationships']);
+        $relationImports = $this->buildRelationImports(
+            $schema['relationships'],
+        );
 
-        $controllerNamespace = $this->buildNamespace('App\\Http\\Controllers\\Api', $version);
-        $resourceNamespace = $this->buildNamespace('App\\Http\\Resources', $version);
+        $controllerNamespace = $this->buildNamespace(
+            'App\\Http\\Controllers\\Api',
+            $version,
+        );
+        $resourceNamespace = $this->buildNamespace(
+            'App\\Http\\Resources',
+            $version,
+        );
         $controllerDir = $this->buildPath('Http/Controllers/Api', $version);
         $resourceDir = $this->buildPath('Http/Resources', $version);
         $routePrefix = $version !== null ? "v{$version}/" : '';
@@ -193,6 +247,7 @@ final class ReverseEngineerCommand extends Command
             '{{ table }}' => $table,
             '{{ fields }}' => $migrationFields,
             '{{ fillable }}' => $fillableStr,
+            '{{ casts }}' => $this->buildCasts($schema['casts']),
             '{{ rules }}' => $rulesStr,
             '{{ resourceProperties }}' => $resourceProps,
             '{{ relations }}' => $relationsStr,
@@ -203,48 +258,120 @@ final class ReverseEngineerCommand extends Command
             '{{ apiResourceUrl }}' => Str::kebab(Str::plural($model)),
             '{{ apiPrefix }}' => $apiPrefix,
             '{{ apiVersion }}' => $version ?? '',
-            '{{ softDeletes }}' => $schema['hasSoftDeletes'] ? '$table->softDeletes();' : '',
-            '{{ softDeletesTrait }}' => $schema['hasSoftDeletes'] ? '    use SoftDeletes;' : '',
+            '{{ softDeletes }}' => $schema['hasSoftDeletes']
+                ? '$table->softDeletes();'
+                : '',
+            '{{ softDeletesTrait }}' => $schema['hasSoftDeletes']
+                ? '    use SoftDeletes;'
+                : '',
             '{{ searchablefields }}' => ! empty($schema['fillable']),
-            '{{ seederCount }}' => (string) config('api-magic.generator.seeder_count', 10),
+            '{{ seederCount }}' => (string) config(
+                'api-magic.generator.seeder_count',
+                10,
+            ),
         ];
 
         // Note: We skip migration since the table already exists
         $files = [
-            'model.stub' => app_path("Models/{$model}.php"),
-            'controller.api.stub' => app_path("{$controllerDir}/{$model}Controller.php"),
-            'request.stub' => app_path("Http/Requests/{$model}Request.php"),
-            'resource.stub' => app_path("{$resourceDir}/{$model}Resource.php"),
-            'collection.stub' => app_path("{$resourceDir}/{$model}Collection.php"),
+            [
+                'stub' => 'model.stub',
+                'destination' => app_path("Models/{$model}.php"),
+                'replacements' => $replacements,
+            ],
+            [
+                'stub' => 'controller.api.stub',
+                'destination' => app_path(
+                    "{$controllerDir}/{$model}Controller.php",
+                ),
+                'replacements' => $replacements,
+            ],
+            [
+                'stub' => 'request.stub',
+                'destination' => app_path(
+                    "Http/Requests/Store{$model}Request.php",
+                ),
+                'replacements' => array_merge($replacements, [
+                    '{{ requestClass }}' => "Store{$model}Request",
+                ]),
+            ],
+            [
+                'stub' => 'request.stub',
+                'destination' => app_path(
+                    "Http/Requests/Update{$model}Request.php",
+                ),
+                'replacements' => array_merge($replacements, [
+                    '{{ requestClass }}' => "Update{$model}Request",
+                ]),
+            ],
+            [
+                'stub' => 'resource.stub',
+                'destination' => app_path(
+                    "{$resourceDir}/{$model}Resource.php",
+                ),
+                'replacements' => $replacements,
+            ],
+            [
+                'stub' => 'collection.stub',
+                'destination' => app_path(
+                    "{$resourceDir}/{$model}Collection.php",
+                ),
+                'replacements' => $replacements,
+            ],
         ];
 
         if ($generateTest) {
             $testDir = $this->buildPath('tests/Feature/Api', $version);
-            $files['pest.test.stub'] = base_path("{$testDir}/{$model}Test.php");
+            $files[] = [
+                'stub' => 'pest.test.stub',
+                'destination' => base_path("{$testDir}/{$model}Test.php"),
+                'replacements' => $replacements,
+            ];
         }
 
         if ($generateFactory) {
-            $files['factory.stub'] = database_path("factories/{$model}Factory.php");
+            $files[] = [
+                'stub' => 'factory.stub',
+                'destination' => database_path("factories/{$model}Factory.php"),
+                'replacements' => $replacements,
+            ];
         }
 
         if ($generateSeeder) {
-            $files['seeder.stub'] = database_path("seeders/{$model}Seeder.php");
+            $files[] = [
+                'stub' => 'seeder.stub',
+                'destination' => database_path("seeders/{$model}Seeder.php"),
+                'replacements' => $replacements,
+            ];
         }
 
-        foreach ($files as $stub => $destination) {
-            $directory = dirname($destination);
+        if ($generatePolicy) {
+            $files[] = [
+                'stub' => 'policy.stub',
+                'destination' => app_path("Policies/{$model}Policy.php"),
+                'replacements' => $replacements,
+            ];
+        }
+
+        foreach ($files as $file) {
+            $directory = dirname($file['destination']);
             if (! File::isDirectory($directory)) {
                 File::makeDirectory($directory, 0755, true);
             }
 
-            if (File::exists($destination) && ! $force) {
-                $this->line("  <fg=yellow>⊝ Skipped:</> {$destination}");
+            if (File::exists($file['destination']) && ! $force) {
+                $this->line(
+                    "  <fg=yellow>⊝ Skipped:</> {$file['destination']}",
+                );
 
                 continue;
             }
 
-            $stubManager->generate($stub, $replacements, $destination);
-            $this->line("  <fg=green>✓ Created:</> {$destination}");
+            $stubManager->generate(
+                $file['stub'],
+                $file['replacements'],
+                $file['destination'],
+            );
+            $this->line("  <fg=green>✓ Created:</> {$file['destination']}");
         }
     }
 
@@ -253,8 +380,10 @@ final class ReverseEngineerCommand extends Command
      *
      * @param  array<int, array<string, mixed>>  $fields
      */
-    private function buildMigrationFields(array $fields, bool $hasSoftDeletes): string
-    {
+    private function buildMigrationFields(
+        array $fields,
+        bool $hasSoftDeletes,
+    ): string {
         $lines = [];
         foreach ($fields as $field) {
             $name = $field['name'];
@@ -318,6 +447,23 @@ final class ReverseEngineerCommand extends Command
     }
 
     /**
+     * @param  array<string, string>  $casts
+     */
+    private function buildCasts(array $casts): string
+    {
+        if (empty($casts)) {
+            return '';
+        }
+
+        $lines = [];
+        foreach ($casts as $field => $cast) {
+            $lines[] = "            '{$field}' => '{$cast}',";
+        }
+
+        return implode("\n", $lines)."\n";
+    }
+
+    /**
      * @param  array<int, array<string, mixed>>  $relationships
      */
     private function buildRelations(array $relationships): string
@@ -368,12 +514,18 @@ final class ReverseEngineerCommand extends Command
                 'boolean' => '$this->faker->boolean',
                 'date', 'datetime' => '$this->faker->dateTime',
                 'text' => '$this->faker->paragraph',
-                default => str_contains($name, 'email') ? '$this->faker->safeEmail' :
-                          (str_contains($name, 'name') ? '$this->faker->name' :
-                          (str_contains($name, 'url') ? '$this->faker->url' :
-                          (str_contains($name, 'phone') ? '$this->faker->phoneNumber' :
-                          (str_contains($name, 'price') || str_contains($name, 'amount') ? '$this->faker->randomFloat(2, 10, 999)' :
-                          '$this->faker->word')))),
+                default => str_contains($name, 'email')
+                    ? '$this->faker->safeEmail'
+                    : (str_contains($name, 'name')
+                        ? '$this->faker->name'
+                        : (str_contains($name, 'url')
+                            ? '$this->faker->url'
+                            : (str_contains($name, 'phone')
+                                ? '$this->faker->phoneNumber'
+                                : (str_contains($name, 'price') ||
+                                str_contains($name, 'amount')
+                                    ? '$this->faker->randomFloat(2, 10, 999)'
+                                    : '$this->faker->word')))),
             };
 
             $lines[] = "'{$name}' => {$faker},";
@@ -388,9 +540,14 @@ final class ReverseEngineerCommand extends Command
             return '';
         }
 
-        $conditions = array_map(fn ($f) => "->orWhere('{$f}', 'like', \"%\$search%\")", $fillable);
+        $conditions = array_map(
+            fn ($f) => "->orWhere('{$f}', 'like', \"%\$search%\")",
+            $fillable,
+        );
 
-        return "->where(function (\$q) use (\$search) {\n                \$q".implode("\n                  ", $conditions).";\n            })";
+        return "->where(function (\$q) use (\$search) {\n                \$q".
+            implode("\n                  ", $conditions).
+            ";\n            })";
     }
 
     /**

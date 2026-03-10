@@ -11,7 +11,7 @@ Laravel API Magic adalah package untuk generate REST API lengkap dengan satu com
 #### Installation
 
 ```bash
-composer require arseno/laravel-api-magic:1.7.0
+composer require arseno25/laravel-api-magic:1.7.0
 
 ```
 #### Quick Start
@@ -41,7 +41,7 @@ Laravel API Magic adalah package untuk generate REST API lengkap dengan satu com
 #### Installation
 
 ```bash
-composer require arseno/laravel-api-magic:1.6.1
+composer require arseno25/laravel-api-magic:1.6.1
 
 
 ```
@@ -73,7 +73,7 @@ Laravel API Magic adalah package untuk generate REST API lengkap dengan satu com
 #### Installation
 
 ```bash
-composer require arseno/laravel-api-magic:1.6.0
+composer require arseno25/laravel-api-magic:1.6.0
 
 
 
@@ -107,7 +107,7 @@ Laravel API Magic adalah package untuk generate REST API lengkap dengan satu com
 #### Installation
 
 ```bash
-composer require arseno/laravel-api-magic:1.5.0
+composer require arseno25/laravel-api-magic:1.5.0
 
 
 
@@ -143,7 +143,7 @@ Laravel API Magic adalah package untuk generate REST API lengkap dengan satu com
 #### Installation
 
 ```bash
-composer require arseno/laravel-api-magic:1.4.1
+composer require arseno25/laravel-api-magic:1.4.1
 
 
 
@@ -181,7 +181,7 @@ Laravel API Magic adalah package untuk generate REST API lengkap dengan satu com
 #### Installation
 
 ```bash
-composer require arseno/laravel-api-magic:1.4.0
+composer require arseno25/laravel-api-magic:1.4.0
 
 
 
@@ -221,7 +221,7 @@ Laravel API Magic adalah package untuk generate REST API lengkap dengan satu com
 #### Installation
 
 ```bash
-composer require arseno/laravel-api-magic:1.3.0
+composer require arseno25/laravel-api-magic:1.3.0
 
 
 
@@ -263,7 +263,7 @@ Laravel API Magic adalah package untuk generate REST API lengkap dengan satu com
 #### Installation
 
 ```bash
-composer require arseno/laravel-api-magic:1.2.0
+composer require arseno25/laravel-api-magic:1.2.0
 
 
 
@@ -307,7 +307,7 @@ Laravel API Magic adalah package untuk generate REST API lengkap dengan satu com
 #### Installation
 
 ```bash
-composer require arseno/laravel-api-magic:1.1.0
+composer require arseno25/laravel-api-magic:1.1.0
 
 
 

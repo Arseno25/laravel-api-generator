@@ -1,0 +1,33 @@
+<?php
+
+namespace {{ namespace }}\Policies;
+
+use {{ namespace }}\Models\{{ model }};
+
+class {{ model }}Policy
+{
+    public function viewAny(mixed $user): bool
+    {
+        return true;
+    }
+
+    public function view(mixed $user, {{ model }} ${{ modelVariable }}): bool
+    {
+        return true;
+    }
+
+    public function create(mixed $user): bool
+    {
+        return true;
+    }
+
+    public function update(mixed $user, {{ model }} ${{ modelVariable }}): bool
+    {
+        return true;
+    }
+
+    public function delete(mixed $user, {{ model }} ${{ modelVariable }}): bool
+    {
+        return true;
+    }
+}

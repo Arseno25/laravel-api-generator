@@ -1,6 +1,6 @@
 <p align="center">
   <h1 align="center">✨ Laravel API Magic</h1>
-  <p align="center">Generate a complete REST API with a single command — Model, Migration, Controller, Request, Resource, and Tests.</p>
+  <p align="center">Generate a complete REST API with a single command — Model, Migration, Controller, Store/Update Requests, Resource, and Tests.</p>
 </p>
 
 <p align="center">
@@ -19,7 +19,7 @@ composer require arseno25/laravel-api-magic
 Publish the config file (optional):
 
 ```bash
-php artisan vendor:publish --tag="laravel-api-magic-config"
+php artisan vendor:publish --tag="api-magic-config"
 ```
 
 ---
@@ -28,7 +28,7 @@ php artisan vendor:publish --tag="laravel-api-magic-config"
 
 | # | Feature | Description |
 |---|---------|-------------|
-| 1 | **One-Command API** | Generate Model, Migration, Controller, Request, Resource & Test in one command |
+| 1 | **One-Command API** | Generate Model, Migration, Controller, Store/Update Requests, Resource, casts, Policy, and Test in one command |
 | 2 | **Schema Parsing** | Define fields as `title:string\|required\|max:255` with automatic validation |
 | 3 | **Relationships** | `--belongsTo`, `--hasMany`, `--belongsToMany` with auto foreign keys |
 | 4 | **API Versioning** | Multi-version endpoints with `--v=2` flag |
@@ -80,6 +80,7 @@ php artisan api:magic Post \
 | `--test` | Generate Pest Feature test | `--test` |
 | `--factory` | Generate Model Factory | `--factory` |
 | `--seeder` | Generate Database Seeder | `--seeder` |
+| `--policy` | Generate Policy scaffold for the model | `--policy` |
 | `--soft-deletes` | Add Soft Deletes | `--soft-deletes` |
 | `--force` | Overwrite existing files | `--force` |
 
@@ -330,7 +331,7 @@ The docs UI includes a built-in WebSocket client for testing your broadcasting e
 
 | Command | Description |
 |---------|-------------|
-| `php artisan api:magic` | Generate a complete API stack (Model, Migration, Controller, Request, Resource, Test) |
+| `php artisan api:magic` | Generate a complete API stack (Model, Migration, Controller, Store/Update Requests, Resource, Test) |
 | `php artisan api-magic:ts` | Generate TypeScript interfaces from your API schema |
 | `php artisan api-magic:ts --sdk` | Generate a full TypeScript API client SDK |
 | `php artisan api-magic:export` | Export as OpenAPI 3.0 JSON/YAML or Postman Collection |
@@ -338,7 +339,7 @@ The docs UI includes a built-in WebSocket client for testing your broadcasting e
 | `php artisan api-magic:reverse` | Reverse-engineer database tables into API stack |
 | `php artisan api-magic:snapshot` | Save API schema snapshot for changelog tracking |
 | `php artisan api-magic:graphql` | Generate GraphQL schema from REST API endpoints |
-| `php artisan install:api` | Create API routes file and install Laravel Sanctum/Passport |
+| `php artisan api-magic:install` | Prepare `routes/api.php`, wire API routes in Laravel 12, and publish package config |
 
 ### TypeScript SDK
 
@@ -390,7 +391,11 @@ Output:
 ```bash
 php artisan api-magic:reverse --table=products
 php artisan api-magic:reverse --all --exclude=users,migrations
-php artisan api-magic:reverse --all --v=1 --test --factory --seeder
+php artisan api-magic:reverse --all --v=1 --test --factory --seeder --policy
+
+# Generates casts in the model based on detected column types
+# and creates ProductPolicy.php when --policy is provided
+php artisan api-magic:reverse --table=products --policy
 ```
 
 ### OpenAPI & Postman Export
@@ -410,13 +415,23 @@ curl http://localhost:8000/api/docs/export?format=postman -o postman.json
 ### Quick Installation
 
 ```bash
-php artisan install:api
+php artisan api-magic:install
 ```
 
 This command will:
-- Create `routes/api.php` if it doesn't exist
-- Offer to install Laravel Sanctum or Passport for authentication
-- Set up basic API structure
+- Create `routes/api.php` when it does not exist
+- Update `bootstrap/app.php` to load API routes when needed
+- Publish the package config
+- Publish the bundled local docs stylesheet to `public/vendor/api-magic`
+- Optionally publish package stubs with `--stubs`
+
+If you want to skip publishing the bundled local docs stylesheet during install:
+
+```bash
+php artisan api-magic:install --without-assets
+```
+
+By default, the docs UI will automatically use `public/vendor/api-magic/docs.css` when the file is present, and only fall back to the Tailwind CDN when the local stylesheet is unavailable.
 
 ---
 
@@ -552,7 +567,7 @@ Export formats: `openapi` (default), `postman`, `insomnia`.
 ## ⚙️ Configuration
 
 ```bash
-php artisan vendor:publish --tag="laravel-api-magic-config"
+php artisan vendor:publish --tag="api-magic-config"
 ```
 
 Key options in `config/api-magic.php`:
@@ -564,6 +579,12 @@ return [
         'prefix'      => env('API_MAGIC_DOCS_PREFIX', 'docs'),  // Route prefix (/api/docs)
         'middleware'  => [],                                     // Middleware for docs routes
         'exclude_patterns' => ['sanctum', 'passport', 'telescope', 'horizon'],
+        'assets' => [
+            'tailwind_cdn' => env('API_MAGIC_DOCS_TAILWIND_CDN', 'https://cdn.tailwindcss.com'),
+            'icon_stylesheet' => env('API_MAGIC_DOCS_ICON_STYLESHEET', null),
+            'stylesheets' => [],
+            'scripts' => [],
+        ],
     ],
 
     'generator' => [
@@ -603,6 +624,12 @@ return [
 ];
 ```
 
+To publish the bundled docs stylesheet manually:
+
+```bash
+php artisan vendor:publish --tag="api-magic-assets"
+```
+
 Customize generated code stubs:
 
 ```bash
@@ -613,7 +640,7 @@ php artisan vendor:publish --tag="api-magic-stubs"
 
 ## 🧪 Testing
 
-**201 tests** · **525+ assertions** · PHPStan Level 5
+**210+ tests** · **546+ assertions** · PHPStan Level 5
 
 ```bash
 composer test          # or vendor/bin/pest
@@ -666,7 +693,7 @@ public function boot()
 
 ## 🐛 Issues
 
-If you discover any bugs, missing features, or issues, please [open an issue](https://github.com/Arseno25/laravel-api-generator/issues) on the GitHub repository.
+If you discover any bugs, missing features, or issues, please [open an issue](https://github.com/arseno25/laravel-api-magic/issues) on the GitHub repository.
 
 When reporting an issue, please try to include:
 - Your Laravel version

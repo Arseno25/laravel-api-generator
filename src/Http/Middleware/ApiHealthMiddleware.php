@@ -13,7 +13,7 @@ class ApiHealthMiddleware
      */
     public function handle(Request $request, Closure $next): mixed
     {
-        if (! config('laravel-api-magic.health.enabled', false)) {
+        if (! config('api-magic.health.enabled', false)) {
             return $next($request);
         }
 
@@ -34,10 +34,14 @@ class ApiHealthMiddleware
     /**
      * Record a single request metric.
      */
-    private function recordMetric(string $method, string $path, int $statusCode, float $durationMs): void
-    {
-        $store = config('laravel-api-magic.health.store') ?? config('cache.default');
-        $window = config('laravel-api-magic.health.window', 60);
+    private function recordMetric(
+        string $method,
+        string $path,
+        int $statusCode,
+        float $durationMs,
+    ): void {
+        $store = config('api-magic.health.store') ?? config('cache.default');
+        $window = config('api-magic.health.window', 60);
         $key = "api_health:{$method}:{$path}";
 
         $metrics = Cache::store($store)->get($key, [
@@ -58,7 +62,8 @@ class ApiHealthMiddleware
         }
 
         $statusKey = (string) $statusCode;
-        $metrics['status_codes'][$statusKey] = ($metrics['status_codes'][$statusKey] ?? 0) + 1;
+        $metrics['status_codes'][$statusKey] =
+            ($metrics['status_codes'][$statusKey] ?? 0) + 1;
 
         Cache::store($store)->put($key, $metrics, $window * 60);
 
@@ -68,7 +73,11 @@ class ApiHealthMiddleware
         $endpointKey = "{$method} {$path}";
         if (! in_array($endpointKey, $endpoints)) {
             $endpoints[] = $endpointKey;
-            Cache::store($store)->put($endpointListKey, $endpoints, $window * 60);
+            Cache::store($store)->put(
+                $endpointListKey,
+                $endpoints,
+                $window * 60,
+            );
         }
     }
 
@@ -79,7 +88,7 @@ class ApiHealthMiddleware
      */
     public static function getMetrics(): array
     {
-        $store = config('laravel-api-magic.health.store') ?? config('cache.default');
+        $store = config('api-magic.health.store') ?? config('cache.default');
         $endpoints = Cache::store($store)->get('api_health:endpoints', []);
 
         $metrics = [];
@@ -89,13 +98,23 @@ class ApiHealthMiddleware
             $data = Cache::store($store)->get($key);
 
             if ($data) {
-                $avgDuration = $data['total_requests'] > 0
-                    ? round($data['total_duration_ms'] / $data['total_requests'], 2)
-                    : 0;
+                $avgDuration =
+                    $data['total_requests'] > 0
+                        ? round(
+                            $data['total_duration_ms'] /
+                                $data['total_requests'],
+                            2,
+                        )
+                        : 0;
 
-                $errorRate = $data['total_requests'] > 0
-                    ? round(($data['total_errors'] / $data['total_requests']) * 100, 1)
-                    : 0;
+                $errorRate =
+                    $data['total_requests'] > 0
+                        ? round(
+                            ($data['total_errors'] / $data['total_requests']) *
+                                100,
+                            1,
+                        )
+                        : 0;
 
                 $metrics[] = [
                     'method' => $method,
@@ -111,7 +130,10 @@ class ApiHealthMiddleware
         }
 
         // Sort by total requests desc
-        usort($metrics, fn ($a, $b) => $b['total_requests'] <=> $a['total_requests']);
+        usort(
+            $metrics,
+            fn ($a, $b) => $b['total_requests'] <=> $a['total_requests'],
+        );
 
         return $metrics;
     }

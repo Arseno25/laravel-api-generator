@@ -6,8 +6,9 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Validation\Rule;
 
-class {{ model }}Request extends FormRequest
+class {{ requestClass }} extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -32,26 +33,29 @@ class {{ model }}Request extends FormRequest
         if ($this->isMethod('put') || $this->isMethod('patch')) {
             foreach ($rules as $field => $rule) {
                 if (is_string($rule)) {
+                    $parsedRules = explode('|', $rule);
+
                     // Replace 'required' with 'sometimes' for partial updates
                     if ($this->isMethod('patch')) {
-                        $rule = str_replace('required', 'sometimes', $rule);
+                        $parsedRules = array_map(
+                            fn (string $parsedRule): string => $parsedRule === 'required' ? 'sometimes' : $parsedRule,
+                            $parsedRules
+                        );
                     }
 
-                    // Handle unique rule — exclude current record
-                    if (str_contains($rule, 'unique')) {
-                        ${{ modelVariable }} = $this->route('{{ modelVariable }}');
-                        if (${{ modelVariable }}) {
-                            $rules[$field] = str_replace(
-                                'unique',
-                                'unique:{{ table }},' . $field . ',' . ${{ modelVariable }}->id,
-                                $rule
-                            );
+                    ${{ modelVariable }} = $this->route('{{ modelVariable }}');
+                    foreach ($parsedRules as $index => $parsedRule) {
+                        if (str_starts_with($parsedRule, 'unique:') && ${{ modelVariable }}) {
+                            $uniqueRule = explode(',', substr($parsedRule, 7));
+                            $table = $uniqueRule[0] ?: '{{ table }}';
+                            $column = $uniqueRule[1] ?? $field;
 
-                            continue;
+                            $parsedRules[$index] = Rule::unique($table, $column)
+                                ->ignore(${{ modelVariable }}->getKey());
                         }
                     }
 
-                    $rules[$field] = $rule;
+                    $rules[$field] = $parsedRules;
                 }
             }
         }

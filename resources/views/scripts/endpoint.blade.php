@@ -8,6 +8,7 @@ function renderEndpoints(filter = '') {
     const container = document.getElementById('endpoints-list');
     container.innerHTML = '';
     const query = filter.toLowerCase();
+    const utilitySections = [];
 
     const groups = {};
     for (const [path, methods] of Object.entries(schema.endpoints)) {
@@ -19,6 +20,56 @@ function renderEndpoints(filter = '') {
             if (!groups[tag]) groups[tag] = [];
             groups[tag].push({ path, method, endpoint, summary });
         }
+    }
+
+    utilitySections.push(`
+        <button onclick="showOverviewPanel()" class="w-full text-left px-3 py-3 rounded-2xl border border-cyan-400/15 bg-cyan-400/10 hover:bg-cyan-400/15 transition-colors mb-3">
+            <span class="flex items-center justify-between gap-3">
+                <span class="flex items-center gap-3">
+                    <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-400/15 text-cyan-300"><i class="fas fa-chart-line"></i></span>
+                    <span>
+                        <span class="block text-sm font-semibold text-white">Overview</span>
+                        <span class="block text-xs text-slate-400">Workspace summary and quick metrics</span>
+                    </span>
+                </span>
+                <i class="fas fa-arrow-right text-xs text-cyan-300"></i>
+            </span>
+        </button>
+    `);
+
+    if (schema.webhooks?.length > 0) {
+        utilitySections.push(`
+            <button onclick="showWebhooksPanel()" class="w-full text-left px-3 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors mb-2">
+                <span class="flex items-center justify-between gap-3">
+                    <span class="flex items-center gap-3">
+                        <i class="fas fa-broadcast-tower text-amber-400"></i>
+                        <span class="text-sm text-slate-200">Webhooks</span>
+                    </span>
+                    <span class="rounded-full bg-amber-400/10 px-2 py-1 text-[10px] text-amber-300">${schema.webhooks.length}</span>
+                </span>
+            </button>
+        `);
+    }
+
+    const eventCount = Object.keys(schema.events || {}).length;
+    if (eventCount > 0) {
+        utilitySections.push(`
+            <button onclick="showEventsPanel()" class="w-full text-left px-3 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors mb-3">
+                <span class="flex items-center justify-between gap-3">
+                    <span class="flex items-center gap-3">
+                        <i class="fas fa-bolt text-yellow-400"></i>
+                        <span class="text-sm text-slate-200">WebSockets</span>
+                    </span>
+                    <span class="rounded-full bg-yellow-400/10 px-2 py-1 text-[10px] text-yellow-300">${eventCount}</span>
+                </span>
+            </button>
+        `);
+    }
+
+    if (utilitySections.length > 0) {
+        const utilityWrapper = document.createElement('div');
+        utilityWrapper.innerHTML = utilitySections.join('');
+        container.appendChild(utilityWrapper);
     }
 
     for (const [groupName, items] of Object.entries(groups)) {
@@ -43,6 +94,19 @@ function renderEndpoints(filter = '') {
             </div>
         `;
         container.appendChild(groupDiv);
+    }
+
+    if (Object.keys(groups).length === 0) {
+        const emptyState = document.createElement('div');
+        emptyState.className = 'rounded-2xl border border-dashed border-white/10 bg-white/5 px-4 py-6 text-center';
+        emptyState.innerHTML = `
+            <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-800/80 text-slate-500">
+                <i class="fas fa-search"></i>
+            </div>
+            <p class="text-sm font-semibold text-slate-200">No endpoints match your filter</p>
+            <p class="mt-1 text-xs text-slate-500">Try a different keyword or clear the search input.</p>
+        `;
+        container.appendChild(emptyState);
     }
 }
 
@@ -79,6 +143,8 @@ function selectEndpoint(path, method) {
 // ─── Endpoint Detail Rendering ───
 function renderEndpointDetail(path, method, endpoint) {
     const container = document.getElementById('content-area');
+    const availableServers = getAvailableServers();
+    const activeBaseUrl = getActiveBaseUrl();
 
     let paramsHtml = '';
     if (endpoint.parameters?.path?.length) {
@@ -224,6 +290,16 @@ function renderEndpointDetail(path, method, endpoint) {
                 <div class="px-4 lg:px-6 py-4">
                     <h3 class="text-lg font-semibold text-white tracking-tight">${endpoint.summary || path}</h3>
                     ${endpoint.description ? `<p class="text-slate-400 text-sm mt-2 leading-relaxed">${endpoint.description}</p>` : ''}
+                    <div class="mt-4 flex flex-wrap gap-2">
+                        <span class="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-slate-300">
+                            <i class="fas fa-layer-group mr-1 text-cyan-400"></i>
+                            Version ${endpoint.version || '1'}
+                        </span>
+                        <span class="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-slate-300">
+                            <i class="fas fa-reply mr-1 text-emerald-400"></i>
+                            ${(endpoint.responses || []).length} response definition(s)
+                        </span>
+                    </div>
                 </div>
             </div>
 
@@ -294,12 +370,12 @@ function renderEndpointDetail(path, method, endpoint) {
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-300 mb-2">Base URL</label>
-                        ${schema.servers && schema.servers.length > 1 ? `
-                            <select id="base-url-select" onchange="document.getElementById('base-url').value = this.value" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-2">
-                                ${schema.servers.map(s => `<option value="${escapeHtml(s.url)}">${escapeHtml(s.description)} (${escapeHtml(s.url)})</option>`).join('')}
+                        ${availableServers.length > 1 ? `
+                            <select id="base-url-select" onchange="switchEnvironment(this.value)" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-2">
+                                ${availableServers.map(s => `<option value="${escapeHtml(s.url)}" ${s.url === activeBaseUrl ? 'selected' : ''}>${escapeHtml(s.description)} (${escapeHtml(s.url)})</option>`).join('')}
                             </select>
                         ` : ''}
-                        <input type="text" id="base-url" value="${schema.servers?.[0]?.url || schema.baseUrl}" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <input type="text" id="base-url" value="${escapeHtml(activeBaseUrl)}" class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     </div>
                     ${endpoint.parameters?.path?.length ? `
                         <div>
@@ -343,6 +419,8 @@ function renderEndpointDetail(path, method, endpoint) {
             </div>
         </div>
     `;
+
+    setActiveBaseUrl(activeBaseUrl);
 }
 
 // ─── Helpers ───
@@ -409,8 +487,8 @@ async function loadCodeSnippets(method, path) {
     document.getElementById('snippet-code').textContent = 'Loading...';
 
     try {
-        const baseUrl = document.getElementById('base-url')?.value || schema.baseUrl;
-        const response = await fetch(`/api/docs/code-snippet?method=${method}&path=${encodeURIComponent(path)}&base_url=${encodeURIComponent(baseUrl)}`);
+        const baseUrl = getActiveBaseUrl();
+        const response = await fetch(`${getDocsUrl('codeSnippet')}?method=${method}&path=${encodeURIComponent(path)}&base_url=${encodeURIComponent(baseUrl)}`);
         const data = await response.json();
         if (data.snippets) {
             currentSnippets = data.snippets;
@@ -421,11 +499,22 @@ async function loadCodeSnippets(method, path) {
     } catch (e) {
         const endpoint = schema.endpoints[path]?.[method];
         if (endpoint) {
-            currentSnippets = generateLocalSnippets(method, path, endpoint, schema.baseUrl);
+            currentSnippets = generateLocalSnippets(method, path, endpoint, getActiveBaseUrl());
             showSnippetTab('curl');
         } else {
             document.getElementById('snippet-code').textContent = 'Error loading snippets.';
         }
+    }
+}
+
+function getSuggestedWebSocketUrl() {
+    try {
+        const currentBaseUrl = new URL(getActiveBaseUrl());
+        const protocol = currentBaseUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+
+        return `${protocol}//${currentBaseUrl.host}`;
+    } catch (e) {
+        return 'ws://localhost:8080';
     }
 }
 
@@ -475,6 +564,7 @@ function renderWebhooksBadge() {
 
 function showWebhooksPanel() {
     if (!schema.webhooks || schema.webhooks.length === 0) return;
+    renderEndpoints(document.getElementById('search').value);
     const container = document.getElementById('content-area');
     container.innerHTML = `
         <div class="space-y-4 max-w-4xl mx-auto w-full">
@@ -524,9 +614,10 @@ function showEventsPanel() {
 
     selectedPath = null;
     selectedMethod = null;
+    renderEndpoints(document.getElementById('search').value);
 
     closeActiveWebSocket();
-    
+
     const container = document.getElementById('content-area');
     container.innerHTML = `
         <div class="space-y-6 max-w-4xl mx-auto w-full">
@@ -540,7 +631,7 @@ function showEventsPanel() {
                 <div class="p-4 lg:px-6 bg-yellow-500/10 border-b border-yellow-500/20 text-yellow-400 text-sm flex gap-3">
                     <i class="fas fa-info-circle mt-0.5"></i>
                     <div>
-                        <strong>Realtime Events:</strong> Clients can subscribe to these channels to receive real-time updates via Laravel Reverb, Pusher, or Soketi. 
+                        <strong>Realtime Events:</strong> Clients can subscribe to these channels to receive real-time updates via Laravel Reverb, Pusher, or Soketi.
                     </div>
                 </div>
                 <div class="divide-y divide-slate-700/50">
@@ -571,9 +662,9 @@ function showEventsPanel() {
                         <div class="w-2 h-2 rounded-full bg-red-500"></div> Disconnected
                     </div>
                 </div>
-                
+
                 <div class="p-4 border-b border-white/5 flex gap-2">
-                    <input type="text" id="ws-url" value="ws://localhost:8080" class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-300 focus:outline-none focus:border-indigo-500" placeholder="ws:// or wss:// URL">
+                    <input type="text" id="ws-url" value="${escapeHtml(getSuggestedWebSocketUrl())}" class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-300 focus:outline-none focus:border-indigo-500" placeholder="ws:// or wss:// URL">
                     <button id="ws-connect-btn" onclick="toggleWebSocket()" class="px-4 py-1.5 bg-indigo-500 text-white rounded-lg text-sm font-medium hover:bg-indigo-600 transition-colors">
                         Connect
                     </button>
@@ -585,7 +676,7 @@ function showEventsPanel() {
                 <div id="ws-log" class="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-xs bg-slate-950/50">
                     <div class="text-slate-500 italic">Enter a WebSocket URL and click Connect.</div>
                 </div>
-                
+
                 <div class="p-3 border-t border-white/5 bg-slate-800/20 flex gap-2">
                     <input type="text" id="ws-message" class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-300 focus:outline-none focus:border-indigo-500 disabled:opacity-50" placeholder="Message payload (JSON or text)" disabled onkeypress="if(event.key === 'Enter') sendWsMessage()">
                     <button id="ws-send-btn" onclick="sendWsMessage()" class="px-4 py-1.5 bg-slate-700 text-white rounded-lg text-sm font-medium hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
@@ -595,7 +686,7 @@ function showEventsPanel() {
             </div>
         </div>
     `;
-    
+
     if (window.innerWidth < 1024) {
         closeMobileSidebar();
     }
@@ -729,7 +820,7 @@ function sendWsMessage() {
 function appendWsLog(message, colorClass) {
     const log = document.getElementById('ws-log');
     if (!log) return;
-    
+
     // Remove initial placeholder if present
     if (log.children.length === 1 && log.children[0].classList.contains('italic')) {
         log.innerHTML = '';
@@ -738,14 +829,14 @@ function appendWsLog(message, colorClass) {
     const time = new Date().toLocaleTimeString([], { hour12: false });
     const line = document.createElement('div');
     line.className = 'border-b border-white/5 pb-2 mb-2 last:border-0';
-    
+
     // Check if multiline to wrap in pre/code
     if (message.includes('\n') || message.includes('{\n')) {
         line.innerHTML = `<span class="text-slate-600 mr-2">[${time}]</span><pre class="${colorClass} mt-1 ml-4 whitespace-pre-wrap"><code>${escapeHtml(message)}</code></pre>`;
     } else {
         line.innerHTML = `<span class="text-slate-600 mr-2">[${time}]</span><span class="${colorClass} break-all">${escapeHtml(message)}</span>`;
     }
-    
+
     log.appendChild(line);
     log.scrollTop = log.scrollHeight;
 }

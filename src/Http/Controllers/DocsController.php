@@ -29,7 +29,9 @@ final class DocsController extends Controller
         // 1. Try Composer runtime API (works for installed packages via Packagist)
         if (class_exists(\Composer\InstalledVersions::class)) {
             try {
-                $version = \Composer\InstalledVersions::getPrettyVersion('arseno25/laravel-api-magic');
+                $version = \Composer\InstalledVersions::getPrettyVersion(
+                    'arseno25/laravel-api-magic',
+                );
                 if ($version !== null) {
                     return $version;
                 }
@@ -87,7 +89,10 @@ final class DocsController extends Controller
                 'type' => 'oauth2',
                 'flows' => [
                     'implicit' => [
-                        'authorizationUrl' => config('api-magic.oauth.auth_url', ''),
+                        'authorizationUrl' => config(
+                            'api-magic.oauth.auth_url',
+                            '',
+                        ),
                         'scopes' => config('api-magic.oauth.scopes', []),
                     ],
                 ],
@@ -112,31 +117,62 @@ final class DocsController extends Controller
         $format = strtolower((string) $request->query('format', 'openapi'));
 
         if (! in_array($format, ['openapi', 'postman', 'insomnia'])) {
-            return response()->json(['error' => 'Invalid format. Supported formats are: openapi, postman, insomnia'], 400);
+            return response()->json(
+                [
+                    'error' => 'Invalid format. Supported formats are: openapi, postman, insomnia',
+                ],
+                400,
+            );
         }
 
         if ($format === 'postman') {
             $schema = $this->generateSchema($request);
-            $exporter = app(\Arseno25\LaravelApiMagic\Exporters\PostmanExporter::class);
-            $postman = $exporter->export($schema, $request->getSchemeAndHttpHost());
+            $exporter = app(
+                \Arseno25\LaravelApiMagic\Exporters\PostmanExporter::class,
+            );
+            $postman = $exporter->export(
+                $schema,
+                $request->getSchemeAndHttpHost(),
+            );
 
-            return response()->json($postman)
-                ->header('Content-Disposition', 'attachment; filename="postman-collection-'.date('Y-m-d').'.json"');
+            return response()
+                ->json($postman)
+                ->header(
+                    'Content-Disposition',
+                    'attachment; filename="postman-collection-'.
+                        date('Y-m-d').
+                        '.json"',
+                );
         }
 
         if ($format === 'insomnia') {
             $schema = $this->generateSchema($request);
-            $exporter = app(\Arseno25\LaravelApiMagic\Exporters\InsomniaExporter::class);
-            $insomnia = $exporter->export($schema, $request->getSchemeAndHttpHost());
+            $exporter = app(
+                \Arseno25\LaravelApiMagic\Exporters\InsomniaExporter::class,
+            );
+            $insomnia = $exporter->export(
+                $schema,
+                $request->getSchemeAndHttpHost(),
+            );
 
-            return response()->json($insomnia)
-                ->header('Content-Disposition', 'attachment; filename="insomnia-collection-'.date('Y-m-d').'.json"');
+            return response()
+                ->json($insomnia)
+                ->header(
+                    'Content-Disposition',
+                    'attachment; filename="insomnia-collection-'.
+                        date('Y-m-d').
+                        '.json"',
+                );
         }
 
         $openApi = $this->getOpenApiSchema($request);
 
-        return response()->json($openApi)
-            ->header('Content-Disposition', 'attachment; filename="api-docs-'.date('Y-m-d').'.json"');
+        return response()
+            ->json($openApi)
+            ->header(
+                'Content-Disposition',
+                'attachment; filename="api-docs-'.date('Y-m-d').'.json"',
+            );
     }
 
     /**
@@ -154,8 +190,11 @@ final class DocsController extends Controller
      */
     public function health(): JsonResponse
     {
-        if (! config('laravel-api-magic.health.enabled', false)) {
-            return response()->json(['message' => 'Health telemetry is disabled.'], 404);
+        if (! config('api-magic.health.enabled', false)) {
+            return response()->json(
+                ['message' => 'Health telemetry is disabled.'],
+                404,
+            );
         }
 
         $metrics = \Arseno25\LaravelApiMagic\Http\Middleware\ApiHealthMiddleware::getMetrics();
@@ -171,8 +210,11 @@ final class DocsController extends Controller
      */
     public function changelog(): JsonResponse
     {
-        if (! config('laravel-api-magic.changelog.enabled', false)) {
-            return response()->json(['message' => 'Changelog is disabled.'], 404);
+        if (! config('api-magic.changelog.enabled', false)) {
+            return response()->json(
+                ['message' => 'Changelog is disabled.'],
+                404,
+            );
         }
 
         $service = new \Arseno25\LaravelApiMagic\Services\ChangelogService;
@@ -206,7 +248,10 @@ final class DocsController extends Controller
     {
         $method = $request->query('method', 'get');
         $path = $request->query('path', '/');
-        $baseUrl = $request->query('base_url', $request->getSchemeAndHttpHost());
+        $baseUrl = $request->query(
+            'base_url',
+            $request->getSchemeAndHttpHost(),
+        );
 
         $schema = $this->generateSchema($request);
         $endpoint = $schema['endpoints'][$path][$method] ?? null;
@@ -269,13 +314,15 @@ final class DocsController extends Controller
 
         // Parse routes once, then group differently
         $parsedRoutes = collect($routes)
-            ->map(fn ($route) => $this->routeAnalyzer->parseRoute($route, $this->requestAnalyzer, $this->resourceAnalyzer))
+            ->map(
+                fn ($route) => $this->routeAnalyzer->parseRoute(
+                    $route,
+                    $this->requestAnalyzer,
+                    $this->resourceAnalyzer,
+                ),
+            )
             ->filter()
-            ->sortBy([
-                ['version', 'asc'],
-                ['path', 'asc'],
-                ['method', 'asc'],
-            ])
+            ->sortBy([['version', 'asc'], ['path', 'asc'], ['method', 'asc']])
             ->values();
 
         $endpoints = $parsedRoutes
@@ -285,7 +332,12 @@ final class DocsController extends Controller
 
         $endpointsByVersion = $parsedRoutes
             ->groupBy('version')
-            ->map(fn ($group) => $group->groupBy('path')->map(fn ($methods) => $methods->keyBy('method'))->toArray())
+            ->map(
+                fn ($group) => $group
+                    ->groupBy('path')
+                    ->map(fn ($methods) => $methods->keyBy('method'))
+                    ->toArray(),
+            )
             ->toArray();
 
         // Collect all webhooks from all endpoints
@@ -305,15 +357,15 @@ final class DocsController extends Controller
             'title' => config('app.name', 'Laravel API').' Documentation',
             'version' => $this->getPackageVersion(),
             'baseUrl' => $request->getSchemeAndHttpHost(),
-            'servers' => config('laravel-api-magic.servers', []),
+            'servers' => config('api-magic.servers', []),
             'endpoints' => $endpoints,
             'endpointsByVersion' => $endpointsByVersion,
             'versions' => array_keys($endpointsByVersion),
             'webhooks' => $webhooks,
             'events' => $events,
             'features' => [
-                'health' => config('laravel-api-magic.health.enabled', false),
-                'changelog' => config('laravel-api-magic.changelog.enabled', false),
+                'health' => config('api-magic.health.enabled', false),
+                'changelog' => config('api-magic.changelog.enabled', false),
             ],
             'generated_at' => now()->toIso8601String(),
         ];
@@ -348,9 +400,13 @@ final class DocsController extends Controller
                 $operation = [
                     'summary' => $endpoint['summary'] ?? '',
                     'description' => $endpoint['description'] ?? '',
-                    'operationId' => strtolower($method).str_replace(['/', '{', '}', '-', '.'], '', $path),
+                    'operationId' => strtolower($method).
+                        str_replace(['/', '{', '}', '-', '.'], '', $path),
                     'tags' => $endpoint['tags'] ?? ['default'],
-                    'responses' => $this->buildOpenApiResponses($method, $endpoint['response'] ?? null),
+                    'responses' => $this->buildOpenApiResponses(
+                        $method,
+                        $endpoint['response'] ?? null,
+                    ),
                 ];
 
                 // Add deprecated flag
@@ -358,9 +414,19 @@ final class DocsController extends Controller
                     $operation['deprecated'] = true;
                     if (! empty($endpoint['deprecated_info']['message'])) {
                         $operation['description'] = trim(
-                            ($operation['description'] ? $operation['description']."\n\n" : '')
-                            .'⚠️ **Deprecated**: '.($endpoint['deprecated_info']['message'] ?? '')
-                            .($endpoint['deprecated_info']['alternative'] ? "\n\nUse `".$endpoint['deprecated_info']['alternative'].'` instead.' : '')
+                            ($operation['description']
+                                ? $operation['description']."\n\n"
+                                : '').
+                                '⚠️ **Deprecated**: '.
+                                ($endpoint['deprecated_info']['message'] ??
+                                    '').
+                                ($endpoint['deprecated_info']['alternative']
+                                    ? "\n\nUse `".
+                                        $endpoint['deprecated_info'][
+                                            'alternative'
+                                        ].
+                                        '` instead.'
+                                    : ''),
                         );
                     }
                 }
@@ -390,7 +456,12 @@ final class DocsController extends Controller
                 if (! empty($endpoint['security'] ?? [])) {
                     $requiresAuth = false;
                     foreach ($endpoint['security'] as $sec) {
-                        if (isset($sec['type']) && $sec['type'] === 'http' && isset($sec['scheme']) && $sec['scheme'] === 'bearer') {
+                        if (
+                            isset($sec['type']) &&
+                            $sec['type'] === 'http' &&
+                            isset($sec['scheme']) &&
+                            $sec['scheme'] === 'bearer'
+                        ) {
                             $requiresAuth = true;
                             break;
                         }
@@ -404,7 +475,9 @@ final class DocsController extends Controller
                 $version = $endpoint['version'] ?? '1';
                 if ($version !== '1') {
                     $operation['tags'][] = "v{$version}";
-                    $operation['tags'] = array_values(array_unique($operation['tags']));
+                    $operation['tags'] = array_values(
+                        array_unique($operation['tags']),
+                    );
                 }
 
                 // Build parameters array (path + query + body)
@@ -412,24 +485,40 @@ final class DocsController extends Controller
 
                 // Add path parameters
                 if (! empty($endpoint['parameters']['path'] ?? [])) {
-                    $allParameters = array_merge($allParameters, array_map(fn ($param) => [
-                        'name' => $param['name'],
-                        'in' => 'path',
-                        'required' => true,
-                        'schema' => ['type' => $param['type'] ?? 'string'],
-                        'description' => $param['description'] ?? '',
-                    ], $endpoint['parameters']['path']));
+                    $allParameters = array_merge(
+                        $allParameters,
+                        array_map(
+                            fn ($param) => [
+                                'name' => $param['name'],
+                                'in' => 'path',
+                                'required' => true,
+                                'schema' => [
+                                    'type' => $param['type'] ?? 'string',
+                                ],
+                                'description' => $param['description'] ?? '',
+                            ],
+                            $endpoint['parameters']['path'],
+                        ),
+                    );
                 }
 
                 // Add query parameters
                 if (! empty($endpoint['parameters']['query'] ?? [])) {
-                    $allParameters = array_merge($allParameters, array_map(fn ($param) => [
-                        'name' => $param['name'],
-                        'in' => 'query',
-                        'required' => $param['required'] ?? false,
-                        'schema' => $param['schema'] ?? ['type' => $param['type'] ?? 'string'],
-                        'description' => $param['description'] ?? '',
-                    ], $endpoint['parameters']['query']));
+                    $allParameters = array_merge(
+                        $allParameters,
+                        array_map(
+                            fn ($param) => [
+                                'name' => $param['name'],
+                                'in' => 'query',
+                                'required' => $param['required'] ?? false,
+                                'schema' => $param['schema'] ?? [
+                                    'type' => $param['type'] ?? 'string',
+                                ],
+                                'description' => $param['description'] ?? '',
+                            ],
+                            $endpoint['parameters']['query'],
+                        ),
+                    );
                 }
 
                 if (! empty($allParameters)) {
@@ -437,10 +526,19 @@ final class DocsController extends Controller
                 }
 
                 // Add request body for POST/PUT/PATCH
-                if (in_array($method, ['post', 'put', 'patch']) && ! empty($endpoint['parameters']['body'] ?? [])) {
-
-                    $hasFile = collect($endpoint['parameters']['body'])->contains(fn ($field) => isset($field['is_file']) && $field['is_file'] === true);
-                    $contentType = $hasFile ? 'multipart/form-data' : 'application/json';
+                if (
+                    in_array($method, ['post', 'put', 'patch']) &&
+                    ! empty($endpoint['parameters']['body'] ?? [])
+                ) {
+                    $hasFile = collect(
+                        $endpoint['parameters']['body'],
+                    )->contains(
+                        fn ($field) => isset($field['is_file']) &&
+                            $field['is_file'] === true,
+                    );
+                    $contentType = $hasFile
+                        ? 'multipart/form-data'
+                        : 'application/json';
 
                     $operation['requestBody'] = [
                         'required' => true,
@@ -448,19 +546,26 @@ final class DocsController extends Controller
                             $contentType => [
                                 'schema' => [
                                     'type' => 'object',
-                                    'properties' => $this->buildOpenApiSchemaProperties($endpoint['parameters']['body']),
+                                    'properties' => $this->buildOpenApiSchemaProperties(
+                                        $endpoint['parameters']['body'],
+                                    ),
                                 ],
                             ],
                         ],
                     ];
 
                     if (! $hasFile) {
-                        $operation['requestBody']['content'][$contentType]['example'] = $this->buildOpenApiExample($endpoint['parameters']['body']);
+                        $operation['requestBody']['content'][$contentType][
+                            'example'
+                        ] = $this->buildOpenApiExample(
+                            $endpoint['parameters']['body'],
+                        );
                     }
                 }
 
                 if (isset($endpoint['response'])) {
-                    $customSchemas[$endpoint['response']['name']] = $endpoint['response']['schema'];
+                    $customSchemas[$endpoint['response']['name']] =
+                        $endpoint['response']['schema'];
                 }
 
                 $paths[$pathKey][$method] = $operation;
@@ -512,29 +617,50 @@ final class DocsController extends Controller
                         'description' => 'Laravel Sanctum Bearer Token authentication. Enter token without "Bearer" prefix.',
                     ],
                 ],
-                'schemas' => array_merge([
-                    'SuccessResponse' => [
-                        'type' => 'object',
-                        'properties' => [
-                            'data' => ['type' => 'object', 'description' => 'Response data'],
-                            'meta' => ['type' => 'object', 'description' => 'Pagination metadata'],
-                            'links' => ['type' => 'object', 'description' => 'Pagination links'],
+                'schemas' => array_merge(
+                    [
+                        'SuccessResponse' => [
+                            'type' => 'object',
+                            'properties' => [
+                                'data' => [
+                                    'type' => 'object',
+                                    'description' => 'Response data',
+                                ],
+                                'meta' => [
+                                    'type' => 'object',
+                                    'description' => 'Pagination metadata',
+                                ],
+                                'links' => [
+                                    'type' => 'object',
+                                    'description' => 'Pagination links',
+                                ],
+                            ],
+                        ],
+                        'ResourceResponse' => [
+                            'type' => 'object',
+                            'properties' => [
+                                'data' => [
+                                    'type' => 'object',
+                                    'description' => 'Resource data',
+                                ],
+                            ],
+                        ],
+                        'ValidationError' => [
+                            'type' => 'object',
+                            'properties' => [
+                                'message' => [
+                                    'type' => 'string',
+                                    'example' => 'The given data was invalid.',
+                                ],
+                                'errors' => [
+                                    'type' => 'object',
+                                    'description' => 'Validation errors grouped by field',
+                                ],
+                            ],
                         ],
                     ],
-                    'ResourceResponse' => [
-                        'type' => 'object',
-                        'properties' => [
-                            'data' => ['type' => 'object', 'description' => 'Resource data'],
-                        ],
-                    ],
-                    'ValidationError' => [
-                        'type' => 'object',
-                        'properties' => [
-                            'message' => ['type' => 'string', 'example' => 'The given data was invalid.'],
-                            'errors' => ['type' => 'object', 'description' => 'Validation errors grouped by field'],
-                        ],
-                    ],
-                ], $customSchemas),
+                    $customSchemas,
+                ),
             ],
             'tags' => $this->buildOpenApiTags($schema),
         ];
@@ -546,9 +672,13 @@ final class DocsController extends Controller
      * @param  array<string, mixed>|null  $resourceSchema
      * @return array<mixed>
      */
-    private function buildOpenApiResponses(string $method, ?array $resourceSchema = null): array
-    {
-        $schemaRef = $resourceSchema ? '#/components/schemas/'.$resourceSchema['name'] : '#/components/schemas/ResourceResponse';
+    private function buildOpenApiResponses(
+        string $method,
+        ?array $resourceSchema = null,
+    ): array {
+        $schemaRef = $resourceSchema
+            ? '#/components/schemas/'.$resourceSchema['name']
+            : '#/components/schemas/ResourceResponse';
 
         return match ($method) {
             'get' => [
@@ -556,7 +686,9 @@ final class DocsController extends Controller
                     'description' => 'Successful response',
                     'content' => [
                         'application/json' => [
-                            'schema' => ['$ref' => '#/components/schemas/SuccessResponse'],
+                            'schema' => [
+                                '$ref' => '#/components/schemas/SuccessResponse',
+                            ],
                         ],
                     ],
                 ],
@@ -577,7 +709,9 @@ final class DocsController extends Controller
                     'description' => 'Validation error',
                     'content' => [
                         'application/json' => [
-                            'schema' => ['$ref' => '#/components/schemas/ValidationError'],
+                            'schema' => [
+                                '$ref' => '#/components/schemas/ValidationError',
+                            ],
                         ],
                     ],
                 ],
@@ -660,7 +794,9 @@ final class DocsController extends Controller
 
         foreach ($fields as $name => $field) {
             if ($field['required'] ?? false) {
-                $example[$name] = $this->getExampleValue($field['type'] ?? 'string');
+                $example[$name] = $this->getExampleValue(
+                    $field['type'] ?? 'string',
+                );
             }
         }
 

@@ -6,7 +6,7 @@
 async function sendRequest(btn) {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Sending...';
     btn.disabled = true;
-    const baseUrl = document.getElementById('base-url').value;
+    const baseUrl = getActiveBaseUrl();
     let url = selectedPath;
     const endpoint = schema.endpoints[selectedPath][selectedMethod];
     if (endpoint.parameters?.path) {
@@ -25,7 +25,7 @@ async function sendRequest(btn) {
     const qs = params.toString();
     if (qs) url += '?' + qs;
     const options = { method: selectedMethod.toUpperCase(), headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' } };
-    
+
     if (useSanctum) {
         options.credentials = 'include';
         // Ensure CSRF token is fetched before sending actual JSON request

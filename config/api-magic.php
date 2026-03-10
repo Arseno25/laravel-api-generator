@@ -2,7 +2,6 @@
 
 // config for Arseno25/LaravelApiMagic
 return [
-
     /*
     |--------------------------------------------------------------------------
     | API Documentation
@@ -12,7 +11,6 @@ return [
     |
     */
     'docs' => [
-
         // Enable or disable the documentation routes
         'enabled' => env('API_MAGIC_DOCS_ENABLED', true),
 
@@ -32,6 +30,17 @@ return [
             'ignition',
             '_ignition',
         ],
+
+        // Asset sources used by the interactive docs UI
+        'assets' => [
+            'tailwind_cdn' => env(
+                'API_MAGIC_DOCS_TAILWIND_CDN',
+                'https://cdn.tailwindcss.com',
+            ),
+            'icon_stylesheet' => env('API_MAGIC_DOCS_ICON_STYLESHEET', null),
+            'stylesheets' => [],
+            'scripts' => [],
+        ],
     ],
 
     /*
@@ -43,7 +52,6 @@ return [
     |
     */
     'generator' => [
-
         // Default API version
         'default_version' => null,
 
@@ -61,7 +69,6 @@ return [
     |
     */
     'stubs' => [
-
         // Path to custom stubs directory (null = use package defaults)
         'path' => null,
     ],
@@ -77,7 +84,6 @@ return [
     |
     */
     'mock' => [
-
         // Enable or disable mock mode globally
         'enabled' => env('API_MAGIC_MOCK_ENABLED', false),
     ],
@@ -92,7 +98,6 @@ return [
     |
     */
     'cache' => [
-
         // Enable or disable API caching globally
         'enabled' => env('API_MAGIC_CACHE_ENABLED', true),
 
@@ -125,7 +130,6 @@ return [
     |
     */
     'health' => [
-
         // Enable or disable health telemetry
         'enabled' => env('API_MAGIC_HEALTH_ENABLED', false),
 
@@ -145,7 +149,6 @@ return [
     |
     */
     'changelog' => [
-
         // Enable changelog tracking
         'enabled' => env('API_MAGIC_CHANGELOG_ENABLED', false),
 
@@ -163,7 +166,6 @@ return [
     |
     */
     'oauth' => [
-
         // OAuth2 authorization URL
         'auth_url' => env('API_MAGIC_OAUTH_AUTH_URL', ''),
 

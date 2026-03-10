@@ -4,12 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>API Documentation</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    @php
+        $localDocsStylesheet = public_path('vendor/api-magic/docs.css');
+    @endphp
+    @if (file_exists($localDocsStylesheet))
+        <link rel="stylesheet" href="{{ asset('vendor/api-magic/docs.css') }}">
+    @elseif ($tailwindCdn = config('api-magic.docs.assets.tailwind_cdn'))
+        <script src="{{ $tailwindCdn }}"></script>
+    @endif
+    @if ($iconStylesheet = config('api-magic.docs.assets.icon_stylesheet'))
+        <link rel="stylesheet" href="{{ $iconStylesheet }}">
+    @endif
+    @foreach (config('api-magic.docs.assets.stylesheets', []) as $stylesheet)
+        <link rel="stylesheet" href="{{ $stylesheet }}">
+    @endforeach
+    @foreach (config('api-magic.docs.assets.scripts', []) as $script)
+        <script src="{{ $script }}"></script>
+    @endforeach
     @include('api-magic::partials.styles')
 </head>
 <body class="bg-slate-950 text-slate-300 antialiased selection:bg-indigo-500/30">
+    @include('api-magic::partials.icon-sprite')
+
     {{-- Ambient Background --}}
     <div class="fixed inset-0 z-[-1] bg-slate-950">
         <div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-500/10 blur-[120px]"></div>
@@ -53,6 +69,21 @@
     </div>
 
     {{-- JavaScript Modules --}}
+    @php
+        $docsConfig = [
+            'urls' => [
+                'ui' => route('api.docs.ui'),
+                'json' => route('api.docs.json'),
+                'health' => route('api.docs.health'),
+                'changelog' => route('api.docs.changelog'),
+                'codeSnippet' => route('api.docs.code-snippet'),
+                'oauthCallback' => route('api.docs.oauth2-callback'),
+            ],
+        ];
+    @endphp
+    <script>
+        window.apiMagicDocsConfig = {{ \Illuminate\Support\Js::from($docsConfig) }};
+    </script>
     <script>
     // ── App Core (state, init, utilities) ──
     @include('api-magic::scripts.app')

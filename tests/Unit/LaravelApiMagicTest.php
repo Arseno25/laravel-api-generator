@@ -21,17 +21,20 @@ describe('Plugin hooks', function () {
         expect($called)->toBeTrue();
     });
 
-    it('registers and calls afterParse callbacks with schema reference', function () {
-        LaravelApiMagic::afterParse(function (array &$schema) {
-            $schema['custom_key'] = 'injected_value';
-        });
+    it(
+        'registers and calls afterParse callbacks with schema reference',
+        function () {
+            LaravelApiMagic::afterParse(function (array &$schema) {
+                $schema['custom_key'] = 'injected_value';
+            });
 
-        $schema = ['endpoints' => []];
-        LaravelApiMagic::callAfterParse($schema);
+            $schema = ['endpoints' => []];
+            LaravelApiMagic::callAfterParse($schema);
 
-        expect($schema)->toHaveKey('custom_key');
-        expect($schema['custom_key'])->toBe('injected_value');
-    });
+            expect($schema)->toHaveKey('custom_key');
+            expect($schema['custom_key'])->toBe('injected_value');
+        },
+    );
 
     it('calls multiple hooks in order', function () {
         $order = [];
@@ -64,12 +67,24 @@ describe('Core service', function () {
     });
 
     it('returns docs enabled as boolean', function () {
+        config()->set('api-magic.docs.enabled', false);
+
         $magic = new LaravelApiMagic;
-        expect($magic->docsEnabled())->toBeBool();
+        expect($magic->docsEnabled())->toBeFalse();
+    });
+
+    it('returns the configured docs prefix', function () {
+        config()->set('api-magic.docs.prefix', 'developer-docs');
+
+        $magic = new LaravelApiMagic;
+
+        expect($magic->docsPrefix())->toBe('developer-docs');
     });
 
     it('returns exclude patterns as array', function () {
+        config()->set('api-magic.docs.exclude_patterns', ['internal']);
+
         $magic = new LaravelApiMagic;
-        expect($magic->excludePatterns())->toBeArray();
+        expect($magic->excludePatterns())->toBe(['internal']);
     });
 });
