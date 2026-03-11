@@ -2,30 +2,67 @@
 
 namespace Arseno25\LaravelApiMagic\Parsers;
 
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 final class DatabaseSchemaParser
 {
+    private readonly DatabaseColumnMetadataInferrer $metadataInferrer;
+
+    public function __construct(
+        ?DatabaseColumnMetadataInferrer $metadataInferrer = null,
+    ) {
+        $this->metadataInferrer =
+            $metadataInferrer ?? new DatabaseColumnMetadataInferrer;
+    }
+
     /**
      * Get all user tables (excluding system tables).
      *
+     * @param  list<string>  $exclude
      * @return array<int, string>
      */
     public function getTables(array $exclude = []): array
     {
         $defaultExclude = [
-            'migrations', 'password_resets', 'password_reset_tokens',
-            'failed_jobs', 'personal_access_tokens', 'jobs', 'job_batches',
-            'sessions', 'cache', 'cache_locks', 'telescope_entries',
-            'telescope_entries_tags', 'telescope_monitoring',
+            'migrations',
+            'password_resets',
+            'password_reset_tokens',
+            'failed_jobs',
+            'personal_access_tokens',
+            'jobs',
+            'job_batches',
+            'sessions',
+            'cache',
+            'cache_locks',
+            'telescope_entries',
+            'telescope_entries_tags',
+            'telescope_monitoring',
         ];
 
         $exclude = array_merge($defaultExclude, $exclude);
 
-        $tables = Schema::getTableListing();
+        $tables = [];
 
-        return array_values(array_filter($tables, fn ($table) => ! in_array($table, $exclude)));
+        foreach (Schema::getTableListing() as $table) {
+            $normalizedTable = $this->metadataInferrer->normalizeTableName(
+                $table,
+            );
+
+            if (
+                in_array($normalizedTable, $exclude, true) ||
+                in_array($table, $exclude, true)
+            ) {
+                continue;
+            }
+
+            if (! array_key_exists($normalizedTable, $tables)) {
+                $tables[$normalizedTable] = $table;
+            }
+        }
+
+        return array_values($tables);
     }
 
     /**
@@ -35,7 +72,9 @@ final class DatabaseSchemaParser
      */
     public function parseTable(string $table): array
     {
+        $normalizedTable = $this->metadataInferrer->normalizeTableName($table);
         $columns = Schema::getColumns($table);
+        $driver = $this->resolveDriverName();
 
         $fields = [];
         $relationships = [];
@@ -46,9 +85,9 @@ final class DatabaseSchemaParser
         $hasTimestamps = false;
 
         foreach ($columns as $column) {
-            $name = $column['name'];
-            $type = $column['type_name'] ?? $column['type'] ?? 'varchar';
-            $nullable = $column['nullable'] ?? false;
+            $metadata = $this->metadataInferrer->infer($column, $driver);
+            $name = $metadata['name'];
+            $nullable = $metadata['nullable'];
 
             // Skip auto-managed columns
             if ($name === 'id') {
@@ -76,12 +115,16 @@ final class DatabaseSchemaParser
                     'foreignKey' => $name,
                 ];
                 $fillable[] = $name;
-                $rules[$name] = $this->buildRule($type, $nullable, $name);
+                $rules[$name] = $this->buildRule(
+                    $metadata['type'],
+                    $nullable,
+                    $name,
+                );
                 $fields[] = [
                     'name' => $name,
-                    'type' => $this->mapColumnType($type),
+                    'type' => $metadata['type'],
                     'nullable' => $nullable,
-                    'db_type' => $type,
+                    'db_type' => $metadata['db_type'],
                 ];
 
                 continue;
@@ -90,22 +133,24 @@ final class DatabaseSchemaParser
             $fillable[] = $name;
             $fields[] = [
                 'name' => $name,
-                'type' => $this->mapColumnType($type),
+                'type' => $metadata['type'],
                 'nullable' => $nullable,
-                'db_type' => $type,
+                'db_type' => $metadata['db_type'],
             ];
-            $rules[$name] = $this->buildRule($type, $nullable, $name);
+            $rules[$name] = $this->buildRule(
+                $metadata['type'],
+                $nullable,
+                $name,
+            );
 
             // Determine casts
-            $cast = $this->getCast($type, $name);
+            $cast = $metadata['cast'];
             if ($cast) {
                 $casts[$name] = $cast;
             }
         }
 
         return [
-            'table' => $table,
-            'model' => Str::studly(Str::singular($table)),
             'fields' => $fields,
             'fillable' => $fillable,
             'casts' => $casts,
@@ -113,35 +158,19 @@ final class DatabaseSchemaParser
             'relationships' => $relationships,
             'hasSoftDeletes' => $hasSoftDeletes,
             'hasTimestamps' => $hasTimestamps,
+            'table' => $normalizedTable,
+            'model' => Str::studly(Str::singular($normalizedTable)),
         ];
-    }
-
-    /**
-     * Map database column type to a generic type.
-     */
-    private function mapColumnType(string $type): string
-    {
-        $type = strtolower($type);
-
-        return match (true) {
-            in_array($type, ['int', 'integer', 'bigint', 'smallint', 'tinyint', 'mediumint']) => 'integer',
-            in_array($type, ['float', 'double', 'decimal', 'numeric', 'real']) => 'number',
-            in_array($type, ['bool', 'boolean']) => 'boolean',
-            in_array($type, ['date']) => 'date',
-            in_array($type, ['datetime', 'timestamp']) => 'datetime',
-            in_array($type, ['time']) => 'time',
-            in_array($type, ['json', 'jsonb']) => 'json',
-            in_array($type, ['text', 'mediumtext', 'longtext']) => 'text',
-            $type === 'enum' => 'string',
-            default => 'string',
-        };
     }
 
     /**
      * Build a validation rule string for a field.
      */
-    private function buildRule(string $type, bool $nullable, string $name): string
-    {
+    private function buildRule(
+        string $genericType,
+        bool $nullable,
+        string $name,
+    ): string {
         $rules = [];
 
         if ($nullable) {
@@ -150,16 +179,15 @@ final class DatabaseSchemaParser
             $rules[] = 'required';
         }
 
-        $genericType = $this->mapColumnType($type);
-
         match ($genericType) {
-            'integer' => $rules[] = 'integer',
-            'number' => $rules[] = 'numeric',
-            'boolean' => $rules[] = 'boolean',
-            'date' => $rules[] = 'date',
-            'datetime' => $rules[] = 'date',
-            'json' => $rules[] = 'array',
-            default => $rules[] = 'string',
+            'integer' => ($rules[] = 'integer'),
+            'float', 'decimal' => ($rules[] = 'numeric'),
+            'boolean' => ($rules[] = 'boolean'),
+            'date' => ($rules[] = 'date'),
+            'datetime' => ($rules[] = 'date'),
+            'json' => ($rules[] = 'array'),
+            'uuid' => ($rules[] = 'uuid'),
+            default => ($rules[] = 'string'),
         };
 
         // Smart max length
@@ -167,7 +195,10 @@ final class DatabaseSchemaParser
             if (str_contains($name, 'email')) {
                 $rules[] = 'email';
                 $rules[] = 'max:255';
-            } elseif (str_contains($name, 'url') || str_contains($name, 'link')) {
+            } elseif (
+                str_contains($name, 'url') ||
+                str_contains($name, 'link')
+            ) {
                 $rules[] = 'url';
                 $rules[] = 'max:2048';
             } elseif (str_contains($name, 'slug')) {
@@ -185,21 +216,8 @@ final class DatabaseSchemaParser
         return implode('|', $rules);
     }
 
-    /**
-     * Get the Eloquent cast for a column type.
-     */
-    private function getCast(string $type, string $name): ?string
+    private function resolveDriverName(): string
     {
-        $genericType = $this->mapColumnType($type);
-
-        return match ($genericType) {
-            'boolean' => 'boolean',
-            'integer' => 'integer',
-            'number' => 'decimal:2',
-            'date' => 'date',
-            'datetime' => 'datetime',
-            'json' => 'array',
-            default => null,
-        };
+        return DB::connection()->getDriverName();
     }
 }

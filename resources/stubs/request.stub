@@ -1,13 +1,14 @@
 <?php
 
-namespace {{ namespace }}\Http\Requests;
+namespace {{ requestNamespace }};
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Validation\Rule;
 
-class {{ model }}Request extends FormRequest
+class {{ requestClass }} extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -20,7 +21,7 @@ class {{ model }}Request extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<int, ValidationRule|string>|string>
      */
     public function rules(): array
     {
@@ -31,27 +32,29 @@ class {{ model }}Request extends FormRequest
         // For update requests (PUT/PATCH), make fields optional unless explicitly required
         if ($this->isMethod('put') || $this->isMethod('patch')) {
             foreach ($rules as $field => $rule) {
-                if (is_string($rule)) {
+                if (is_array($rule)) {
+                    $parsedRules = $rule;
                     // Replace 'required' with 'sometimes' for partial updates
                     if ($this->isMethod('patch')) {
-                        $rule = str_replace('required', 'sometimes', $rule);
+                        $parsedRules = array_map(
+                            fn (mixed $parsedRule): mixed => is_string($parsedRule) && $parsedRule === 'required' ? 'sometimes' : $parsedRule,
+                            $parsedRules
+                        );
                     }
 
-                    // Handle unique rule — exclude current record
-                    if (str_contains($rule, 'unique')) {
-                        ${{ modelVariable }} = $this->route('{{ modelVariable }}');
-                        if (${{ modelVariable }}) {
-                            $rules[$field] = str_replace(
-                                'unique',
-                                'unique:{{ table }},' . $field . ',' . ${{ modelVariable }}->id,
-                                $rule
-                            );
+                    ${{ modelVariable }} = $this->route('{{ modelVariable }}');
+                    foreach ($parsedRules as $index => $parsedRule) {
+                        if (is_string($parsedRule) && str_starts_with($parsedRule, 'unique:') && ${{ modelVariable }}) {
+                            $uniqueRule = explode(',', substr($parsedRule, 7));
+                            $table = $uniqueRule[0] ?: '{{ table }}';
+                            $column = $uniqueRule[1] ?? $field;
 
-                            continue;
+                            $parsedRules[$index] = Rule::unique($table, $column)
+                                ->ignore(${{ modelVariable }});
                         }
                     }
 
-                    $rules[$field] = $rule;
+                    $rules[$field] = $parsedRules;
                 }
             }
         }

@@ -2,6 +2,9 @@
 
 namespace Arseno25\LaravelApiMagic;
 
+use Composer\InstalledVersions;
+use Illuminate\Support\Facades\File;
+
 /**
  * Main LaravelApiMagic service class.
  *
@@ -15,6 +18,27 @@ class LaravelApiMagic
      */
     public function version(): string
     {
+        if (class_exists(InstalledVersions::class)) {
+            try {
+                $version = InstalledVersions::getPrettyVersion(
+                    'arseno25/laravel-api-magic',
+                );
+
+                if ($version !== null) {
+                    return $version;
+                }
+            } catch (\Throwable) {
+            }
+        }
+
+        $composerJson = dirname(__DIR__).'/composer.json';
+
+        if (File::exists($composerJson)) {
+            $composer = json_decode(File::get($composerJson), true);
+
+            return $composer['version'] ?? '1.0.0';
+        }
+
         return '1.0.0';
     }
 

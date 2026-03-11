@@ -32,6 +32,7 @@ class {{ model }} extends Model
     protected function casts(): array
     {
         return [
+{{ casts }}
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];

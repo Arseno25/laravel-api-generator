@@ -12,13 +12,15 @@ describe('API Health Middleware', function () {
     });
 
     it('passes through when health is disabled', function () {
-        config()->set('laravel-api-magic.health.enabled', false);
+        config()->set('api-magic.health.enabled', false);
 
         $middleware = app(ApiHealthMiddleware::class);
         $request = Request::create('/api/products', 'GET');
 
         $called = false;
-        $response = $middleware->handle($request, function ($req) use (&$called) {
+        $response = $middleware->handle($request, function ($req) use (
+            &$called,
+        ) {
             $called = true;
 
             return new JsonResponse(['data' => true]);
@@ -29,7 +31,12 @@ describe('API Health Middleware', function () {
     });
 
     it('records metrics when health is enabled', function () {
-        config()->set('laravel-api-magic.health.enabled', true);
+        config()->set('api-magic.health.enabled', true);
+        config()->set('api-magic.health.store', 'health_array');
+        config()->set('cache.stores.health_array', [
+            'driver' => 'array',
+            'serialize' => false,
+        ]);
 
         $middleware = app(ApiHealthMiddleware::class);
         $request = Request::create('/api/products', 'GET');
@@ -46,7 +53,7 @@ describe('API Health Middleware', function () {
     });
 
     it('tracks error rates', function () {
-        config()->set('laravel-api-magic.health.enabled', true);
+        config()->set('api-magic.health.enabled', true);
 
         $middleware = app(ApiHealthMiddleware::class);
         $request = Request::create('/api/fail', 'POST');

@@ -13,11 +13,20 @@ describe('basic parsing', function () {
         $result = $this->parser->parse('name:string|required');
 
         expect($result)->toBeArray();
-        expect($result)->toHaveKeys(['migration', 'fillable', 'rules', 'resourceProperties', 'relations', 'foreignKeys']);
+        expect($result)->toHaveKeys([
+            'migration',
+            'fillable',
+            'rules',
+            'resourceProperties',
+            'relations',
+            'foreignKeys',
+        ]);
     });
 
     it('parses multiple fields', function () {
-        $result = $this->parser->parse('name:string|required,age:integer,email:email|nullable');
+        $result = $this->parser->parse(
+            'name:string|required,age:integer,email:email|nullable',
+        );
 
         expect($result['fillable'])->toContain("'name'");
         expect($result['fillable'])->toContain("'age'");
@@ -81,39 +90,49 @@ describe('validation rules', function () {
     it('includes required rule', function () {
         $result = $this->parser->parse('name:string|required');
 
-        expect($result['rules'])->toContain("'name' => 'required'");
+        expect($result['rules'])->toContain("'name' => ['required']");
     });
 
     it('includes email rule for email type', function () {
         $result = $this->parser->parse('email:email|required');
 
         // email is not a column type, so it's treated as a validation rule
-        expect($result['rules'])->toContain("'email' => 'email|required'");
+        expect($result['rules'])->toContain("'email' => ['email', 'required']");
     });
 
     it('includes min rule with integer type', function () {
         $result = $this->parser->parse('age:integer|min:18');
 
-        expect($result['rules'])->toContain("'age' => 'min:18|integer'");
+        expect($result['rules'])->toContain("'age' => ['min:18', 'integer']");
     });
 
     it('includes max rule with integer type', function () {
         $result = $this->parser->parse('age:integer|max:100');
 
-        expect($result['rules'])->toContain("'age' => 'max:100|integer'");
+        expect($result['rules'])->toContain("'age' => ['max:100', 'integer']");
     });
 
     it('includes unique rule', function () {
         $result = $this->parser->parse('slug:string|unique:posts');
 
-        expect($result['rules'])->toContain("'slug' => 'unique:posts'");
+        expect($result['rules'])->toContain("'slug' => ['unique:posts']");
     });
 
     it('combines multiple validation rules', function () {
         $result = $this->parser->parse('email:email|required|unique:users');
 
         // email is not a column type — all parts are treated as rules
-        expect($result['rules'])->toContain("'email' => 'email|required|unique:users'");
+        expect($result['rules'])->toContain(
+            "'email' => ['email', 'required', 'unique:users']",
+        );
+    });
+
+    it('preserves uuid validation rules', function () {
+        $result = $this->parser->parse('order_id:uuid|required');
+
+        expect($result['rules'])->toContain(
+            "'order_id' => ['required', 'uuid']",
+        );
     });
 });
 
@@ -129,8 +148,12 @@ describe('resource properties', function () {
     it('generates resource properties correctly', function () {
         $result = $this->parser->parse('name:string|required,age:integer');
 
-        expect($result['resourceProperties'])->toContain("'name' => \$this->name");
-        expect($result['resourceProperties'])->toContain("'age' => \$this->age");
+        expect($result['resourceProperties'])->toContain(
+            "'name' => \$this->name",
+        );
+        expect($result['resourceProperties'])->toContain(
+            "'age' => \$this->age",
+        );
     });
 });
 
@@ -152,7 +175,9 @@ describe('relation parsing', function () {
     it('adds foreign keys for belongsTo relations', function () {
         $result = $this->parser->parse('name:string|required', ['Category']);
 
-        expect($result['migration'])->toContain("foreignId('category_id')->constrained()->cascadeOnDelete()");
+        expect($result['migration'])->toContain(
+            "foreignId('category_id')->constrained()->cascadeOnDelete()",
+        );
     });
 
     it('builds foreign keys array for fillable', function () {
@@ -162,7 +187,10 @@ describe('relation parsing', function () {
     });
 
     it('parses multiple belongsTo relations', function () {
-        $result = $this->parser->parse('name:string|required', ['Category', 'User']);
+        $result = $this->parser->parse('name:string|required', [
+            'Category',
+            'User',
+        ]);
 
         expect($result['relations'])->toContain('BelongsTo');
         expect($result['migration'])->toContain("foreignId('category_id')");
@@ -170,13 +198,21 @@ describe('relation parsing', function () {
     });
 
     it('parses multiple hasMany relations', function () {
-        $result = $this->parser->parse('name:string|required', [], ['Comment', 'Tag']);
+        $result = $this->parser->parse(
+            'name:string|required',
+            [],
+            ['Comment', 'Tag'],
+        );
 
         expect($result['relations'])->toContain('HasMany');
     });
 
     it('handles both belongsTo and hasMany', function () {
-        $result = $this->parser->parse('name:string|required', ['Category'], ['Comment']);
+        $result = $this->parser->parse(
+            'name:string|required',
+            ['Category'],
+            ['Comment'],
+        );
 
         expect($result['relations'])->toContain('BelongsTo');
         expect($result['relations'])->toContain('HasMany');
@@ -247,6 +283,6 @@ describe('edge cases', function () {
         $result = $this->parser->parse('name:string');
 
         // Without explicit required, field defaults to nullable
-        expect($result['rules'])->toContain("'name' => 'nullable'");
+        expect($result['rules'])->toContain("'name' => ['nullable']");
     });
 });

@@ -4,8 +4,17 @@ namespace Arseno25\LaravelApiMagic\Parsers;
 
 use Illuminate\Support\Str;
 
+/**
+ * @phpstan-type ParsedField array{
+ *     name: string,
+ *     type: string,
+ *     rules: list<string>,
+ *     nullable: bool
+ * }
+ */
 final class SchemaParser
 {
+    /** @var array<string, string> */
     private array $typeMap = [
         'string' => 'string',
         'text' => 'text',
@@ -24,23 +33,55 @@ final class SchemaParser
         'uuid' => 'uuid',
     ];
 
-    public function parse(string $schema, array $belongsTo = [], array $hasMany = [], array $belongsToMany = []): array
-    {
+    /**
+     * @param  list<string>  $belongsTo
+     * @param  list<string>  $hasMany
+     * @param  list<string>  $belongsToMany
+     * @return array{
+     *     migration: string,
+     *     fillable: string,
+     *     casts: string,
+     *     rules: string,
+     *     resourceProperties: string,
+     *     relations: string,
+     *     foreignKeys: string,
+     *     factoryDefinitions: string,
+     *     searchableFields: list<string>,
+     *     belongsToMany: list<string>
+     * }
+     */
+    public function parse(
+        string $schema,
+        array $belongsTo = [],
+        array $hasMany = [],
+        array $belongsToMany = [],
+    ): array {
         $fields = $this->extractFields($schema);
 
         return [
             'migration' => $this->buildMigrationColumns($fields, $belongsTo),
             'fillable' => $this->buildFillable($fields),
+            'casts' => $this->buildCasts($fields),
             'rules' => $this->buildValidationRules($fields),
             'resourceProperties' => $this->buildResourceProperties($fields),
-            'relations' => $this->buildRelations($belongsTo, $hasMany, $belongsToMany),
+            'relations' => $this->buildRelations(
+                $belongsTo,
+                $hasMany,
+                $belongsToMany,
+            ),
             'foreignKeys' => $this->buildForeignKeys($belongsTo),
-            'factoryDefinitions' => $this->buildFactoryDefinitions($fields, $belongsTo),
+            'factoryDefinitions' => $this->buildFactoryDefinitions(
+                $fields,
+                $belongsTo,
+            ),
             'searchableFields' => $this->getSearchableFields($fields),
             'belongsToMany' => $belongsToMany,
         ];
     }
 
+    /**
+     * @return list<ParsedField>
+     */
     private function extractFields(string $schema): array
     {
         $fields = [];
@@ -48,10 +89,35 @@ final class SchemaParser
 
         // Valid validation rule types that should be included in rules (when explicit rules are provided)
         $validationRuleTypes = [
-            'integer', 'int', 'numeric', 'float', 'decimal', 'boolean', 'bool',
-            'array', 'email', 'url', 'ip', 'json', 'date', 'datetime', 'timestamp',
-            'image', 'file', 'size', 'between', 'min', 'max', 'in', 'not_in',
-            'unique', 'exists', 'confirmed', 'required', 'nullable',
+            'integer',
+            'int',
+            'numeric',
+            'float',
+            'decimal',
+            'boolean',
+            'bool',
+            'array',
+            'email',
+            'url',
+            'ip',
+            'json',
+            'date',
+            'datetime',
+            'timestamp',
+            'uuid',
+            'image',
+            'file',
+            'size',
+            'between',
+            'min',
+            'max',
+            'in',
+            'not_in',
+            'unique',
+            'exists',
+            'confirmed',
+            'required',
+            'nullable',
         ];
 
         foreach ($items as $item) {
@@ -87,14 +153,20 @@ final class SchemaParser
                 }
 
                 // Clean up empty rules
-                $parsedRules = array_values(array_filter($parsedRules, fn ($r) => trim($r) !== ''));
+                $parsedRules = array_values(
+                    array_filter($parsedRules, fn ($r) => trim($r) !== ''),
+                );
             }
 
             $rulesString = implode('|', $parsedRules);
             $isRequired = $this->isRequired($rulesString);
 
             // Include field type as validation rule if applicable
-            if (! empty($parsedRules) && in_array($type, $validationRuleTypes, true) && ! in_array($type, $parsedRules, true)) {
+            if (
+                ! empty($parsedRules) &&
+                in_array($type, $validationRuleTypes, true) &&
+                ! in_array($type, $parsedRules, true)
+            ) {
                 $parsedRules[] = $type;
             }
 
@@ -124,8 +196,14 @@ final class SchemaParser
         return str_contains($rules, 'required');
     }
 
-    private function buildMigrationColumns(array $fields, array $belongsTo): string
-    {
+    /**
+     * @param  list<ParsedField>  $fields
+     * @param  list<string>  $belongsTo
+     */
+    private function buildMigrationColumns(
+        array $fields,
+        array $belongsTo,
+    ): string {
         $lines = [];
         $lines[] = '$table->id();';
 
@@ -136,7 +214,11 @@ final class SchemaParser
 
             $line = "\$table->{$type}('{$name}')";
 
-            if ($type === 'decimal' || $type === 'float' || $type === 'double') {
+            if (
+                $type === 'decimal' ||
+                $type === 'float' ||
+                $type === 'double'
+            ) {
                 $line .= '->default(0)';
             }
 
@@ -159,6 +241,9 @@ final class SchemaParser
         return implode("\n            ", $lines);
     }
 
+    /**
+     * @param  list<ParsedField>  $fields
+     */
     private function buildFillable(array $fields): string
     {
         $names = array_map(fn ($f) => "'{$f['name']}'", $fields);
@@ -166,6 +251,9 @@ final class SchemaParser
         return implode(', ', $names);
     }
 
+    /**
+     * @param  list<ParsedField>  $fields
+     */
     private function buildValidationRules(array $fields): string
     {
         $lines = [];
@@ -183,8 +271,11 @@ final class SchemaParser
                 }
             }
 
-            $rulesString = implode('|', $rules);
-            $lines[] = "            '{$name}' => '{$rulesString}',";
+            $rulesCode = implode(
+                ', ',
+                array_map(fn (string $rule): string => "'{$rule}'", $rules),
+            );
+            $lines[] = "            '{$name}' => [{$rulesCode}],";
         }
 
         if (empty($lines)) {
@@ -194,6 +285,38 @@ final class SchemaParser
         return implode("\n", $lines);
     }
 
+    /**
+     * @param  list<ParsedField>  $fields
+     */
+    private function buildCasts(array $fields): string
+    {
+        $casts = [];
+
+        foreach ($fields as $field) {
+            $cast = match ($field['type']) {
+                'integer', 'bigInteger' => 'integer',
+                'decimal' => 'decimal:2',
+                'float', 'double' => 'float',
+                'boolean' => 'boolean',
+                'date' => 'date',
+                'dateTime', 'timestamp' => 'datetime',
+                'json' => 'array',
+                default => null,
+            };
+
+            if ($cast === null) {
+                continue;
+            }
+
+            $casts[] = "            '{$field['name']}' => '{$cast}',";
+        }
+
+        return empty($casts) ? '' : implode("\n", $casts)."\n";
+    }
+
+    /**
+     * @param  list<ParsedField>  $fields
+     */
     private function buildResourceProperties(array $fields): string
     {
         $lines = [];
@@ -205,13 +328,24 @@ final class SchemaParser
         return implode("\n", $lines);
     }
 
-    private function buildRelations(array $belongsTo, array $hasMany, array $belongsToMany): string
-    {
+    /**
+     * @param  list<string>  $belongsTo
+     * @param  list<string>  $hasMany
+     * @param  list<string>  $belongsToMany
+     */
+    private function buildRelations(
+        array $belongsTo,
+        array $hasMany,
+        array $belongsToMany,
+    ): string {
         $lines = [];
 
         foreach ($belongsTo as $relatedModel) {
             $relationName = Str::camel($relatedModel);
-            $lines[] = $this->buildBelongsToMethod($relatedModel, $relationName);
+            $lines[] = $this->buildBelongsToMethod(
+                $relatedModel,
+                $relationName,
+            );
         }
 
         foreach ($hasMany as $relatedModel) {
@@ -221,40 +355,52 @@ final class SchemaParser
 
         foreach ($belongsToMany as $relatedModel) {
             $relationName = Str::camel(Str::plural($relatedModel));
-            $lines[] = $this->buildBelongsToManyMethod($relatedModel, $relationName);
+            $lines[] = $this->buildBelongsToManyMethod(
+                $relatedModel,
+                $relationName,
+            );
         }
 
         return empty($lines) ? '' : implode("\n\n", $lines);
     }
 
-    private function buildBelongsToMethod(string $relatedModel, string $relationName): string
-    {
+    private function buildBelongsToMethod(
+        string $relatedModel,
+        string $relationName,
+    ): string {
         return "    public function {$relationName}(): BelongsTo\n".
-        "    {\n".
-        "        return \$this->belongsTo({$relatedModel}::class);\n".
-        '    }';
+            "    {\n".
+            "        return \$this->belongsTo({$relatedModel}::class);\n".
+            '    }';
     }
 
-    private function buildHasManyMethod(string $relatedModel, string $relationName): string
-    {
+    private function buildHasManyMethod(
+        string $relatedModel,
+        string $relationName,
+    ): string {
         $relatedClass = Str::studly(Str::singular($relatedModel));
 
         return "    public function {$relationName}(): HasMany\n".
-        "    {\n".
-        "        return \$this->hasMany({$relatedClass}::class);\n".
-        '    }';
+            "    {\n".
+            "        return \$this->hasMany({$relatedClass}::class);\n".
+            '    }';
     }
 
-    private function buildBelongsToManyMethod(string $relatedModel, string $relationName): string
-    {
+    private function buildBelongsToManyMethod(
+        string $relatedModel,
+        string $relationName,
+    ): string {
         $relatedClass = Str::studly(Str::singular($relatedModel));
 
         return "    public function {$relationName}(): BelongsToMany\n".
-        "    {\n".
-        "        return \$this->belongsToMany({$relatedClass}::class);\n".
-        '    }';
+            "    {\n".
+            "        return \$this->belongsToMany({$relatedClass}::class);\n".
+            '    }';
     }
 
+    /**
+     * @param  list<string>  $belongsTo
+     */
     private function buildForeignKeys(array $belongsTo): string
     {
         if (empty($belongsTo)) {
@@ -270,8 +416,14 @@ final class SchemaParser
         return implode("\n            ", $lines);
     }
 
-    private function buildFactoryDefinitions(array $fields, array $belongsTo): string
-    {
+    /**
+     * @param  list<ParsedField>  $fields
+     * @param  list<string>  $belongsTo
+     */
+    private function buildFactoryDefinitions(
+        array $fields,
+        array $belongsTo,
+    ): string {
         $lines = [];
 
         foreach ($fields as $field) {
@@ -290,8 +442,10 @@ final class SchemaParser
         return implode("\n", $lines);
     }
 
-    private function getFakerMethod(string $fieldName, string $fieldType): string
-    {
+    private function getFakerMethod(
+        string $fieldName,
+        string $fieldType,
+    ): string {
         $name = Str::lower($fieldName);
 
         // Smart field name detection
@@ -308,7 +462,9 @@ final class SchemaParser
             str_contains($name, 'password') => 'fake()->password()',
             str_contains($name, 'url') || str_contains($name, 'website') => 'fake()->url()',
             str_contains($name, 'company') => 'fake()->company()',
-            str_contains($name, 'image') || str_contains($name, 'avatar') || str_contains($name, 'photo') => 'fake()->imageUrl()',
+            str_contains($name, 'image') ||
+                str_contains($name, 'avatar') ||
+                str_contains($name, 'photo') => 'fake()->imageUrl()',
             str_contains($name, 'price') || str_contains($name, 'cost') => 'fake()->randomFloat(2, 1, 1000)',
             $fieldType === 'string' => 'fake()->word()',
             $fieldType === 'text' => 'fake()->paragraph()',
@@ -324,6 +480,10 @@ final class SchemaParser
         };
     }
 
+    /**
+     * @param  list<ParsedField>  $fields
+     * @return list<string>
+     */
     private function getSearchableFields(array $fields): array
     {
         $searchable = [];

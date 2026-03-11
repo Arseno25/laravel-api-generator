@@ -1,12 +1,20 @@
 {
     "name": "arseno25/laravel-api-magic",
-    "description": "This is my package laravel-api-magic",
+    "description": "Generate Laravel REST APIs, interactive documentation, and typed client artifacts from your application routes.",
     "keywords": [
         "Arseno25",
+        "api",
+        "code-generation",
         "laravel",
-        "laravel-api-magic"
+        "laravel-api-magic",
+        "openapi",
+        "typescript"
     ],
     "homepage": "https://github.com/arseno25/laravel-api-magic",
+    "support": {
+        "issues": "https://github.com/arseno25/laravel-api-magic/issues",
+        "source": "https://github.com/arseno25/laravel-api-magic"
+    },
     "license": "MIT",
     "authors": [
         {
@@ -41,8 +49,7 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Arseno25\\LaravelApiMagic\\Tests\\": "tests/",
-            "Workbench\\App\\": "workbench/app/"
+            "Arseno25\\LaravelApiMagic\\Tests\\": "tests/"
         }
     },
     "scripts": {
@@ -70,6 +77,5 @@
             }
         }
     },
-    "minimum-stability": "dev",
     "prefer-stable": true
 }

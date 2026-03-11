@@ -30,9 +30,18 @@ beforeEach(function () {
     }
 
     // Clean up requests
-    $requestPath = app_path('Http/Requests/ProductRequest.php');
-    if (File::exists($requestPath)) {
-        File::delete($requestPath);
+    $requestPaths = [
+        app_path('Http/Requests/StoreProductRequest.php'),
+        app_path('Http/Requests/UpdateProductRequest.php'),
+        app_path('Http/Requests/V1/StoreProductRequest.php'),
+        app_path('Http/Requests/V1/UpdateProductRequest.php'),
+        app_path('Http/Requests/V2/StoreProductRequest.php'),
+        app_path('Http/Requests/V2/UpdateProductRequest.php'),
+    ];
+    foreach ($requestPaths as $path) {
+        if (File::exists($path)) {
+            File::delete($path);
+        }
     }
 
     // Clean up resources
@@ -50,10 +59,20 @@ beforeEach(function () {
         }
     }
 
+    $policyPaths = [
+        app_path('Policies/ProductPolicy.php'),
+        app_path('Policies/PersonPolicy.php'),
+    ];
+    foreach ($policyPaths as $path) {
+        if (File::exists($path)) {
+            File::delete($path);
+        }
+    }
+
     // Clean up migrations
     $migrationFiles = array_merge(
         glob(database_path('migrations/*_create_products_table.php')),
-        glob(database_path('migrations/*_create_people_table.php'))
+        glob(database_path('migrations/*_create_people_table.php')),
     );
     foreach ($migrationFiles as $file) {
         if (File::exists($file)) {
@@ -93,13 +112,20 @@ afterEach(function () {
             app_path('Http/Controllers/Api/ProductController.php'),
             app_path('Http/Controllers/Api/V1/ProductController.php'),
             app_path('Http/Controllers/Api/V2/ProductController.php'),
-            app_path('Http/Requests/ProductRequest.php'),
+            app_path('Http/Requests/StoreProductRequest.php'),
+            app_path('Http/Requests/UpdateProductRequest.php'),
+            app_path('Http/Requests/V1/StoreProductRequest.php'),
+            app_path('Http/Requests/V1/UpdateProductRequest.php'),
+            app_path('Http/Requests/V2/StoreProductRequest.php'),
+            app_path('Http/Requests/V2/UpdateProductRequest.php'),
             app_path('Http/Resources/ProductResource.php'),
             app_path('Http/Resources/ProductCollection.php'),
             app_path('Http/Resources/V1/ProductResource.php'),
             app_path('Http/Resources/V1/ProductCollection.php'),
             app_path('Http/Resources/V2/ProductResource.php'),
             app_path('Http/Resources/V2/ProductCollection.php'),
+            app_path('Policies/ProductPolicy.php'),
+            app_path('Policies/PersonPolicy.php'),
             base_path('tests/Feature/Api/ProductTest.php'),
             base_path('tests/Feature/Api/V1/ProductTest.php'),
             base_path('tests/Feature/Api/V2/ProductTest.php'),
@@ -107,7 +133,7 @@ afterEach(function () {
             database_path('seeders/ProductSeeder.php'),
         ],
         glob(database_path('migrations/*_create_products_table.php')),
-        glob(database_path('migrations/*_create_people_table.php'))
+        glob(database_path('migrations/*_create_people_table.php')),
     );
 
     foreach ($paths as $path) {
@@ -146,7 +172,9 @@ describe('file generation (no versioning by default)', function () {
             '--no-interaction' => true,
         ])->assertExitCode(0);
 
-        $migrationFiles = glob(database_path('migrations/*_create_products_table.php'));
+        $migrationFiles = glob(
+            database_path('migrations/*_create_products_table.php'),
+        );
         expect($migrationFiles)->not->toBeEmpty();
 
         $migrationPath = $migrationFiles[array_key_first($migrationFiles)];
@@ -157,38 +185,72 @@ describe('file generation (no versioning by default)', function () {
         expect($content)->toContain('$table->integer(\'price\')');
     });
 
-    it('generates api controller without version prefix by default', function () {
+    it(
+        'generates api controller without version prefix by default',
+        function () {
+            $this->artisan('api:magic', [
+                'model' => 'Product',
+                'schema' => 'name:string|required',
+                '--no-interaction' => true,
+            ])->assertExitCode(0);
+
+            expect(
+                File::exists(
+                    app_path('Http/Controllers/Api/ProductController.php'),
+                ),
+            )->toBeTrue();
+            $content = File::get(
+                app_path('Http/Controllers/Api/ProductController.php'),
+            );
+
+            expect($content)->toContain("namespace App\Http\Controllers\Api;");
+            expect($content)->toContain(
+                'class ProductController extends Controller',
+            );
+            expect($content)->toContain(
+                'public function index(Request $request)',
+            );
+            expect($content)->toContain(
+                'public function store(StoreProductRequest',
+            );
+            expect($content)->toContain(
+                'public function show(Product $product)',
+            );
+            expect($content)->toContain(
+                'public function update(UpdateProductRequest $request, Product $product)',
+            );
+            expect($content)->toContain('public function destroy');
+        },
+    );
+
+    it('generates store and update form requests correctly', function () {
         $this->artisan('api:magic', [
             'model' => 'Product',
             'schema' => 'name:string|required',
             '--no-interaction' => true,
         ])->assertExitCode(0);
 
-        expect(File::exists(app_path('Http/Controllers/Api/ProductController.php')))->toBeTrue();
-        $content = File::get(app_path('Http/Controllers/Api/ProductController.php'));
+        expect(
+            File::exists(app_path('Http/Requests/StoreProductRequest.php')),
+        )->toBeTrue();
+        expect(
+            File::exists(app_path('Http/Requests/UpdateProductRequest.php')),
+        )->toBeTrue();
+        $storeContent = File::get(
+            app_path('Http/Requests/StoreProductRequest.php'),
+        );
+        $updateContent = File::get(
+            app_path('Http/Requests/UpdateProductRequest.php'),
+        );
 
-        expect($content)->toContain('namespace App\Http\Controllers\Api;');
-        expect($content)->toContain('class ProductController extends Controller');
-        expect($content)->toContain('public function index(Request $request)');
-        expect($content)->toContain('public function store(ProductRequest');
-        expect($content)->toContain('public function show(Product $product)');
-        expect($content)->toContain('public function update');
-        expect($content)->toContain('public function destroy');
-    });
-
-    it('generates form request correctly', function () {
-        $this->artisan('api:magic', [
-            'model' => 'Product',
-            'schema' => 'name:string|required',
-            '--no-interaction' => true,
-        ])->assertExitCode(0);
-
-        expect(File::exists(app_path('Http/Requests/ProductRequest.php')))->toBeTrue();
-        $content = File::get(app_path('Http/Requests/ProductRequest.php'));
-
-        expect($content)->toContain('class ProductRequest extends FormRequest');
-        expect($content)->toContain('public function rules(): array');
-        expect($content)->toContain("'name' => 'required'");
+        expect($storeContent)->toContain(
+            'class StoreProductRequest extends FormRequest',
+        );
+        expect($updateContent)->toContain(
+            'class UpdateProductRequest extends FormRequest',
+        );
+        expect($updateContent)->toContain('public function rules(): array');
+        expect($updateContent)->toContain("'name' => ['required']");
     });
 
     it('generates api resource correctly', function () {
@@ -198,11 +260,15 @@ describe('file generation (no versioning by default)', function () {
             '--no-interaction' => true,
         ])->assertExitCode(0);
 
-        expect(File::exists(app_path('Http/Resources/ProductResource.php')))->toBeTrue();
+        expect(
+            File::exists(app_path('Http/Resources/ProductResource.php')),
+        )->toBeTrue();
         $content = File::get(app_path('Http/Resources/ProductResource.php'));
 
-        expect($content)->toContain('namespace App\Http\Resources;');
-        expect($content)->toContain('class ProductResource extends JsonResource');
+        expect($content)->toContain("namespace App\Http\Resources;");
+        expect($content)->toContain(
+            'class ProductResource extends JsonResource',
+        );
         expect($content)->toContain('public function toArray');
         expect($content)->toContain("'id' => \$this->id");
     });
@@ -214,7 +280,9 @@ describe('file generation (no versioning by default)', function () {
             '--no-interaction' => true,
         ])->assertExitCode(0);
 
-        expect(File::exists(app_path('Http/Resources/ProductCollection.php')))->toBeTrue();
+        expect(
+            File::exists(app_path('Http/Resources/ProductCollection.php')),
+        )->toBeTrue();
     });
 });
 
@@ -227,10 +295,12 @@ describe('with --test option (no versioning)', function () {
             '--no-interaction' => true,
         ])->assertExitCode(0);
 
-        expect(File::exists(base_path('tests/Feature/Api/ProductTest.php')))->toBeTrue();
+        expect(
+            File::exists(base_path('tests/Feature/Api/ProductTest.php')),
+        )->toBeTrue();
         $content = File::get(base_path('tests/Feature/Api/ProductTest.php'));
 
-        expect($content)->toContain('use App\Models\Product;');
+        expect($content)->toContain("use App\Models\Product;");
         expect($content)->toContain("it('can list all products'");
         expect($content)->toContain("'/api/products'");
     });
@@ -244,7 +314,9 @@ describe('with --test option (no versioning)', function () {
             '--no-interaction' => true,
         ])->assertExitCode(0);
 
-        expect(File::exists(base_path('tests/Feature/Api/V2/ProductTest.php')))->toBeTrue();
+        expect(
+            File::exists(base_path('tests/Feature/Api/V2/ProductTest.php')),
+        )->toBeTrue();
         $content = File::get(base_path('tests/Feature/Api/V2/ProductTest.php'));
 
         expect($content)->toContain("'/api/v2/products'");
@@ -263,7 +335,9 @@ describe('with --belongsTo option', function () {
         $content = File::get(app_path('Models/Product.php'));
 
         expect($content)->toContain('public function category(): BelongsTo');
-        expect($content)->toContain('return $this->belongsTo(Category::class);');
+        expect($content)->toContain(
+            'return $this->belongsTo(Category::class);',
+        );
     });
 
     it('generates migration with foreign key', function () {
@@ -274,11 +348,15 @@ describe('with --belongsTo option', function () {
             '--no-interaction' => true,
         ])->assertExitCode(0);
 
-        $migrationFiles = glob(database_path('migrations/*_create_products_table.php'));
+        $migrationFiles = glob(
+            database_path('migrations/*_create_products_table.php'),
+        );
         $migrationPath = $migrationFiles[array_key_first($migrationFiles)];
         $content = File::get($migrationPath);
 
-        expect($content)->toContain("foreignId('category_id')->constrained()->cascadeOnDelete()");
+        expect($content)->toContain(
+            "foreignId('category_id')->constrained()->cascadeOnDelete()",
+        );
     });
 
     it('adds foreign key to fillable', function () {
@@ -312,18 +390,27 @@ describe('with --hasMany option', function () {
 });
 
 describe('with --v option (API versioning)', function () {
-    it('generates controller without version directory by default', function () {
-        $this->artisan('api:magic', [
-            'model' => 'Product',
-            'schema' => 'name:string|required',
-            '--no-interaction' => true,
-        ])->assertExitCode(0);
+    it(
+        'generates controller without version directory by default',
+        function () {
+            $this->artisan('api:magic', [
+                'model' => 'Product',
+                'schema' => 'name:string|required',
+                '--no-interaction' => true,
+            ])->assertExitCode(0);
 
-        expect(File::exists(app_path('Http/Controllers/Api/ProductController.php')))->toBeTrue();
-        $content = File::get(app_path('Http/Controllers/Api/ProductController.php'));
+            expect(
+                File::exists(
+                    app_path('Http/Controllers/Api/ProductController.php'),
+                ),
+            )->toBeTrue();
+            $content = File::get(
+                app_path('Http/Controllers/Api/ProductController.php'),
+            );
 
-        expect($content)->toContain('namespace App\Http\Controllers\Api;');
-    });
+            expect($content)->toContain("namespace App\Http\Controllers\Api;");
+        },
+    );
 
     it('generates v1 controller in V1 directory when --v=1', function () {
         $this->artisan('api:magic', [
@@ -333,10 +420,16 @@ describe('with --v option (API versioning)', function () {
             '--no-interaction' => true,
         ])->assertExitCode(0);
 
-        expect(File::exists(app_path('Http/Controllers/Api/V1/ProductController.php')))->toBeTrue();
-        $content = File::get(app_path('Http/Controllers/Api/V1/ProductController.php'));
+        expect(
+            File::exists(
+                app_path('Http/Controllers/Api/V1/ProductController.php'),
+            ),
+        )->toBeTrue();
+        $content = File::get(
+            app_path('Http/Controllers/Api/V1/ProductController.php'),
+        );
 
-        expect($content)->toContain('namespace App\Http\Controllers\Api\V1;');
+        expect($content)->toContain("namespace App\Http\Controllers\Api\V1;");
     });
 
     it('generates v2 controller when --v=2', function () {
@@ -347,10 +440,16 @@ describe('with --v option (API versioning)', function () {
             '--no-interaction' => true,
         ])->assertExitCode(0);
 
-        expect(File::exists(app_path('Http/Controllers/Api/V2/ProductController.php')))->toBeTrue();
-        $content = File::get(app_path('Http/Controllers/Api/V2/ProductController.php'));
+        expect(
+            File::exists(
+                app_path('Http/Controllers/Api/V2/ProductController.php'),
+            ),
+        )->toBeTrue();
+        $content = File::get(
+            app_path('Http/Controllers/Api/V2/ProductController.php'),
+        );
 
-        expect($content)->toContain('namespace App\Http\Controllers\Api\V2;');
+        expect($content)->toContain("namespace App\Http\Controllers\Api\V2;");
     });
 
     it('generates v2 resource when --v=2', function () {
@@ -361,11 +460,50 @@ describe('with --v option (API versioning)', function () {
             '--no-interaction' => true,
         ])->assertExitCode(0);
 
-        expect(File::exists(app_path('Http/Resources/V2/ProductResource.php')))->toBeTrue();
+        expect(
+            File::exists(app_path('Http/Resources/V2/ProductResource.php')),
+        )->toBeTrue();
         $content = File::get(app_path('Http/Resources/V2/ProductResource.php'));
 
-        expect($content)->toContain('namespace App\Http\Resources\V2;');
+        expect($content)->toContain("namespace App\Http\Resources\V2;");
     });
+
+    it(
+        'generates v2 requests in the versioned namespace when --v=2',
+        function () {
+            $this->artisan('api:magic', [
+                'model' => 'Product',
+                'schema' => 'name:string|required',
+                '--v' => '2',
+                '--no-interaction' => true,
+            ])->assertExitCode(0);
+
+            expect(
+                File::exists(
+                    app_path('Http/Requests/V2/StoreProductRequest.php'),
+                ),
+            )->toBeTrue();
+            expect(
+                File::exists(
+                    app_path('Http/Requests/V2/UpdateProductRequest.php'),
+                ),
+            )->toBeTrue();
+
+            $controllerContent = File::get(
+                app_path('Http/Controllers/Api/V2/ProductController.php'),
+            );
+            $requestContent = File::get(
+                app_path('Http/Requests/V2/StoreProductRequest.php'),
+            );
+
+            expect($controllerContent)->toContain(
+                "use App\Http\Requests\V2\StoreProductRequest;",
+            );
+            expect($requestContent)->toContain(
+                "namespace App\Http\Requests\V2;",
+            );
+        },
+    );
 
     it('generates resource without version directory by default', function () {
         $this->artisan('api:magic', [
@@ -374,10 +512,12 @@ describe('with --v option (API versioning)', function () {
             '--no-interaction' => true,
         ])->assertExitCode(0);
 
-        expect(File::exists(app_path('Http/Resources/ProductResource.php')))->toBeTrue();
+        expect(
+            File::exists(app_path('Http/Resources/ProductResource.php')),
+        )->toBeTrue();
         $content = File::get(app_path('Http/Resources/ProductResource.php'));
 
-        expect($content)->toContain('namespace App\Http\Resources;');
+        expect($content)->toContain("namespace App\Http\Resources;");
     });
 });
 
@@ -409,7 +549,9 @@ describe('--force option', function () {
             '--no-interaction' => true,
         ])->assertExitCode(0);
 
-        expect(File::get(app_path('Models/Product.php')))->toBe('<?php // existing file');
+        expect(File::get(app_path('Models/Product.php')))->toBe(
+            '<?php // existing file',
+        );
     });
 });
 
@@ -422,12 +564,16 @@ describe('complex schemas', function () {
         ])->assertExitCode(0);
 
         $modelContent = File::get(app_path('Models/Product.php'));
-        $migrationContent = File::get(glob(database_path('migrations/*_create_products_table.php'))[0]);
+        $migrationContent = File::get(
+            glob(database_path('migrations/*_create_products_table.php'))[0],
+        );
 
         expect($modelContent)->toContain("'name',");
         expect($modelContent)->toContain("'price',");
         expect($modelContent)->toContain("'description',");
         expect($modelContent)->toContain("'active',");
+        expect($modelContent)->toContain("'price' => 'integer'");
+        expect($modelContent)->toContain("'active' => 'boolean'");
         expect($migrationContent)->toContain('text(\'description\')');
         expect($migrationContent)->toContain('boolean(\'active\')');
         expect($migrationContent)->toContain('->nullable()');
@@ -440,11 +586,29 @@ describe('complex schemas', function () {
             '--no-interaction' => true,
         ])->assertExitCode(0);
 
-        $requestContent = File::get(app_path('Http/Requests/ProductRequest.php'));
+        $requestContent = File::get(
+            app_path('Http/Requests/StoreProductRequest.php'),
+        );
 
         expect($requestContent)->toContain("'email'");
         expect($requestContent)->toContain('required');
         expect($requestContent)->toContain('unique:products');
+    });
+
+    it('generates update-safe unique validation rules', function () {
+        $this->artisan('api:magic', [
+            'model' => 'Product',
+            'schema' => 'email:email|required|unique:products',
+            '--no-interaction' => true,
+        ])->assertExitCode(0);
+
+        $requestContent = File::get(
+            app_path('Http/Requests/UpdateProductRequest.php'),
+        );
+
+        expect($requestContent)->toContain('use Illuminate\\Validation\\Rule;');
+        expect($requestContent)->toContain('Rule::unique($table, $column)');
+        expect($requestContent)->toContain('->ignore($product)');
     });
 });
 
@@ -456,7 +620,9 @@ describe('pluralization', function () {
             '--no-interaction' => true,
         ])->assertExitCode(0);
 
-        $migrationFiles = glob(database_path('migrations/*_create_products_table.php'));
+        $migrationFiles = glob(
+            database_path('migrations/*_create_products_table.php'),
+        );
         $migrationPath = $migrationFiles[array_key_first($migrationFiles)];
         $content = File::get($migrationPath);
 
@@ -470,7 +636,9 @@ describe('pluralization', function () {
             '--no-interaction' => true,
         ])->assertExitCode(0);
 
-        $migrationFiles = glob(database_path('migrations/*_create_people_table.php'));
+        $migrationFiles = glob(
+            database_path('migrations/*_create_people_table.php'),
+        );
         $migrationPath = $migrationFiles[array_key_first($migrationFiles)];
         $content = File::get($migrationPath);
 
@@ -479,18 +647,23 @@ describe('pluralization', function () {
 });
 
 describe('searchable fields', function () {
-    it('generates search conditions in controller when schema has searchable fields', function () {
-        $this->artisan('api:magic', [
-            'model' => 'Product',
-            'schema' => 'name:string|required,description:text',
-            '--no-interaction' => true,
-        ])->assertExitCode(0);
+    it(
+        'generates search conditions in controller when schema has searchable fields',
+        function () {
+            $this->artisan('api:magic', [
+                'model' => 'Product',
+                'schema' => 'name:string|required,description:text',
+                '--no-interaction' => true,
+            ])->assertExitCode(0);
 
-        $content = File::get(app_path('Http/Controllers/Api/ProductController.php'));
+            $content = File::get(
+                app_path('Http/Controllers/Api/ProductController.php'),
+            );
 
-        expect($content)->toContain('$request->filled(\'search\')');
-        expect($content)->toContain('$searchTerm');
-    });
+            expect($content)->toContain('$request->filled(\'search\')');
+            expect($content)->toContain('$searchTerm');
+        },
+    );
 });
 
 describe('factory and seeder generation', function () {
@@ -502,7 +675,9 @@ describe('factory and seeder generation', function () {
             '--no-interaction' => true,
         ])->assertExitCode(0);
 
-        expect(File::exists(database_path('factories/ProductFactory.php')))->toBeTrue();
+        expect(
+            File::exists(database_path('factories/ProductFactory.php')),
+        )->toBeTrue();
     });
 
     it('generates seeder when --seeder is used', function () {
@@ -513,6 +688,57 @@ describe('factory and seeder generation', function () {
             '--no-interaction' => true,
         ])->assertExitCode(0);
 
-        expect(File::exists(database_path('seeders/ProductSeeder.php')))->toBeTrue();
+        expect(
+            File::exists(database_path('seeders/ProductSeeder.php')),
+        )->toBeTrue();
     });
+});
+
+describe('policy generation', function () {
+    it('generates policy when --policy is used', function () {
+        $this->artisan('api:magic', [
+            'model' => 'Product',
+            'schema' => 'name:string|required',
+            '--policy' => true,
+            '--no-interaction' => true,
+        ])->assertExitCode(0);
+
+        expect(
+            File::exists(app_path('Policies/ProductPolicy.php')),
+        )->toBeTrue();
+
+        $content = File::get(app_path('Policies/ProductPolicy.php'));
+
+        expect($content)->toContain('class ProductPolicy');
+        expect($content)->toContain(
+            'public function viewAny(mixed $user): bool',
+        );
+        expect($content)->toContain(
+            'public function update(mixed $user, Product $product): bool',
+        );
+        expect($content)->toContain('return false;');
+        expect($content)->toContain('TODO: Implement authorization');
+    });
+
+    it(
+        'includes soft delete policy hooks when --soft-deletes is used',
+        function () {
+            $this->artisan('api:magic', [
+                'model' => 'Product',
+                'schema' => 'name:string|required',
+                '--policy' => true,
+                '--soft-deletes' => true,
+                '--no-interaction' => true,
+            ])->assertExitCode(0);
+
+            $content = File::get(app_path('Policies/ProductPolicy.php'));
+
+            expect($content)->toContain(
+                'public function restore(mixed $user, Product $product): bool',
+            );
+            expect($content)->toContain(
+                'public function forceDelete(mixed $user, Product $product): bool',
+            );
+        },
+    );
 });

@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Route;
 
 uses()->group('unit', 'commands', 'graphql-command');
 
@@ -12,7 +13,7 @@ it('generates graphql schema file', function () {
     }
 
     // Define some routes to parse so that the api-magic schema has items
-    Illuminate\Support\Facades\Route::middleware('api')->get('/api/test-graphql-route', function () {
+    Route::middleware('api')->get('/api/test-graphql-route', function () {
         return response()->json(['success' => true]);
     });
 

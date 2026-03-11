@@ -5,6 +5,7 @@ namespace Arseno25\LaravelApiMagic\Http\Middleware;
 use Arseno25\LaravelApiMagic\Attributes\ApiMock;
 use Arseno25\LaravelApiMagic\Parsers\RequestAnalyzer;
 use Closure;
+use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use ReflectionMethod;
@@ -18,7 +19,10 @@ class MockApiMiddleware
     public function handle(Request $request, Closure $next): mixed
     {
         // Check if mock mode is enabled globally or via header
-        $mockEnabled = config('laravel-api-magic.mock.enabled', false);
+        $mockEnabled = config(
+            'api-magic.mock.enabled',
+            config('laravel-api-magic.mock.enabled', false),
+        );
         $headerMock = $request->header('X-Api-Mock') === 'true';
 
         // Get the current route's controller and method
@@ -44,28 +48,40 @@ class MockApiMiddleware
             return $next($request);
         }
 
-        $statusCode = $mockAttribute !== null ? $mockAttribute->statusCode : 200;
+        $statusCode =
+            $mockAttribute !== null ? $mockAttribute->statusCode : 200;
         $count = $mockAttribute !== null ? $mockAttribute->count : 5;
 
         // Generate mock response based on method type
         $httpMethod = strtolower($request->method());
-        $mockData = $this->generateMockData($controller, $method, $httpMethod, $count, $action);
+        $mockData = $this->generateMockData(
+            $method,
+            $httpMethod,
+            $count,
+            $action,
+        );
 
-        return new JsonResponse([
-            'data' => $mockData,
-            '_mock' => true,
-            '_generated_at' => now()->toIso8601String(),
-        ], $statusCode, [
-            'X-Api-Mock' => 'true',
-            'X-Api-Mock-Generated' => now()->toIso8601String(),
-        ]);
+        return new JsonResponse(
+            [
+                'data' => $mockData,
+                '_mock' => true,
+                '_generated_at' => now()->toIso8601String(),
+            ],
+            $statusCode,
+            [
+                'X-Api-Mock' => 'true',
+                'X-Api-Mock-Generated' => now()->toIso8601String(),
+            ],
+        );
     }
 
     /**
      * Get the ApiMock attribute from a controller method.
      */
-    private function getMockAttribute(string $controller, string $method): ?ApiMock
-    {
+    private function getMockAttribute(
+        string $controller,
+        string $method,
+    ): ?ApiMock {
         try {
             if (! class_exists($controller)) {
                 return null;
@@ -76,7 +92,9 @@ class MockApiMiddleware
 
             if (empty($attributes)) {
                 // Check class-level attribute
-                $classAttributes = $reflection->getDeclaringClass()->getAttributes(ApiMock::class);
+                $classAttributes = $reflection
+                    ->getDeclaringClass()
+                    ->getAttributes(ApiMock::class);
                 if (empty($classAttributes)) {
                     return null;
                 }
@@ -93,13 +111,29 @@ class MockApiMiddleware
     /**
      * Generate mock data based on the controller's FormRequest rules.
      *
+     * @param  array<string, mixed>|string|null  $action
      * @return array<string, mixed>|array<int, array<string, mixed>>
      */
-    private function generateMockData(string $controller, string $method, string $httpMethod, int $count, array|string|null $action = null): array
-    {
+    private function generateMockData(
+        string $method,
+        string $httpMethod,
+        int $count,
+        array|string|null $action = null,
+    ): array {
         // Try to get the FormRequest rules to generate realistic data
-        $requestClass = $this->requestAnalyzer->extractRequestFromAction($action);
-        $fields = $requestClass ? $this->requestAnalyzer->analyze($requestClass) : [];
+        $requestClass = $this->requestAnalyzer->extractRequestFromAction(
+            $action,
+        );
+        $fields = [];
+
+        if (
+            is_string($requestClass) &&
+            class_exists($requestClass) &&
+            is_subclass_of($requestClass, FormRequest::class)
+        ) {
+            /** @var class-string<FormRequest> $requestClass */
+            $fields = $this->requestAnalyzer->analyze($requestClass);
+        }
 
         if (empty($fields)) {
             // Generate generic mock data
@@ -153,8 +187,11 @@ class MockApiMiddleware
     /**
      * Generate a realistic mock value based on field name and type.
      */
-    private function generateMockValue(string $name, string $type, int $index): mixed
-    {
+    private function generateMockValue(
+        string $name,
+        string $type,
+        int $index,
+    ): mixed {
         $n = strtolower($name);
 
         // Smart name-based generation
@@ -173,25 +210,51 @@ class MockApiMiddleware
         if (str_contains($n, 'title') || str_contains($n, 'subject')) {
             return "Sample Title {$index}";
         }
-        if (str_contains($n, 'description') || str_contains($n, 'content') || str_contains($n, 'body')) {
+        if (
+            str_contains($n, 'description') ||
+            str_contains($n, 'content') ||
+            str_contains($n, 'body')
+        ) {
             return "This is a sample description for item {$index}. Lorem ipsum dolor sit amet.";
         }
         if (str_contains($n, 'slug')) {
             return "sample-slug-{$index}";
         }
-        if (str_contains($n, 'url') || str_contains($n, 'link') || str_contains($n, 'website')) {
+        if (
+            str_contains($n, 'url') ||
+            str_contains($n, 'link') ||
+            str_contains($n, 'website')
+        ) {
             return "https://example.com/item/{$index}";
         }
         if (str_contains($n, 'phone')) {
-            return '+1-555-'.str_pad((string) ($index * 1234 % 10000), 4, '0', STR_PAD_LEFT);
+            return '+1-555-'.
+                str_pad(
+                    (string) (($index * 1234) % 10000),
+                    4,
+                    '0',
+                    STR_PAD_LEFT,
+                );
         }
-        if (str_contains($n, 'price') || str_contains($n, 'cost') || str_contains($n, 'amount')) {
-            return round(9.99 + ($index * 10.5), 2);
+        if (
+            str_contains($n, 'price') ||
+            str_contains($n, 'cost') ||
+            str_contains($n, 'amount')
+        ) {
+            return round(9.99 + $index * 10.5, 2);
         }
-        if (str_contains($n, 'quantity') || str_contains($n, 'stock') || str_contains($n, 'qty')) {
+        if (
+            str_contains($n, 'quantity') ||
+            str_contains($n, 'stock') ||
+            str_contains($n, 'qty')
+        ) {
             return $index * 10;
         }
-        if (str_contains($n, 'image') || str_contains($n, 'avatar') || str_contains($n, 'photo')) {
+        if (
+            str_contains($n, 'image') ||
+            str_contains($n, 'avatar') ||
+            str_contains($n, 'photo')
+        ) {
             return "https://picsum.photos/seed/{$index}/400/300";
         }
         if (str_contains($n, '_id') || str_contains($n, 'category')) {
@@ -213,7 +276,9 @@ class MockApiMiddleware
             'number', 'float', 'double', 'decimal' => round($index * 1.5, 2),
             'boolean', 'bool' => $index % 2 === 0,
             'array' => ["item_{$index}_a", "item_{$index}_b"],
-            'date', 'datetime', 'timestamp' => now()->subDays($index)->toIso8601String(),
+            'date', 'datetime', 'timestamp' => now()
+                ->subDays($index)
+                ->toIso8601String(),
             default => "value_{$index}",
         };
     }
@@ -221,7 +286,7 @@ class MockApiMiddleware
     /**
      * Generate generic mock data when no FormRequest is found.
      *
-     * @return array<int, array<string, mixed>>
+     * @return array<string, mixed>|list<array<string, mixed>>
      */
     private function generateGenericMock(string $httpMethod, int $count): array
     {

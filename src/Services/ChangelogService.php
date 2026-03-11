@@ -13,7 +13,10 @@ final class ChangelogService
      */
     public function saveSnapshot(array $schema): string
     {
-        $path = config('laravel-api-magic.changelog.storage_path', storage_path('api-magic/changelog'));
+        $path = config(
+            'api-magic.changelog.storage_path',
+            storage_path('api-magic/changelog'),
+        );
 
         if (! File::isDirectory($path)) {
             File::makeDirectory($path, 0755, true);
@@ -21,8 +24,16 @@ final class ChangelogService
 
         $filename = date('Y-m-d_His').'.json';
         $fullPath = $path.'/'.$filename;
+        $encodedSchema = json_encode(
+            $schema,
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES,
+        );
 
-        File::put($fullPath, json_encode($schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        if ($encodedSchema === false) {
+            throw new \RuntimeException('Unable to encode changelog snapshot.');
+        }
+
+        File::put($fullPath, $encodedSchema);
 
         return $fullPath;
     }
@@ -34,7 +45,10 @@ final class ChangelogService
      */
     public function getSnapshots(): array
     {
-        $path = config('laravel-api-magic.changelog.storage_path', storage_path('api-magic/changelog'));
+        $path = config(
+            'api-magic.changelog.storage_path',
+            storage_path('api-magic/changelog'),
+        );
 
         if (! File::isDirectory($path)) {
             return [];
@@ -90,7 +104,9 @@ final class ChangelogService
         $changed = [];
         foreach ($newEndpoints as $key => $endpoint) {
             if (isset($oldEndpoints[$key])) {
-                $oldParams = json_encode($oldEndpoints[$key]['parameters'] ?? []);
+                $oldParams = json_encode(
+                    $oldEndpoints[$key]['parameters'] ?? [],
+                );
                 $newParams = json_encode($endpoint['parameters'] ?? []);
 
                 if ($oldParams !== $newParams) {
@@ -113,9 +129,9 @@ final class ChangelogService
     }
 
     /**
-     * Flatten nested endpoint structure into a keyed map.
-     *
-     * @return array<string, mixed>
+     * @param  array<string, array<string, array<string, mixed>>>  $endpoints
+     *                                                                         Flatten nested endpoint structure into a keyed map.
+     * @return array<string, array<string, mixed>>
      */
     private function flattenEndpoints(array $endpoints): array
     {

@@ -10,21 +10,47 @@ final class CodeSnippetGenerator
      * @param  array<string, mixed>  $endpoint
      * @return array<string, string>
      */
-    public function generate(string $method, string $path, array $endpoint, string $baseUrl): array
-    {
+    public function generate(
+        string $method,
+        string $path,
+        array $endpoint,
+        string $baseUrl,
+    ): array {
         return [
             'curl' => $this->generateCurl($method, $path, $endpoint, $baseUrl),
-            'javascript' => $this->generateJavascript($method, $path, $endpoint, $baseUrl),
+            'javascript' => $this->generateJavascript(
+                $method,
+                $path,
+                $endpoint,
+                $baseUrl,
+            ),
             'php' => $this->generatePhp($method, $path, $endpoint, $baseUrl),
-            'python' => $this->generatePython($method, $path, $endpoint, $baseUrl),
+            'python' => $this->generatePython(
+                $method,
+                $path,
+                $endpoint,
+                $baseUrl,
+            ),
             'dart' => $this->generateDart($method, $path, $endpoint, $baseUrl),
-            'swift' => $this->generateSwift($method, $path, $endpoint, $baseUrl),
+            'swift' => $this->generateSwift(
+                $method,
+                $path,
+                $endpoint,
+                $baseUrl,
+            ),
             'go' => $this->generateGo($method, $path, $endpoint, $baseUrl),
         ];
     }
 
-    private function generateCurl(string $method, string $path, array $endpoint, string $baseUrl): string
-    {
+    /**
+     * @param  array<string, mixed>  $endpoint
+     */
+    private function generateCurl(
+        string $method,
+        string $path,
+        array $endpoint,
+        string $baseUrl,
+    ): string {
         $url = rtrim($baseUrl, '/').$path;
         $lines = ['curl -X '.strtoupper($method).' \\'];
         $lines[] = "  '{$url}' \\";
@@ -35,7 +61,7 @@ final class CodeSnippetGenerator
 
             $body = $this->buildExampleBody($endpoint);
             if (! empty($body)) {
-                $json = json_encode($body, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+                $json = $this->encodeJson($body, true);
                 $lines[] = "  -d '{$json}'";
             }
         }
@@ -47,8 +73,15 @@ final class CodeSnippetGenerator
         return implode("\n", $lines);
     }
 
-    private function generateJavascript(string $method, string $path, array $endpoint, string $baseUrl): string
-    {
+    /**
+     * @param  array<string, mixed>  $endpoint
+     */
+    private function generateJavascript(
+        string $method,
+        string $path,
+        array $endpoint,
+        string $baseUrl,
+    ): string {
         $url = rtrim($baseUrl, '/').$path;
         $upperMethod = strtoupper($method);
 
@@ -70,7 +103,7 @@ final class CodeSnippetGenerator
         if (in_array(strtolower($method), ['post', 'put', 'patch'])) {
             $body = $this->buildExampleBody($endpoint);
             if (! empty($body)) {
-                $json = json_encode($body, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+                $json = $this->encodeJson($body, true);
                 $lines[] = "  body: JSON.stringify({$json}),";
             }
         }
@@ -82,8 +115,15 @@ final class CodeSnippetGenerator
         return implode("\n", $lines);
     }
 
-    private function generatePhp(string $method, string $path, array $endpoint, string $baseUrl): string
-    {
+    /**
+     * @param  array<string, mixed>  $endpoint
+     */
+    private function generatePhp(
+        string $method,
+        string $path,
+        array $endpoint,
+        string $baseUrl,
+    ): string {
         $url = rtrim($baseUrl, '/').$path;
         $httpMethod = strtolower($method);
 
@@ -107,8 +147,15 @@ final class CodeSnippetGenerator
         return implode("\n", $lines);
     }
 
-    private function generatePython(string $method, string $path, array $endpoint, string $baseUrl): string
-    {
+    /**
+     * @param  array<string, mixed>  $endpoint
+     */
+    private function generatePython(
+        string $method,
+        string $path,
+        array $endpoint,
+        string $baseUrl,
+    ): string {
         $url = rtrim($baseUrl, '/').$path;
         $pyMethod = strtolower($method);
 
@@ -121,7 +168,7 @@ final class CodeSnippetGenerator
 
         if (in_array($pyMethod, ['post', 'put', 'patch'])) {
             $body = $this->buildExampleBody($endpoint);
-            $pyBody = ! empty($body) ? json_encode($body, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) : '{}';
+            $pyBody = ! empty($body) ? $this->encodeJson($body, true) : '{}';
             $lines[] = '';
             $lines[] = "data = {$pyBody}";
             $lines[] = '';
@@ -136,12 +183,23 @@ final class CodeSnippetGenerator
         return implode("\n", $lines);
     }
 
-    private function generateDart(string $method, string $path, array $endpoint, string $baseUrl): string
-    {
+    /**
+     * @param  array<string, mixed>  $endpoint
+     */
+    private function generateDart(
+        string $method,
+        string $path,
+        array $endpoint,
+        string $baseUrl,
+    ): string {
         $url = rtrim($baseUrl, '/').$path;
         $httpMethod = strtolower($method);
 
-        $lines = ["import 'package:http/http.dart' as http;", "import 'dart:convert';", ''];
+        $lines = [
+            "import 'package:http/http.dart' as http;",
+            "import 'dart:convert';",
+            '',
+        ];
         $lines[] = "var url = Uri.parse('{$url}');";
         $lines[] = "var headers = {'Accept': 'application/json'};";
 
@@ -152,7 +210,7 @@ final class CodeSnippetGenerator
         if (in_array($httpMethod, ['post', 'put', 'patch'])) {
             $lines[] = "headers['Content-Type'] = 'application/json';";
             $body = $this->buildExampleBody($endpoint);
-            $dartBody = ! empty($body) ? json_encode($body, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) : '{}';
+            $dartBody = ! empty($body) ? $this->encodeJson($body, true) : '{}';
             $lines[] = "var body = jsonEncode({$dartBody});";
             $lines[] = "var response = await http.{$httpMethod}(url, headers: headers, body: body);";
         } else {
@@ -164,24 +222,34 @@ final class CodeSnippetGenerator
         return implode("\n", $lines);
     }
 
-    private function generateSwift(string $method, string $path, array $endpoint, string $baseUrl): string
-    {
+    /**
+     * @param  array<string, mixed>  $endpoint
+     */
+    private function generateSwift(
+        string $method,
+        string $path,
+        array $endpoint,
+        string $baseUrl,
+    ): string {
         $url = rtrim($baseUrl, '/').$path;
         $upperMethod = strtoupper($method);
 
         $lines = ['import Foundation', ''];
         $lines[] = "var request = URLRequest(url: URL(string: \"{$url}\")!)";
         $lines[] = "request.httpMethod = \"{$upperMethod}\"";
-        $lines[] = 'request.addValue("application/json", forHTTPHeaderField: "Accept")';
+        $lines[] =
+            'request.addValue("application/json", forHTTPHeaderField: "Accept")';
 
         if (! empty($endpoint['security'])) {
-            $lines[] = 'request.addValue("Bearer YOUR_TOKEN", forHTTPHeaderField: "Authorization")';
+            $lines[] =
+                'request.addValue("Bearer YOUR_TOKEN", forHTTPHeaderField: "Authorization")';
         }
 
         if (in_array(strtolower($method), ['post', 'put', 'patch'])) {
-            $lines[] = 'request.addValue("application/json", forHTTPHeaderField: "Content-Type")';
+            $lines[] =
+                'request.addValue("application/json", forHTTPHeaderField: "Content-Type")';
             $body = $this->buildExampleBody($endpoint);
-            $swiftBody = ! empty($body) ? json_encode($body, JSON_UNESCAPED_SLASHES) : '{}';
+            $swiftBody = ! empty($body) ? $this->encodeJson($body) : '{}';
             // Simple escape for Swift multiline or single line string
             $swiftBodyEscaped = str_replace('"', '\"', $swiftBody);
             $lines[] = "let bodyString = \"{$swiftBodyEscaped}\"";
@@ -189,7 +257,8 @@ final class CodeSnippetGenerator
         }
 
         $lines[] = '';
-        $lines[] = 'let task = URLSession.shared.dataTask(with: request) { data, response, error in';
+        $lines[] =
+            'let task = URLSession.shared.dataTask(with: request) { data, response, error in';
         $lines[] = '    guard let data = data else { return }';
         $lines[] = '    print(String(data: data, encoding: .utf8)!)';
         $lines[] = '}';
@@ -198,12 +267,26 @@ final class CodeSnippetGenerator
         return implode("\n", $lines);
     }
 
-    private function generateGo(string $method, string $path, array $endpoint, string $baseUrl): string
-    {
+    /**
+     * @param  array<string, mixed>  $endpoint
+     */
+    private function generateGo(
+        string $method,
+        string $path,
+        array $endpoint,
+        string $baseUrl,
+    ): string {
         $url = rtrim($baseUrl, '/').$path;
         $upperMethod = strtoupper($method);
 
-        $lines = ['package main', '', 'import (', "\t\"fmt\"", "\t\"net/http\"", "\t\"io\""];
+        $lines = [
+            'package main',
+            '',
+            'import (',
+            "\t\"fmt\"",
+            "\t\"net/http\"",
+            "\t\"io\"",
+        ];
 
         if (in_array(strtolower($method), ['post', 'put', 'patch'])) {
             $lines[] = "\t\"strings\"";
@@ -211,11 +294,12 @@ final class CodeSnippetGenerator
             $lines[] = '';
             $lines[] = 'func main() {';
             $body = $this->buildExampleBody($endpoint);
-            $goBody = ! empty($body) ? json_encode($body, JSON_UNESCAPED_SLASHES) : '{}';
+            $goBody = ! empty($body) ? $this->encodeJson($body) : '{}';
             $goBodyEscaped = str_replace('"', '\"', $goBody);
             $lines[] = "\tbody := strings.NewReader(\"{$goBodyEscaped}\")";
             $lines[] = "\treq, _ := http.NewRequest(\"{$upperMethod}\", \"{$url}\", body)";
-            $lines[] = "\treq.Header.Add(\"Content-Type\", \"application/json\")";
+            $lines[] =
+                "\treq.Header.Add(\"Content-Type\", \"application/json\")";
         } else {
             $lines[] = ')';
             $lines[] = '';
@@ -226,7 +310,8 @@ final class CodeSnippetGenerator
         $lines[] = "\treq.Header.Add(\"Accept\", \"application/json\")";
 
         if (! empty($endpoint['security'])) {
-            $lines[] = "\treq.Header.Add(\"Authorization\", \"Bearer YOUR_TOKEN\")";
+            $lines[] =
+                "\treq.Header.Add(\"Authorization\", \"Bearer YOUR_TOKEN\")";
         }
 
         $lines[] = "\tres, _ := http.DefaultClient.Do(req)";
@@ -238,6 +323,10 @@ final class CodeSnippetGenerator
         return implode("\n", $lines);
     }
 
+    /**
+     * @param  array<string, mixed>  $endpoint
+     * @return array<int|string, mixed>
+     */
     private function buildExampleBody(array $endpoint): array
     {
         $body = [];
@@ -254,13 +343,16 @@ final class CodeSnippetGenerator
                 continue;
             }
 
-            $name = is_string($key) ? $key : ($field['name'] ?? 'unknown');
+            $name = is_string($key) ? $key : $field['name'] ?? 'unknown';
             $body[$name] = $this->getExampleValue($field);
         }
 
         return $body;
     }
 
+    /**
+     * @param  array<string, mixed>  $field
+     */
     private function getExampleValue(array $field): mixed
     {
         $type = $field['type'] ?? 'string';
@@ -280,5 +372,27 @@ final class CodeSnippetGenerator
             'url' => 'https://example.com',
             default => 'string',
         };
+    }
+
+    /**
+     * @param  array<int|string, mixed>  $payload
+     */
+    private function encodeJson(
+        array $payload,
+        bool $prettyPrint = false,
+    ): string {
+        $flags = JSON_UNESCAPED_SLASHES;
+
+        if ($prettyPrint) {
+            $flags |= JSON_PRETTY_PRINT;
+        }
+
+        $encodedPayload = json_encode($payload, $flags);
+
+        if ($encodedPayload === false) {
+            throw new \RuntimeException('Unable to encode example payload.');
+        }
+
+        return $encodedPayload;
     }
 }

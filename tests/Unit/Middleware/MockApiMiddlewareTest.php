@@ -22,7 +22,7 @@ namespace {
 
     describe('Mock API Middleware', function () {
         it('passes through when mock is not enabled', function () {
-            config()->set('laravel-api-magic.mock.enabled', false);
+            config()->set('api-magic.mock.enabled', false);
 
             $middleware = app(MockApiMiddleware::class);
             $request = Request::create('/api/products', 'GET');
@@ -36,10 +36,13 @@ namespace {
         });
 
         it('returns mock data when X-Api-Mock header is present', function () {
-            config()->set('laravel-api-magic.mock.enabled', false);
+            config()->set('api-magic.mock.enabled', false);
 
             // Register a route so the middleware can resolve controller info
-            Route::middleware('api')->get('/api/test-mock-items', '\Arseno25\LaravelApiMagic\Tests\Fixtures\MockTestController@index');
+            Route::middleware('api')->get(
+                '/api/test-mock-items',
+                "\Arseno25\LaravelApiMagic\Tests\Fixtures\MockTestController@index",
+            );
 
             $middleware = app(MockApiMiddleware::class);
             $request = Request::create('/api/test-mock-items', 'GET');
@@ -60,9 +63,12 @@ namespace {
         });
 
         it('returns mock data when globally enabled', function () {
-            config()->set('laravel-api-magic.mock.enabled', true);
+            config()->set('api-magic.mock.enabled', true);
 
-            Route::middleware('api')->get('/api/test-global-mock', '\Arseno25\LaravelApiMagic\Tests\Fixtures\MockTestController@index');
+            Route::middleware('api')->get(
+                '/api/test-global-mock',
+                "\Arseno25\LaravelApiMagic\Tests\Fixtures\MockTestController@index",
+            );
 
             $middleware = app(MockApiMiddleware::class);
             $request = Request::create('/api/test-global-mock', 'GET');
@@ -79,9 +85,12 @@ namespace {
         });
 
         it('includes generated_at timestamp in mock response', function () {
-            config()->set('laravel-api-magic.mock.enabled', false);
+            config()->set('api-magic.mock.enabled', false);
 
-            Route::middleware('api')->get('/api/test-mock-timestamp', '\Arseno25\LaravelApiMagic\Tests\Fixtures\MockTestController@index');
+            Route::middleware('api')->get(
+                '/api/test-mock-timestamp',
+                "\Arseno25\LaravelApiMagic\Tests\Fixtures\MockTestController@index",
+            );
 
             $middleware = app(MockApiMiddleware::class);
             $request = Request::create('/api/test-mock-timestamp', 'GET');

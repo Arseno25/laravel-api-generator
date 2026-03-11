@@ -17,8 +17,14 @@ final class StubManager
         $this->publishedStubPath = base_path('stubs/vendor/api-magic/');
     }
 
-    public function generate(string $stubFile, array $replacements, string $destination): void
-    {
+    /**
+     * @param  array<string, scalar>  $replacements
+     */
+    public function generate(
+        string $stubFile,
+        array $replacements,
+        string $destination,
+    ): void {
         $stub = $this->getStub($stubFile);
         $content = $this->replacePlaceholders($stub, $replacements);
 
@@ -45,41 +51,71 @@ final class StubManager
         return File::get($path);
     }
 
-    private function replacePlaceholders(string $stub, array $replacements): string
-    {
+    /**
+     * @param  array<string, scalar>  $replacements
+     */
+    private function replacePlaceholders(
+        string $stub,
+        array $replacements,
+    ): string {
         foreach ($replacements as $key => $value) {
-            $stub = str_replace($key, $value, $stub);
+            $replacement = is_bool($value)
+                ? ($value
+                    ? '1'
+                    : '')
+                : (string) $value;
+            $stub = str_replace($key, $replacement, $stub);
         }
 
         // Handle block conditionals @conditionalName ... @endConditionalName
-        $stub = preg_replace_callback('/@(\w+)\s*\n(.*?)\s*@end\1/si', function ($matches) use ($replacements) {
-            $conditionName = strtolower($matches[1]);
-            $content = $matches[2];
+        $stub = preg_replace_callback(
+            '/@(\w+)\s*\n(.*?)\s*@end\1/si',
+            function ($matches) use ($replacements) {
+                $conditionName = strtolower($matches[1]);
+                $content = $matches[2];
 
-            // Check if the condition is truthy in replacements (case-insensitive key lookup)
-            $key = '{{ '.$conditionName.' }}';
-            $isEnabled = false;
-            foreach ($replacements as $rKey => $rVal) {
-                if (strtolower($rKey) === $key && $rVal) {
-                    $isEnabled = true;
-                    break;
+                // Check if the condition is truthy in replacements (case-insensitive key lookup)
+                $key = '{{ '.$conditionName.' }}';
+                $isEnabled = false;
+                foreach ($replacements as $rKey => $rVal) {
+                    if (strtolower($rKey) === $key && $rVal) {
+                        $isEnabled = true;
+                        break;
+                    }
                 }
-            }
 
-            return $isEnabled ? $content : '';
-        }, $stub);
+                return $isEnabled ? $content : '';
+            },
+            $stub,
+        );
+
+        if ($stub === null) {
+            throw new \RuntimeException(
+                'Unable to replace conditional stub blocks.',
+            );
+        }
 
         // Handle inline conditional replacements @conditionalName('content')
-        $stub = preg_replace_callback('/@(\w+)\(([\'"])(.+?)\2\)/', function ($matches) use ($replacements) {
-            $conditionName = $matches[1];
-            $content = $matches[3];
+        $stub = preg_replace_callback(
+            '/@(\w+)\(([\'"])(.+?)\2\)/',
+            function ($matches) use ($replacements) {
+                $conditionName = $matches[1];
+                $content = $matches[3];
 
-            // Check if the condition is truthy in replacements
-            $key = '{{'.strtolower($conditionName).'}}';
-            $isEnabled = isset($replacements[$key]) && $replacements[$key];
+                // Check if the condition is truthy in replacements
+                $key = '{{'.strtolower($conditionName).'}}';
+                $isEnabled = isset($replacements[$key]) && $replacements[$key];
 
-            return $isEnabled ? $content : '';
-        }, $stub);
+                return $isEnabled ? $content : '';
+            },
+            $stub,
+        );
+
+        if ($stub === null) {
+            throw new \RuntimeException(
+                'Unable to replace inline conditional stub blocks.',
+            );
+        }
 
         return $stub;
     }

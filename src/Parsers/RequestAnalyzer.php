@@ -57,6 +57,7 @@ final class RequestAnalyzer
     /**
      * Parse a single rule string into components.
      *
+     * @param  array<int, mixed>|string  $rule
      * @return array<string, mixed>
      */
     private function parseRuleString(string|array $rule): array
@@ -94,7 +95,10 @@ final class RequestAnalyzer
         $stringRules = array_filter($rules, 'is_string');
         $rulesString = implode('|', $stringRules);
 
-        if (str_contains($rulesString, 'integer') || str_contains($rulesString, 'numeric')) {
+        if (
+            str_contains($rulesString, 'integer') ||
+            str_contains($rulesString, 'numeric')
+        ) {
             return 'integer';
         }
 
@@ -142,7 +146,12 @@ final class RequestAnalyzer
      */
     private function isFile(array $rules): bool
     {
-        return in_array('file', $rules, true) || in_array('image', $rules, true) || collect($rules)->contains(fn ($rule) => is_string($rule) && str_starts_with($rule, 'mimes:'));
+        return in_array('file', $rules, true) ||
+            in_array('image', $rules, true) ||
+            collect($rules)->contains(
+                fn ($rule) => is_string($rule) &&
+                    str_starts_with($rule, 'mimes:'),
+            );
     }
 
     /**
@@ -214,11 +223,15 @@ final class RequestAnalyzer
             }
         }
 
-        return empty($description) ? 'No additional constraints' : implode(', ', $description);
+        return empty($description)
+            ? 'No additional constraints'
+            : implode(', ', $description);
     }
 
     /**
      * Extract request class from route action.
+     *
+     * @param  array<string, mixed>|string|null  $action
      */
     public function extractRequestFromAction(array|string|null $action): ?string
     {
@@ -243,9 +256,16 @@ final class RequestAnalyzer
     /**
      * Find FormRequest class in controller method signature.
      */
-    private function findRequestInMethod(string $controller, string $method): ?string
-    {
+    private function findRequestInMethod(
+        string $controller,
+        string $method,
+    ): ?string {
         try {
+            if (! class_exists($controller)) {
+                return null;
+            }
+
+            /** @var class-string<object> $controller */
             $reflection = new ReflectionClass($controller);
 
             if (! $reflection->hasMethod($method)) {
@@ -258,10 +278,16 @@ final class RequestAnalyzer
             foreach ($parameters as $parameter) {
                 $type = $parameter->getType();
 
-                if ($type instanceof ReflectionNamedType && ! $type->isBuiltin()) {
+                if (
+                    $type instanceof ReflectionNamedType &&
+                    ! $type->isBuiltin()
+                ) {
                     $typeName = $type->getName();
 
-                    if (class_exists($typeName) && is_subclass_of($typeName, FormRequest::class)) {
+                    if (
+                        class_exists($typeName) &&
+                        is_subclass_of($typeName, FormRequest::class)
+                    ) {
                         return $typeName;
                     }
                 }

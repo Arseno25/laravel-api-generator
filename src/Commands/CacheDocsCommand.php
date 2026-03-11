@@ -16,9 +16,13 @@ final class CacheDocsCommand extends Command
 
     protected $description = 'Cache API documentation schema for better performance';
 
-    public function handle(RouteAnalyzer $routeAnalyzer, RequestAnalyzer $requestAnalyzer): int
-    {
-        $cachePath = $this->option('path') ?: base_path('bootstrap/cache/api-magic.json');
+    public function handle(
+        RouteAnalyzer $routeAnalyzer,
+        RequestAnalyzer $requestAnalyzer,
+    ): int {
+        $cachePath =
+            $this->option('path') ?:
+            base_path('bootstrap/cache/api-magic.json');
 
         if ($this->option('clear')) {
             $this->clearCache($cachePath);
@@ -33,14 +37,21 @@ final class CacheDocsCommand extends Command
         $this->saveCache($cachePath, $schema);
 
         $endpointCount = count($schema['endpoints'] ?? []);
-        $this->info("<fg=green>Documentation cached successfully!</> ({$endpointCount} endpoints)");
+        $this->info(
+            "<fg=green>Documentation cached successfully!</> ({$endpointCount} endpoints)",
+        );
         $this->info("Cache file: {$cachePath}");
 
         return self::SUCCESS;
     }
 
-    private function buildSchema(RouteAnalyzer $routeAnalyzer, RequestAnalyzer $requestAnalyzer): array
-    {
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildSchema(
+        RouteAnalyzer $routeAnalyzer,
+        RequestAnalyzer $requestAnalyzer,
+    ): array {
         $routes = $routeAnalyzer->getApiRoutes();
         $endpoints = [];
         $tags = [];
@@ -93,6 +104,9 @@ final class CacheDocsCommand extends Command
         ];
     }
 
+    /**
+     * @param  array<string, mixed>  $schema
+     */
     private function saveCache(string $path, array $schema): void
     {
         $directory = dirname($path);
@@ -101,7 +115,16 @@ final class CacheDocsCommand extends Command
             File::makeDirectory($directory, 0755, true);
         }
 
-        File::put($path, json_encode($schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        $encodedSchema = json_encode(
+            $schema,
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES,
+        );
+
+        if ($encodedSchema === false) {
+            throw new \RuntimeException('Unable to encode cached API schema.');
+        }
+
+        File::put($path, $encodedSchema);
     }
 
     private function clearCache(string $path): void

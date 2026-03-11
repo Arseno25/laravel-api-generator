@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\File;
 describe('Changelog Service', function () {
     beforeEach(function () {
         $this->storagePath = storage_path('api-magic/changelog-test');
-        config()->set('laravel-api-magic.changelog.storage_path', $this->storagePath);
+        config()->set('api-magic.changelog.storage_path', $this->storagePath);
 
         // Clean up test directory
         if (File::isDirectory($this->storagePath)) {
@@ -58,7 +58,10 @@ describe('Changelog Service', function () {
         $oldSchema = [
             'endpoints' => [
                 '/api/users' => [
-                    'get' => ['summary' => 'List', 'parameters' => ['old_param']],
+                    'get' => [
+                        'summary' => 'List',
+                        'parameters' => ['old_param'],
+                    ],
                 ],
                 '/api/removed' => [
                     'delete' => ['summary' => 'Remove'],
@@ -69,7 +72,10 @@ describe('Changelog Service', function () {
         $newSchema = [
             'endpoints' => [
                 '/api/users' => [
-                    'get' => ['summary' => 'List', 'parameters' => ['new_param']],
+                    'get' => [
+                        'summary' => 'List',
+                        'parameters' => ['new_param'],
+                    ],
                 ],
                 '/api/products' => [
                     'get' => ['summary' => 'Products'],

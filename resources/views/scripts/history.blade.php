@@ -27,6 +27,8 @@ function clearHistory() {
 function showHistoryPanel() {
     selectedPath = null;
     selectedMethod = null;
+    const searchEl = document.getElementById('search');
+    renderEndpoints(searchEl ? searchEl.value : '');
     const container = document.getElementById('content-area');
     updateHistoryCount();
 
@@ -53,7 +55,7 @@ function replayHistory(index) {
         selectedMethod = entry.method.toLowerCase();
         const endpoint = schema.endpoints[selectedPath][selectedMethod];
         renderEndpointDetail(selectedPath, selectedMethod, endpoint);
-        
+
         // Restore request body
         if (entry.body) {
             setTimeout(() => {
@@ -80,14 +82,14 @@ function replayHistory(index) {
                     if (timeEl) {
                         timeEl.textContent = entry.responseTime + 'ms';
                     }
-                    
+
                     let data;
-                    try { 
-                        data = JSON.parse(entry.response); 
-                    } catch { 
-                        data = { raw: entry.response }; 
+                    try {
+                        data = JSON.parse(entry.response);
+                    } catch {
+                        data = { raw: entry.response };
                     }
-                    
+
                     if (entry.status >= 400 || !data || (typeof data === 'object' && data.exception)) {
                         if (typeof displayErrorBody === 'function') displayErrorBody(entry.status, data);
                     } else {

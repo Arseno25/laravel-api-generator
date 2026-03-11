@@ -1,0 +1,52 @@
+<?php
+
+namespace {{ namespace }}\Policies;
+
+use {{ namespace }}\Models\{{ model }};
+
+class {{ model }}Policy
+{
+    public function viewAny(mixed $user): bool
+    {
+        /** TODO: Implement authorization for viewing {{ model }} records. */
+        return false;
+    }
+
+    public function view(mixed $user, {{ model }} ${{ modelVariable }}): bool
+    {
+        /** TODO: Implement authorization for viewing the given {{ model }} record. */
+        return false;
+    }
+
+    public function create(mixed $user): bool
+    {
+        /** TODO: Implement authorization for creating {{ model }} records. */
+        return false;
+    }
+
+    public function update(mixed $user, {{ model }} ${{ modelVariable }}): bool
+    {
+        /** TODO: Implement authorization for updating the given {{ model }} record. */
+        return false;
+    }
+
+    public function delete(mixed $user, {{ model }} ${{ modelVariable }}): bool
+    {
+        /** TODO: Implement authorization for deleting the given {{ model }} record. */
+        return false;
+    }
+
+@softdeletesmethods
+    public function restore(mixed $user, {{ model }} ${{ modelVariable }}): bool
+    {
+        /** TODO: Implement authorization for restoring the given {{ model }} record. */
+        return false;
+    }
+
+    public function forceDelete(mixed $user, {{ model }} ${{ modelVariable }}): bool
+    {
+        /** TODO: Implement authorization for permanently deleting the given {{ model }} record. */
+        return false;
+    }
+@endsoftdeletesmethods
+}
