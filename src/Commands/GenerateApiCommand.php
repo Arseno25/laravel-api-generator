@@ -35,29 +35,29 @@ final class GenerateApiCommand extends Command
         {--v= : API version number (e.g., 1, 2). Omit for no versioning.}
         {--force : Overwrite existing files}';
 
-    protected $description = "Generate a complete API with Model, Migration, Controller, Request, Resource, and optional Pest Test";
+    protected $description = 'Generate a complete API with Model, Migration, Controller, Request, Resource, and optional Pest Test';
 
     public function handle(SchemaParser $parser, StubManager $stubManager): int
     {
-        $noInteraction = $this->input->hasParameterOption("--no-interaction");
+        $noInteraction = $this->input->hasParameterOption('--no-interaction');
 
         // Display Header
-        if (!$noInteraction) {
-            intro("✨ API Magic - Interactive Setup");
+        if (! $noInteraction) {
+            intro('✨ API Magic - Interactive Setup');
         }
 
         // Get model name (interactive if not provided)
-        $model = $this->argument("model");
+        $model = $this->argument('model');
         if (empty($model)) {
             if ($noInteraction) {
-                error("Model name is required in non-interactive mode.");
+                error('Model name is required in non-interactive mode.');
 
                 return self::FAILURE;
             }
 
             $model = text(
-                label: "What is the Model name?",
-                placeholder: "e.g., Post, Product, User",
+                label: 'What is the Model name?',
+                placeholder: 'e.g., Post, Product, User',
                 required: true,
             );
         }
@@ -66,38 +66,38 @@ final class GenerateApiCommand extends Command
         $table = Str::snake(Str::pluralStudly($model));
 
         // Get schema input
-        $schemaInput = $this->argument("schema");
+        $schemaInput = $this->argument('schema');
         if (empty($schemaInput)) {
             if ($noInteraction) {
                 warning(
-                    "Running in non-interactive mode. Generating with placeholder fields...",
+                    'Running in non-interactive mode. Generating with placeholder fields...',
                 );
-                $schemaInput = "";
+                $schemaInput = '';
             } elseif (
                 confirm(
-                    label: "Would you like to define fields interactively?",
+                    label: 'Would you like to define fields interactively?',
                     default: true,
                 )
             ) {
                 $schemaInput = $this->collectFieldsInteractively();
             } else {
                 warning(
-                    "No schema provided. Generating with placeholder fields...",
+                    'No schema provided. Generating with placeholder fields...',
                 );
-                $schemaInput = "";
+                $schemaInput = '';
             }
         }
 
         // Get relations
-        $belongsTo = $this->stringOption("belongsTo");
-        $hasMany = $this->stringOption("hasMany");
-        $belongsToMany = $this->stringOption("belongsToMany");
+        $belongsTo = $this->stringOption('belongsTo');
+        $hasMany = $this->stringOption('hasMany');
+        $belongsToMany = $this->stringOption('belongsToMany');
 
         if (
             empty($belongsTo) &&
             empty($hasMany) &&
             empty($belongsToMany) &&
-            !$noInteraction
+            ! $noInteraction
         ) {
             [
                 $belongsTo,
@@ -111,77 +111,77 @@ final class GenerateApiCommand extends Command
         }
 
         // Get API version (null = no versioning)
-        $version = $this->stringOption("v");
-        if (!$noInteraction && $version === null) {
+        $version = $this->stringOption('v');
+        if (! $noInteraction && $version === null) {
             $versionChoice = select(
-                label: "API versioning?",
+                label: 'API versioning?',
                 options: [
-                    "none" => "No versioning (e.g., /api/products)",
-                    "1" => "v1 (e.g., /api/v1/products)",
-                    "2" => "v2 (e.g., /api/v2/products)",
-                    "3" => "v3 (e.g., /api/v3/products)",
+                    'none' => 'No versioning (e.g., /api/products)',
+                    '1' => 'v1 (e.g., /api/v1/products)',
+                    '2' => 'v2 (e.g., /api/v2/products)',
+                    '3' => 'v3 (e.g., /api/v3/products)',
                 ],
-                default: "none",
+                default: 'none',
             );
             $version =
-                $versionChoice === "none" ? null : (string) $versionChoice;
+                $versionChoice === 'none' ? null : (string) $versionChoice;
         }
 
         // Get test option
-        $generateTest = $this->booleanOption("test");
-        if (!$noInteraction && !$generateTest) {
+        $generateTest = $this->booleanOption('test');
+        if (! $noInteraction && ! $generateTest) {
             $generateTest = confirm(
-                label: "Generate Pest feature test?",
+                label: 'Generate Pest feature test?',
                 default: false,
             );
         }
 
-        $generateFactory = $this->booleanOption("factory");
-        $generateSeeder = $this->booleanOption("seeder");
-        $generatePolicy = $this->booleanOption("policy");
-        $useSoftDeletes = $this->booleanOption("soft-deletes");
+        $generateFactory = $this->booleanOption('factory');
+        $generateSeeder = $this->booleanOption('seeder');
+        $generatePolicy = $this->booleanOption('policy');
+        $useSoftDeletes = $this->booleanOption('soft-deletes');
 
         // Show summary and confirm
-        if (!$noInteraction) {
+        if (! $noInteraction) {
             $this->displaySummary([
-                "model" => $model,
-                "fields" => $schemaInput,
-                "relations" => [
-                    "belongsTo" => $belongsTo,
-                    "hasMany" => $hasMany,
-                    "belongsToMany" => $belongsToMany,
+                'model' => $model,
+                'fields' => $schemaInput,
+                'relations' => [
+                    'belongsTo' => $belongsTo,
+                    'hasMany' => $hasMany,
+                    'belongsToMany' => $belongsToMany,
                 ],
-                "version" => $version,
-                "test" => $generateTest,
-                "factory" => $generateFactory,
-                "seeder" => $generateSeeder,
-                "policy" => $generatePolicy,
-                "softDeletes" => $useSoftDeletes,
+                'version' => $version,
+                'test' => $generateTest,
+                'factory' => $generateFactory,
+                'seeder' => $generateSeeder,
+                'policy' => $generatePolicy,
+                'softDeletes' => $useSoftDeletes,
             ]);
 
-            if (!confirm(label: "Proceed to generate API?", default: true)) {
-                warning("Generation cancelled.");
+            if (! confirm(label: 'Proceed to generate API?', default: true)) {
+                warning('Generation cancelled.');
 
                 return self::SUCCESS;
             }
         }
 
         // Check force option
-        $force = $this->booleanOption("force");
-        if (!$noInteraction && !$force) {
+        $force = $this->booleanOption('force');
+        if (! $noInteraction && ! $force) {
             $existingFiles = $this->checkExistingFiles(
                 $model,
                 $version,
                 $generateTest,
             );
-            if (!empty($existingFiles)) {
-                warning("The following files already exist:");
+            if (! empty($existingFiles)) {
+                warning('The following files already exist:');
                 foreach ($existingFiles as $file) {
                     $this->line("  <fg=red>✗</> {$file}");
                 }
 
                 $force = confirm(
-                    label: "Overwrite existing files?",
+                    label: 'Overwrite existing files?',
                     default: false,
                 );
             }
@@ -199,185 +199,185 @@ final class GenerateApiCommand extends Command
 
         // Build namespaces and paths based on version
         $controllerNamespace = $this->buildNamespace(
-            "App\\Http\\Controllers\\Api",
+            'App\\Http\\Controllers\\Api',
             $version,
         );
         $resourceNamespace = $this->buildNamespace(
-            "App\\Http\\Resources",
+            'App\\Http\\Resources',
             $version,
         );
-        $controllerDir = $this->buildPath("Http/Controllers/Api", $version);
+        $controllerDir = $this->buildPath('Http/Controllers/Api', $version);
         $requestNamespace = $this->buildNamespace(
-            "App\\Http\\Requests",
+            'App\\Http\\Requests',
             $version,
         );
-        $requestDir = $this->buildPath("Http/Requests", $version);
-        $resourceDir = $this->buildPath("Http/Resources", $version);
+        $requestDir = $this->buildPath('Http/Requests', $version);
+        $resourceDir = $this->buildPath('Http/Resources', $version);
 
         // Build route prefix: no version → "" | with version → "v1/"
-        $routePrefix = $version !== null ? "v{$version}/" : "";
-        $apiPrefix = "/api/{$routePrefix}" . Str::kebab(Str::plural($model));
+        $routePrefix = $version !== null ? "v{$version}/" : '';
+        $apiPrefix = "/api/{$routePrefix}".Str::kebab(Str::plural($model));
 
         $replacements = [
-            "{{ namespace }}" => "App",
-            "{{ controllerNamespace }}" => $controllerNamespace,
-            "{{ requestNamespace }}" => $requestNamespace,
-            "{{ resourceNamespace }}" => $resourceNamespace,
-            "{{ factoryNamespace }}" => "Database\\Factories",
-            "{{ seederNamespace }}" => "Database\\Seeders",
-            "{{ model }}" => $model,
-            "{{ modelVariable }}" => Str::camel($model),
-            "{{ modelPlural }}" => Str::plural($model),
-            "{{ modelPluralVariable }}" => Str::plural(Str::camel($model)),
-            "{{ table }}" => $table,
-            "{{ fields }}" => $fields["migration"],
-            "{{ fillable }}" => $fields["fillable"],
-            "{{ casts }}" => $fields["casts"],
-            "{{ rules }}" => $fields["rules"],
-            "{{ resourceProperties }}" => $fields["resourceProperties"],
-            "{{ relations }}" => $fields["relations"],
-            "{{ relationImports }}" => $this->buildRelationImports(
+            '{{ namespace }}' => 'App',
+            '{{ controllerNamespace }}' => $controllerNamespace,
+            '{{ requestNamespace }}' => $requestNamespace,
+            '{{ resourceNamespace }}' => $resourceNamespace,
+            '{{ factoryNamespace }}' => 'Database\\Factories',
+            '{{ seederNamespace }}' => 'Database\\Seeders',
+            '{{ model }}' => $model,
+            '{{ modelVariable }}' => Str::camel($model),
+            '{{ modelPlural }}' => Str::plural($model),
+            '{{ modelPluralVariable }}' => Str::plural(Str::camel($model)),
+            '{{ table }}' => $table,
+            '{{ fields }}' => $fields['migration'],
+            '{{ fillable }}' => $fields['fillable'],
+            '{{ casts }}' => $fields['casts'],
+            '{{ rules }}' => $fields['rules'],
+            '{{ resourceProperties }}' => $fields['resourceProperties'],
+            '{{ relations }}' => $fields['relations'],
+            '{{ relationImports }}' => $this->buildRelationImports(
                 $belongsTo,
                 $hasMany,
                 $belongsToMany,
             ),
-            "{{ foreignKeys }}" => $fields["foreignKeys"],
-            "{{ factoryDefinitions }}" => $fields["factoryDefinitions"],
-            "{{ searchConditions }}" => $this->buildSearchConditions(
-                $fields["searchableFields"],
+            '{{ foreignKeys }}' => $fields['foreignKeys'],
+            '{{ factoryDefinitions }}' => $fields['factoryDefinitions'],
+            '{{ searchConditions }}' => $this->buildSearchConditions(
+                $fields['searchableFields'],
             ),
-            "{{ apiResourceUrl }}" => Str::kebab(Str::plural($model)),
-            "{{ apiPrefix }}" => $apiPrefix,
-            "{{ apiVersion }}" => $version ?? "",
-            "{{ softDeletes }}" => $useSoftDeletes
+            '{{ apiResourceUrl }}' => Str::kebab(Str::plural($model)),
+            '{{ apiPrefix }}' => $apiPrefix,
+            '{{ apiVersion }}' => $version ?? '',
+            '{{ softDeletes }}' => $useSoftDeletes
                 ? '$table->softDeletes();'
-                : "",
-            "{{ softDeletesTrait }}" => $useSoftDeletes
-                ? "    use SoftDeletes;"
-                : "",
-            "{{ softdeletesmethods }}" => $useSoftDeletes,
-            "{{ searchablefields }}" => !empty($fields["searchableFields"]),
-            "{{ seederCount }}" => (string) config(
-                "api-magic.generator.seeder_count",
+                : '',
+            '{{ softDeletesTrait }}' => $useSoftDeletes
+                ? '    use SoftDeletes;'
+                : '',
+            '{{ softdeletesmethods }}' => $useSoftDeletes,
+            '{{ searchablefields }}' => ! empty($fields['searchableFields']),
+            '{{ seederCount }}' => (string) config(
+                'api-magic.generator.seeder_count',
                 10,
             ),
         ];
 
         $files = [
             [
-                "stub" => "model.stub",
-                "destination" => app_path("Models/{$model}.php"),
-                "replacements" => $replacements,
+                'stub' => 'model.stub',
+                'destination' => app_path("Models/{$model}.php"),
+                'replacements' => $replacements,
             ],
             [
-                "stub" => "migration.stub",
-                "destination" => database_path(
-                    "migrations/" .
-                        date("Y_m_d_His") .
+                'stub' => 'migration.stub',
+                'destination' => database_path(
+                    'migrations/'.
+                        date('Y_m_d_His').
                         "_create_{$table}_table.php",
                 ),
-                "replacements" => $replacements,
+                'replacements' => $replacements,
             ],
             [
-                "stub" => "controller.api.stub",
-                "destination" => app_path(
+                'stub' => 'controller.api.stub',
+                'destination' => app_path(
                     "{$controllerDir}/{$model}Controller.php",
                 ),
-                "replacements" => $replacements,
+                'replacements' => $replacements,
             ],
             [
-                "stub" => "request.stub",
-                "destination" => app_path(
+                'stub' => 'request.stub',
+                'destination' => app_path(
                     "{$requestDir}/Store{$model}Request.php",
                 ),
-                "replacements" => array_merge($replacements, [
-                    "{{ requestClass }}" => "Store{$model}Request",
+                'replacements' => array_merge($replacements, [
+                    '{{ requestClass }}' => "Store{$model}Request",
                 ]),
             ],
             [
-                "stub" => "request.stub",
-                "destination" => app_path(
+                'stub' => 'request.stub',
+                'destination' => app_path(
                     "{$requestDir}/Update{$model}Request.php",
                 ),
-                "replacements" => array_merge($replacements, [
-                    "{{ requestClass }}" => "Update{$model}Request",
+                'replacements' => array_merge($replacements, [
+                    '{{ requestClass }}' => "Update{$model}Request",
                 ]),
             ],
             [
-                "stub" => "resource.stub",
-                "destination" => app_path(
+                'stub' => 'resource.stub',
+                'destination' => app_path(
                     "{$resourceDir}/{$model}Resource.php",
                 ),
-                "replacements" => $replacements,
+                'replacements' => $replacements,
             ],
             [
-                "stub" => "collection.stub",
-                "destination" => app_path(
+                'stub' => 'collection.stub',
+                'destination' => app_path(
                     "{$resourceDir}/{$model}Collection.php",
                 ),
-                "replacements" => $replacements,
+                'replacements' => $replacements,
             ],
         ];
 
         if ($generateTest) {
-            $testDir = $this->buildPath("tests/Feature/Api", $version);
+            $testDir = $this->buildPath('tests/Feature/Api', $version);
             $files[] = [
-                "stub" => "pest.test.stub",
-                "destination" => base_path("{$testDir}/{$model}Test.php"),
-                "replacements" => $replacements,
+                'stub' => 'pest.test.stub',
+                'destination' => base_path("{$testDir}/{$model}Test.php"),
+                'replacements' => $replacements,
             ];
         }
 
         if ($generateFactory) {
             $files[] = [
-                "stub" => "factory.stub",
-                "destination" => database_path("factories/{$model}Factory.php"),
-                "replacements" => $replacements,
+                'stub' => 'factory.stub',
+                'destination' => database_path("factories/{$model}Factory.php"),
+                'replacements' => $replacements,
             ];
         }
 
         if ($generateSeeder) {
             $files[] = [
-                "stub" => "seeder.stub",
-                "destination" => database_path("seeders/{$model}Seeder.php"),
-                "replacements" => $replacements,
+                'stub' => 'seeder.stub',
+                'destination' => database_path("seeders/{$model}Seeder.php"),
+                'replacements' => $replacements,
             ];
         }
 
         if ($generatePolicy) {
             $files[] = [
-                "stub" => "policy.stub",
-                "destination" => app_path("Policies/{$model}Policy.php"),
-                "replacements" => $replacements,
+                'stub' => 'policy.stub',
+                'destination' => app_path("Policies/{$model}Policy.php"),
+                'replacements' => $replacements,
             ];
         }
 
         foreach ($files as $file) {
-            $directory = dirname($file["destination"]);
-            if (!File::isDirectory($directory)) {
+            $directory = dirname($file['destination']);
+            if (! File::isDirectory($directory)) {
                 File::makeDirectory($directory, 0755, true);
             }
 
-            if (File::exists($file["destination"]) && !$force) {
+            if (File::exists($file['destination']) && ! $force) {
                 $this->line(
-                    "  <fg=yellow>⊝ Skipped:</> {$file["destination"]}",
+                    "  <fg=yellow>⊝ Skipped:</> {$file['destination']}",
                 );
 
                 continue;
             }
 
             $stubManager->generate(
-                $file["stub"],
-                $file["replacements"],
-                $file["destination"],
+                $file['stub'],
+                $file['replacements'],
+                $file['destination'],
             );
-            $this->line("  <fg=green>✓ Created:</> {$file["destination"]}");
+            $this->line("  <fg=green>✓ Created:</> {$file['destination']}");
         }
 
-        outro("✨ API Generated Successfully!");
+        outro('✨ API Generated Successfully!');
 
-        $routeResource = $routePrefix . $table;
-        $versionLabel = $version !== null ? " (v{$version})" : "";
+        $routeResource = $routePrefix.$table;
+        $versionLabel = $version !== null ? " (v{$version})" : '';
         $nextSteps = "1. Run: php artisan migrate\n";
         $nextSteps .= "2. Add to routes/api.php:\n";
         $nextSteps .= "   Route::apiResource('{$routeResource}', {$model}Controller::class);";
@@ -417,8 +417,8 @@ final class GenerateApiCommand extends Command
         }
 
         return array_map(
-            fn($r) => Str::studly(trim($r)),
-            explode(",", $relations),
+            fn ($r) => Str::studly(trim($r)),
+            explode(',', $relations),
         );
     }
 
@@ -434,19 +434,19 @@ final class GenerateApiCommand extends Command
     ): string {
         $imports = [];
 
-        if (!empty($belongsTo)) {
+        if (! empty($belongsTo)) {
             $imports[] =
                 "use Illuminate\Database\Eloquent\Relations\BelongsTo;";
         }
-        if (!empty($hasMany)) {
+        if (! empty($hasMany)) {
             $imports[] = "use Illuminate\Database\Eloquent\Relations\HasMany;";
         }
-        if (!empty($belongsToMany)) {
+        if (! empty($belongsToMany)) {
             $imports[] =
                 "use Illuminate\Database\Eloquent\Relations\BelongsToMany;";
         }
 
-        return empty($imports) ? "" : implode("\n", $imports);
+        return empty($imports) ? '' : implode("\n", $imports);
     }
 
     /**
@@ -464,58 +464,58 @@ final class GenerateApiCommand extends Command
      */
     private function displaySummary(array $data): void
     {
-        $fields = $this->parseFieldsFromSchema($data["fields"]);
+        $fields = $this->parseFieldsFromSchema($data['fields']);
         $fieldCount = count($fields);
 
-        $fieldNames = !empty($fields)
-            ? implode(", ", array_keys($fields))
-            : "None";
+        $fieldNames = ! empty($fields)
+            ? implode(', ', array_keys($fields))
+            : 'None';
         if (strlen($fieldNames) > 40) {
-            $fieldNames = substr($fieldNames, 0, 40) . "...";
+            $fieldNames = substr($fieldNames, 0, 40).'...';
         }
 
         $fieldsText =
             $fieldCount > 0
                 ? "{$fieldCount} field(s) <fg=gray>({$fieldNames})</>"
-                : "None";
+                : 'None';
 
         $relations = [];
-        if (!empty($data["relations"]["belongsTo"])) {
+        if (! empty($data['relations']['belongsTo'])) {
             $relations[] =
-                count($data["relations"]["belongsTo"]) . " BelongsTo";
+                count($data['relations']['belongsTo']).' BelongsTo';
         }
-        if (!empty($data["relations"]["hasMany"])) {
-            $relations[] = count($data["relations"]["hasMany"]) . " HasMany";
+        if (! empty($data['relations']['hasMany'])) {
+            $relations[] = count($data['relations']['hasMany']).' HasMany';
         }
-        if (!empty($data["relations"]["belongsToMany"])) {
+        if (! empty($data['relations']['belongsToMany'])) {
             $relations[] =
-                count($data["relations"]["belongsToMany"]) . " BelongsToMany";
+                count($data['relations']['belongsToMany']).' BelongsToMany';
         }
-        $relationsText = !empty($relations)
-            ? implode(" | ", $relations)
-            : "None";
+        $relationsText = ! empty($relations)
+            ? implode(' | ', $relations)
+            : 'None';
 
         $versionText =
-            $data["version"] !== null
-                ? "API v{$data["version"]}"
-                : "No versioning";
+            $data['version'] !== null
+                ? "API v{$data['version']}"
+                : 'No versioning';
 
-        info("📊 Configuration Summary");
+        info('📊 Configuration Summary');
 
         table(
-            headers: ["Component", "Details"],
+            headers: ['Component', 'Details'],
             rows: [
-                ["📦 Model", $data["model"]],
-                ["📝 Fields", $fieldsText],
-                ["🔗 Relations", $relationsText],
-                ["🔢 Version", $versionText],
-                ["🧪 Pest Test", $data["test"] ? "✓ Enabled" : "✗ Disabled"],
-                ["🏭 Factory", $data["factory"] ? "✓ Enabled" : "✗ Disabled"],
-                ["🌱 Seeder", $data["seeder"] ? "✓ Enabled" : "✗ Disabled"],
-                ["🛡️ Policy", $data["policy"] ? "✓ Enabled" : "✗ Disabled"],
+                ['📦 Model', $data['model']],
+                ['📝 Fields', $fieldsText],
+                ['🔗 Relations', $relationsText],
+                ['🔢 Version', $versionText],
+                ['🧪 Pest Test', $data['test'] ? '✓ Enabled' : '✗ Disabled'],
+                ['🏭 Factory', $data['factory'] ? '✓ Enabled' : '✗ Disabled'],
+                ['🌱 Seeder', $data['seeder'] ? '✓ Enabled' : '✗ Disabled'],
+                ['🛡️ Policy', $data['policy'] ? '✓ Enabled' : '✗ Disabled'],
                 [
-                    "🗑️  Soft Deletes",
-                    $data["softDeletes"] ? "✓ Enabled" : "✗ Disabled",
+                    '🗑️  Soft Deletes',
+                    $data['softDeletes'] ? '✓ Enabled' : '✗ Disabled',
                 ],
             ],
         );
@@ -531,11 +531,11 @@ final class GenerateApiCommand extends Command
         }
 
         $fields = [];
-        $items = explode(",", $schema);
+        $items = explode(',', $schema);
 
         foreach ($items as $item) {
-            $parts = explode(":", trim($item), 2);
-            if (!empty($parts[0])) {
+            $parts = explode(':', trim($item), 2);
+            if (! empty($parts[0])) {
                 $fields[trim($parts[0])] = true;
             }
         }
@@ -552,9 +552,9 @@ final class GenerateApiCommand extends Command
         bool $generateTest,
     ): array {
         $existing = [];
-        $controllerDir = $this->buildPath("Http/Controllers/Api", $version);
-        $requestDir = $this->buildPath("Http/Requests", $version);
-        $resourceDir = $this->buildPath("Http/Resources", $version);
+        $controllerDir = $this->buildPath('Http/Controllers/Api', $version);
+        $requestDir = $this->buildPath('Http/Requests', $version);
+        $resourceDir = $this->buildPath('Http/Resources', $version);
 
         $files = [
             app_path("Models/{$model}.php"),
@@ -564,20 +564,20 @@ final class GenerateApiCommand extends Command
             app_path("{$resourceDir}/{$model}Resource.php"),
         ];
 
-        if ($this->option("policy")) {
+        if ($this->option('policy')) {
             $files[] = app_path("Policies/{$model}Policy.php");
         }
 
-        if ($this->option("factory")) {
+        if ($this->option('factory')) {
             $files[] = database_path("factories/{$model}Factory.php");
         }
 
-        if ($this->option("seeder")) {
+        if ($this->option('seeder')) {
             $files[] = database_path("seeders/{$model}Seeder.php");
         }
 
         if ($generateTest) {
-            $testDir = $this->buildPath("tests/Feature/Api", $version);
+            $testDir = $this->buildPath('tests/Feature/Api', $version);
             $files[] = base_path("{$testDir}/{$model}Test.php");
         }
 
@@ -592,23 +592,23 @@ final class GenerateApiCommand extends Command
 
     private function collectFieldsInteractively(): string
     {
-        info("🔹 Define Fields (Leave field name empty to finish)");
+        info('🔹 Define Fields (Leave field name empty to finish)');
 
         $fields = [];
         $fieldTypes = [
-            "string",
-            "text",
-            "integer",
-            "decimal",
-            "boolean",
-            "datetime",
-            "date",
+            'string',
+            'text',
+            'integer',
+            'decimal',
+            'boolean',
+            'datetime',
+            'date',
         ];
 
         while (true) {
             $fieldName = text(
-                label: "Field name:",
-                placeholder: "e.g., title, description, price (Press Enter to finish)",
+                label: 'Field name:',
+                placeholder: 'e.g., title, description, price (Press Enter to finish)',
             );
 
             if (empty($fieldName)) {
@@ -618,7 +618,7 @@ final class GenerateApiCommand extends Command
             $fieldType = select(
                 label: "Select type for {$fieldName}:",
                 options: $fieldTypes,
-                default: "string",
+                default: 'string',
             );
 
             $isRequired = confirm(
@@ -628,33 +628,33 @@ final class GenerateApiCommand extends Command
 
             $additionalRules = text(
                 label: "Additional validation rules for {$fieldName}? (optional)",
-                placeholder: "e.g. min:5|max:255",
+                placeholder: 'e.g. min:5|max:255',
             );
 
             $rules = [];
             if ($isRequired) {
-                $rules[] = "required";
+                $rules[] = 'required';
             }
-            if (!empty($additionalRules)) {
+            if (! empty($additionalRules)) {
                 $rules[] = $additionalRules;
             }
 
-            $ruleString = implode("|", $rules);
+            $ruleString = implode('|', $rules);
             $fields[] = "{$fieldName}:{$fieldType}:{$ruleString}";
 
-            $parts = [$fieldType, $isRequired ? "required" : "optional"];
-            if (!empty($additionalRules)) {
+            $parts = [$fieldType, $isRequired ? 'required' : 'optional'];
+            if (! empty($additionalRules)) {
                 $parts[] = $additionalRules;
             }
 
             $this->line(
-                "  <fg=green>✓</> Added: <fg=white>{$fieldName}</> <fg=gray>(" .
-                    implode(", ", $parts) .
+                "  <fg=green>✓</> Added: <fg=white>{$fieldName}</> <fg=gray>(".
+                    implode(', ', $parts).
                     ")</>\n",
             );
         }
 
-        return implode(",", $fields);
+        return implode(',', $fields);
     }
 
     /**
@@ -666,14 +666,14 @@ final class GenerateApiCommand extends Command
         $hasMany = [];
         $belongsToMany = [];
 
-        if (!confirm(label: "Define relationships?", default: false)) {
+        if (! confirm(label: 'Define relationships?', default: false)) {
             return [$belongsTo, $hasMany, $belongsToMany];
         }
 
-        while (confirm(label: "Add belongsTo relationship?", default: false)) {
+        while (confirm(label: 'Add belongsTo relationship?', default: false)) {
             $relatedModel = text(
-                label: "Related model name:",
-                placeholder: "e.g., Category, User",
+                label: 'Related model name:',
+                placeholder: 'e.g., Category, User',
                 required: true,
             );
 
@@ -684,10 +684,10 @@ final class GenerateApiCommand extends Command
             );
         }
 
-        while (confirm(label: "Add hasMany relationship?", default: false)) {
+        while (confirm(label: 'Add hasMany relationship?', default: false)) {
             $relatedModel = text(
-                label: "Related model name:",
-                placeholder: "e.g., Comment, Review",
+                label: 'Related model name:',
+                placeholder: 'e.g., Comment, Review',
                 required: true,
             );
 
@@ -699,11 +699,11 @@ final class GenerateApiCommand extends Command
         }
 
         while (
-            confirm(label: "Add belongsToMany relationship?", default: false)
+            confirm(label: 'Add belongsToMany relationship?', default: false)
         ) {
             $relatedModel = text(
-                label: "Related model name:",
-                placeholder: "e.g., Tag, Category",
+                label: 'Related model name:',
+                placeholder: 'e.g., Tag, Category',
                 required: true,
             );
 
@@ -723,7 +723,7 @@ final class GenerateApiCommand extends Command
     private function buildSearchConditions(array $searchableFields): string
     {
         if (empty($searchableFields)) {
-            return "";
+            return '';
         }
 
         $conditions = [];
@@ -738,7 +738,7 @@ final class GenerateApiCommand extends Command
 
         // Add semicolon to the last line
         $lastIndex = count($conditions) - 1;
-        $conditions[$lastIndex] .= ";";
+        $conditions[$lastIndex] .= ';';
 
         return implode("\n", $conditions);
     }
@@ -752,12 +752,12 @@ final class GenerateApiCommand extends Command
     {
         $value = $this->option($name);
 
-        if (!is_string($value) && !is_int($value)) {
+        if (! is_string($value) && ! is_int($value)) {
             return null;
         }
 
         $trimmedValue = trim((string) $value);
 
-        return $trimmedValue !== "" ? $trimmedValue : null;
+        return $trimmedValue !== '' ? $trimmedValue : null;
     }
 }

@@ -12,29 +12,29 @@ final class DatabaseColumnMetadataInferrer
      */
     public function infer(array $column, ?string $driver = null): array
     {
-        $name = (string) ($column["name"] ?? "");
+        $name = (string) ($column['name'] ?? '');
         $dbType = strtolower(
-            (string) ($column["type_name"] ?? ($column["type"] ?? "varchar")),
+            (string) ($column['type_name'] ?? ($column['type'] ?? 'varchar')),
         );
-        $rawType = strtolower((string) ($column["type"] ?? $dbType));
-        $driver = strtolower((string) ($driver ?? "unknown"));
+        $rawType = strtolower((string) ($column['type'] ?? $dbType));
+        $driver = strtolower((string) ($driver ?? 'unknown'));
         $genericType = $this->mapColumnType($dbType, $rawType, $driver);
 
         return [
-            "name" => $name,
-            "db_type" => $dbType,
-            "raw_type" => $rawType,
-            "type" => $genericType,
-            "nullable" => (bool) ($column["nullable"] ?? false),
-            "cast" => $this->getCast($genericType, $column),
+            'name' => $name,
+            'db_type' => $dbType,
+            'raw_type' => $rawType,
+            'type' => $genericType,
+            'nullable' => (bool) ($column['nullable'] ?? false),
+            'cast' => $this->getCast($genericType, $column),
         ];
     }
 
     public function normalizeTableName(string $table): string
     {
-        $sanitized = str_replace(['"', "`", "[", "]"], "", $table);
+        $sanitized = str_replace(['"', '`', '[', ']'], '', $table);
 
-        return Str::afterLast($sanitized, ".");
+        return Str::afterLast($sanitized, '.');
     }
 
     private function mapColumnType(
@@ -43,94 +43,94 @@ final class DatabaseColumnMetadataInferrer
         string $driver,
     ): string {
         if (
-            $dbType === "uuid" ||
-            str_contains($rawType, "uuid") ||
-            str_contains($rawType, "uniqueidentifier")
+            $dbType === 'uuid' ||
+            str_contains($rawType, 'uuid') ||
+            str_contains($rawType, 'uniqueidentifier')
         ) {
-            return "uuid";
+            return 'uuid';
         }
 
         if (
-            in_array($dbType, ["json", "jsonb"], true) ||
-            str_contains($rawType, "json")
+            in_array($dbType, ['json', 'jsonb'], true) ||
+            str_contains($rawType, 'json')
         ) {
-            return "json";
+            return 'json';
         }
 
         if (
-            in_array($dbType, ["bool", "boolean", "bit"], true) ||
-            ($dbType === "tinyint" && str_contains($rawType, "tinyint(1)")) ||
-            ($driver === "pgsql" && str_contains($rawType, "boolean"))
+            in_array($dbType, ['bool', 'boolean', 'bit'], true) ||
+            ($dbType === 'tinyint' && str_contains($rawType, 'tinyint(1)')) ||
+            ($driver === 'pgsql' && str_contains($rawType, 'boolean'))
         ) {
-            return "boolean";
+            return 'boolean';
         }
 
         if (
             in_array(
                 $dbType,
-                ["timestamp", "timestamptz", "datetime", "datetime2"],
+                ['timestamp', 'timestamptz', 'datetime', 'datetime2'],
                 true,
             ) ||
-            str_contains($rawType, "timestamp with time zone") ||
-            str_contains($rawType, "timestamp without time zone")
+            str_contains($rawType, 'timestamp with time zone') ||
+            str_contains($rawType, 'timestamp without time zone')
         ) {
-            return "datetime";
+            return 'datetime';
         }
 
-        if ($dbType === "date") {
-            return "date";
+        if ($dbType === 'date') {
+            return 'date';
         }
 
         if (
-            in_array($dbType, ["time", "timetz"], true) ||
-            str_contains($rawType, "time without time zone")
+            in_array($dbType, ['time', 'timetz'], true) ||
+            str_contains($rawType, 'time without time zone')
         ) {
-            return "time";
+            return 'time';
         }
 
         if (
-            in_array($dbType, ["float", "double", "real", "money"], true) ||
-            str_contains($rawType, "double precision")
+            in_array($dbType, ['float', 'double', 'real', 'money'], true) ||
+            str_contains($rawType, 'double precision')
         ) {
-            return "float";
+            return 'float';
         }
 
-        if (in_array($dbType, ["decimal", "numeric"], true)) {
-            return "decimal";
+        if (in_array($dbType, ['decimal', 'numeric'], true)) {
+            return 'decimal';
         }
 
         if (
             in_array(
                 $dbType,
                 [
-                    "int",
-                    "integer",
-                    "bigint",
-                    "smallint",
-                    "tinyint",
-                    "mediumint",
-                    "serial",
-                    "bigserial",
+                    'int',
+                    'integer',
+                    'bigint',
+                    'smallint',
+                    'tinyint',
+                    'mediumint',
+                    'serial',
+                    'bigserial',
                 ],
                 true,
             )
         ) {
-            return "integer";
+            return 'integer';
         }
 
         if (
             in_array(
                 $dbType,
-                ["text", "mediumtext", "longtext", "tinytext"],
+                ['text', 'mediumtext', 'longtext', 'tinytext'],
                 true,
             ) ||
-            str_contains($rawType, "text") ||
-            str_contains($rawType, "clob")
+            str_contains($rawType, 'text') ||
+            str_contains($rawType, 'clob')
         ) {
-            return "text";
+            return 'text';
         }
 
-        return "string";
+        return 'string';
     }
 
     /**
@@ -139,13 +139,13 @@ final class DatabaseColumnMetadataInferrer
     private function getCast(string $genericType, array $column): ?string
     {
         return match ($genericType) {
-            "boolean" => "boolean",
-            "integer" => "integer",
-            "float" => "float",
-            "decimal" => "decimal:" . $this->resolveScale($column),
-            "date" => "date",
-            "datetime" => "datetime",
-            "json" => "array",
+            'boolean' => 'boolean',
+            'integer' => 'integer',
+            'float' => 'float',
+            'decimal' => 'decimal:'.$this->resolveScale($column),
+            'date' => 'date',
+            'datetime' => 'datetime',
+            'json' => 'array',
             default => null,
         };
     }
@@ -155,7 +155,7 @@ final class DatabaseColumnMetadataInferrer
      */
     private function resolveScale(array $column): int
     {
-        $scale = $column["scale"] ?? ($column["numeric_scale"] ?? null);
+        $scale = $column['scale'] ?? ($column['numeric_scale'] ?? null);
 
         return is_numeric($scale) ? max(0, (int) $scale) : 2;
     }
