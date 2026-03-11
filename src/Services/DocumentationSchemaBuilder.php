@@ -13,6 +13,12 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
+/**
+ * @phpstan-type SchemaNode array<string, mixed>
+ * @phpstan-type ComponentSchemas array<string, SchemaNode>
+ * @phpstan-type ResponseSchema array{name: string, schema: SchemaNode}
+ * @phpstan-type ExampleNode array<int|string, mixed>
+ */
 final class DocumentationSchemaBuilder
 {
     public function __construct(
@@ -30,52 +36,52 @@ final class DocumentationSchemaBuilder
 
         $parsedRoutes = collect($this->routeAnalyzer->getApiRoutes())
             ->map(
-                fn ($route) => $this->routeAnalyzer->parseRoute(
+                fn($route) => $this->routeAnalyzer->parseRoute(
                     $route,
                     $this->requestAnalyzer,
                     $this->resourceAnalyzer,
                 ),
             )
             ->filter()
-            ->sortBy([['version', 'asc'], ['path', 'asc'], ['method', 'asc']])
+            ->sortBy([["version", "asc"], ["path", "asc"], ["method", "asc"]])
             ->values();
 
         $endpoints = $parsedRoutes
-            ->groupBy('path')
-            ->map(fn (Collection $group) => $group->keyBy('method'))
+            ->groupBy("path")
+            ->map(fn(Collection $group) => $group->keyBy("method"))
             ->toArray();
 
         $endpointsByVersion = $parsedRoutes
-            ->groupBy('version')
+            ->groupBy("version")
             ->map(
-                fn (Collection $group) => $group
-                    ->groupBy('path')
-                    ->map(fn (Collection $methods) => $methods->keyBy('method'))
+                fn(Collection $group) => $group
+                    ->groupBy("path")
+                    ->map(fn(Collection $methods) => $methods->keyBy("method"))
                     ->toArray(),
             )
             ->toArray();
 
         $schema = [
-            'title' => config('app.name', 'Laravel API').' Documentation',
-            'version' => $this->getPackageVersion(),
-            'baseUrl' => $request->getSchemeAndHttpHost(),
-            'servers' => config('api-magic.servers', []),
-            'endpoints' => $endpoints,
-            'endpointsByVersion' => $endpointsByVersion,
-            'versions' => array_keys($endpointsByVersion),
-            'webhooks' => $parsedRoutes
-                ->pluck('webhooks')
+            "title" => config("app.name", "Laravel API") . " Documentation",
+            "version" => $this->getPackageVersion(),
+            "baseUrl" => $request->getSchemeAndHttpHost(),
+            "servers" => config("api-magic.servers", []),
+            "endpoints" => $endpoints,
+            "endpointsByVersion" => $endpointsByVersion,
+            "versions" => array_keys($endpointsByVersion),
+            "webhooks" => $parsedRoutes
+                ->pluck("webhooks")
                 ->filter()
                 ->flatten(1)
-                ->unique('event')
+                ->unique("event")
                 ->values()
                 ->toArray(),
-            'events' => new EventAnalyzer()->analyze(),
-            'features' => [
-                'health' => config('api-magic.health.enabled', false),
-                'changelog' => config('api-magic.changelog.enabled', false),
+            "events" => new EventAnalyzer()->analyze(),
+            "features" => [
+                "health" => config("api-magic.health.enabled", false),
+                "changelog" => config("api-magic.changelog.enabled", false),
             ],
-            'generated_at' => now()->toIso8601String(),
+            "generated_at" => now()->toIso8601String(),
         ];
 
         LaravelApiMagic::callAfterParse($schema);
@@ -89,11 +95,11 @@ final class DocumentationSchemaBuilder
     public function buildUiSchema(Request $request): array
     {
         $schema = $this->buildInternalSchema($request);
-        $schema['securitySchemes'] = $this->buildSecuritySchemes();
-        $schema['oauth'] = [
-            'authUrl' => config('api-magic.oauth.auth_url', ''),
-            'clientId' => config('api-magic.oauth.client_id', ''),
-            'scopes' => config('api-magic.oauth.scopes', []),
+        $schema["securitySchemes"] = $this->buildSecuritySchemes();
+        $schema["oauth"] = [
+            "authUrl" => config("api-magic.oauth.auth_url", ""),
+            "clientId" => config("api-magic.oauth.client_id", ""),
+            "scopes" => config("api-magic.oauth.scopes", []),
         ];
 
         return $schema;
@@ -111,26 +117,28 @@ final class DocumentationSchemaBuilder
     }
 
     /**
+     * @param  array<string, mixed>  $schema
      * @return array<string, mixed>
      */
     private function convertToOpenApi(array $schema, Request $request): array
     {
-        $baseUrl = $schema['baseUrl'] ?? $request->getSchemeAndHttpHost();
+        $baseUrl = $schema["baseUrl"] ?? $request->getSchemeAndHttpHost();
         $paths = [];
+        /** @var ComponentSchemas $componentSchemas */
         $componentSchemas = $this->defaultComponentSchemas();
 
-        foreach ($schema['endpoints'] ?? [] as $path => $methods) {
+        foreach ($schema["endpoints"] ?? [] as $path => $methods) {
             $pathKey = $this->normalizeOpenApiPath($path, $baseUrl);
             $paths[$pathKey] = [];
 
             foreach ($methods as $method => $endpoint) {
                 $responseRef = $this->registerResponseSchema(
                     $componentSchemas,
-                    $endpoint['response'] ?? null,
+                    $endpoint["response"] ?? null,
                 );
                 $customResponseRefs = $this->registerCustomResponseSchemas(
                     $componentSchemas,
-                    $endpoint['responses'] ?? [],
+                    $endpoint["responses"] ?? [],
                 );
 
                 $requestBody = $this->buildOpenApiRequestBody(
@@ -139,15 +147,15 @@ final class DocumentationSchemaBuilder
                 );
 
                 $operation = [
-                    'summary' => $endpoint['summary'] ?? '',
-                    'description' => $endpoint['description'] ?? '',
-                    'operationId' => $this->buildOperationId(
+                    "summary" => $endpoint["summary"] ?? "",
+                    "description" => $endpoint["description"] ?? "",
+                    "operationId" => $this->buildOperationId(
                         $method,
                         $path,
                         $endpoint,
                     ),
-                    'tags' => $endpoint['tags'] ?? ['default'],
-                    'responses' => $this->buildOpenApiResponses(
+                    "tags" => $endpoint["tags"] ?? ["default"],
+                    "responses" => $this->buildOpenApiResponses(
                         $method,
                         $endpoint,
                         $responseRef,
@@ -157,21 +165,21 @@ final class DocumentationSchemaBuilder
                 ];
 
                 if ($requestBody !== null) {
-                    $operation['requestBody'] = $requestBody;
+                    $operation["requestBody"] = $requestBody;
                 }
 
                 $parameters = $this->buildOpenApiParameters($endpoint);
                 if ($parameters !== []) {
-                    $operation['parameters'] = $parameters;
+                    $operation["parameters"] = $parameters;
                 }
 
-                if (! empty($endpoint['deprecated'])) {
-                    $operation['deprecated'] = true;
+                if (!empty($endpoint["deprecated"])) {
+                    $operation["deprecated"] = true;
                 }
 
                 $security = $this->buildOpenApiSecurity($endpoint);
                 if ($security !== []) {
-                    $operation['security'] = $security;
+                    $operation["security"] = $security;
                 }
 
                 $paths[$pathKey][$method] = $operation;
@@ -179,58 +187,56 @@ final class DocumentationSchemaBuilder
         }
 
         return [
-            'openapi' => '3.0.0',
-            'info' => [
-                'title' => $schema['title'] ?? 'API Documentation',
-                'version' => $schema['version'] ?? '1.0.0',
-                'description' => 'Auto-generated API documentation',
+            "openapi" => "3.0.0",
+            "info" => [
+                "title" => $schema["title"] ?? "API Documentation",
+                "version" => $schema["version"] ?? "1.0.0",
+                "description" => "Auto-generated API documentation",
             ],
-            'servers' => $this->buildOpenApiServers($schema, $baseUrl),
-            'paths' => $paths,
-            'components' => [
-                'securitySchemes' => $this->buildSecuritySchemes(),
-                'schemas' => $componentSchemas,
+            "servers" => $this->buildOpenApiServers($schema, $baseUrl),
+            "paths" => $paths,
+            "components" => [
+                "securitySchemes" => $this->buildSecuritySchemes(),
+                "schemas" => $componentSchemas,
             ],
-            'tags' => $this->buildOpenApiTags($schema),
+            "tags" => $this->buildOpenApiTags($schema),
         ];
     }
 
     /**
-     * @param  array<string, mixed>  $componentSchemas
-     * @param  array<string, mixed>|null  $responseSchema
+     * @param  ComponentSchemas  $componentSchemas
+     * @param  ResponseSchema|null  $responseSchema
      */
     private function registerResponseSchema(
         array &$componentSchemas,
         ?array $responseSchema,
     ): ?string {
-        if (
-            $responseSchema === null ||
-            ! isset($responseSchema['name'], $responseSchema['schema'])
-        ) {
+        if ($responseSchema === null) {
             return null;
         }
 
-        $componentSchemas[$responseSchema['name']] = $responseSchema['schema'];
+        $componentSchemas[$responseSchema["name"]] = $responseSchema["schema"];
 
-        if ($this->schemaLooksLikeResourcePayload($responseSchema['schema'])) {
-            $envelopeName = $responseSchema['name'].'Response';
+        if ($this->schemaLooksLikeResourcePayload($responseSchema["schema"])) {
+            $envelopeName = $responseSchema["name"] . "Response";
             $componentSchemas[$envelopeName] = [
-                'type' => 'object',
-                'properties' => [
-                    'data' => [
-                        '$ref' => '#/components/schemas/'.$responseSchema['name'],
+                "type" => "object",
+                "properties" => [
+                    "data" => [
+                        '$ref' =>
+                            "#/components/schemas/" . $responseSchema["name"],
                     ],
                 ],
             ];
 
-            return '#/components/schemas/'.$envelopeName;
+            return "#/components/schemas/" . $envelopeName;
         }
 
-        return '#/components/schemas/'.$responseSchema['name'];
+        return "#/components/schemas/" . $responseSchema["name"];
     }
 
     /**
-     * @param  array<string, mixed>  $componentSchemas
+     * @param  ComponentSchemas  $componentSchemas
      * @param  array<int, array<string, mixed>>  $responses
      * @return array<string, string>
      */
@@ -241,9 +247,9 @@ final class DocumentationSchemaBuilder
         $references = [];
 
         foreach ($responses as $response) {
-            $resourceClass = $response['resource'] ?? null;
+            $resourceClass = $response["resource"] ?? null;
 
-            if (! is_string($resourceClass) || $resourceClass === '') {
+            if (!is_string($resourceClass) || $resourceClass === "") {
                 continue;
             }
 
@@ -253,43 +259,50 @@ final class DocumentationSchemaBuilder
 
             if (
                 $analyzed === null ||
-                ! isset($analyzed['name'], $analyzed['schema'])
+                !isset($analyzed["name"], $analyzed["schema"]) ||
+                !is_string($analyzed["name"]) ||
+                !is_array($analyzed["schema"])
             ) {
                 continue;
             }
 
-            $componentSchemas[$analyzed['name']] = $analyzed['schema'];
+            /** @var SchemaNode $analyzedSchema */
+            $analyzedSchema = $analyzed["schema"];
+
+            $componentSchemas[$analyzed["name"]] = $analyzedSchema;
 
             $responseComponentName =
-                $response['is_array'] ?? false
-                    ? $analyzed['name'].'CollectionResponse'
-                    : $analyzed['name'].'Response';
+                $response["is_array"] ?? false
+                    ? $analyzed["name"] . "CollectionResponse"
+                    : $analyzed["name"] . "Response";
 
             $componentSchemas[$responseComponentName] =
-                $response['is_array'] ?? false
+                $response["is_array"] ?? false
                     ? [
-                        'type' => 'object',
-                        'properties' => [
-                            'data' => [
-                                'type' => 'array',
-                                'items' => [
-                                    '$ref' => '#/components/schemas/'.
-                                        $analyzed['name'],
+                        "type" => "object",
+                        "properties" => [
+                            "data" => [
+                                "type" => "array",
+                                "items" => [
+                                    '$ref' =>
+                                        "#/components/schemas/" .
+                                        $analyzed["name"],
                                 ],
                             ],
                         ],
                     ]
                     : [
-                        'type' => 'object',
-                        'properties' => [
-                            'data' => [
-                                '$ref' => '#/components/schemas/'.$analyzed['name'],
+                        "type" => "object",
+                        "properties" => [
+                            "data" => [
+                                '$ref' =>
+                                    "#/components/schemas/" . $analyzed["name"],
                             ],
                         ],
                     ];
 
-            $references[(string) ($response['status'] ?? 200)] =
-                '#/components/schemas/'.$responseComponentName;
+            $references[(string) ($response["status"] ?? 200)] =
+                "#/components/schemas/" . $responseComponentName;
         }
 
         return $references;
@@ -304,11 +317,11 @@ final class DocumentationSchemaBuilder
         array &$componentSchemas,
         array $endpoint,
     ): ?array {
-        $fields = $endpoint['parameters']['body'] ?? [];
+        $fields = $endpoint["parameters"]["body"] ?? [];
         if (
-            ! in_array(
-                $endpoint['method'] ?? '',
-                ['post', 'put', 'patch'],
+            !in_array(
+                $endpoint["method"] ?? "",
+                ["post", "put", "patch"],
                 true,
             ) ||
             $fields === []
@@ -317,47 +330,51 @@ final class DocumentationSchemaBuilder
         }
 
         $componentName = $this->buildRequestComponentName($endpoint);
-        $hasFile = collect($fields)->contains(
-            fn (array $field) => ($field['is_file'] ?? false) === true,
-        );
+        $hasFile = false;
+        foreach ($fields as $field) {
+            if (is_array($field) && ($field["is_file"] ?? false) === true) {
+                $hasFile = true;
+                break;
+            }
+        }
         $componentSchemas[$componentName] = $this->buildObjectSchema($fields);
 
         $requestBody = [
-            'required' => true,
-            'content' => $hasFile
+            "required" => true,
+            "content" => $hasFile
                 ? [
-                    'multipart/form-data' => [
-                        'schema' => [
-                            '$ref' => '#/components/schemas/'.$componentName,
+                    "multipart/form-data" => [
+                        "schema" => [
+                            '$ref' => "#/components/schemas/" . $componentName,
                         ],
                     ],
                 ]
                 : [
-                    'application/json' => [
-                        'schema' => [
-                            '$ref' => '#/components/schemas/'.$componentName,
+                    "application/json" => [
+                        "schema" => [
+                            '$ref' => "#/components/schemas/" . $componentName,
                         ],
                     ],
-                    'application/x-www-form-urlencoded' => [
-                        'schema' => [
-                            '$ref' => '#/components/schemas/'.$componentName,
+                    "application/x-www-form-urlencoded" => [
+                        "schema" => [
+                            '$ref' => "#/components/schemas/" . $componentName,
                         ],
                     ],
                 ],
         ];
 
-        $requestExample = $endpoint['example']['request'] ?? null;
+        $requestExample = $endpoint["example"]["request"] ?? null;
         if ($requestExample !== null) {
-            foreach (array_keys($requestBody['content']) as $contentType) {
-                $requestBody['content'][$contentType][
-                    'example'
+            foreach (array_keys($requestBody["content"]) as $contentType) {
+                $requestBody["content"][$contentType][
+                    "example"
                 ] = $requestExample;
             }
-        } elseif (! $hasFile) {
+        } elseif (!$hasFile) {
             $example = $this->buildExampleFromFields($fields);
 
-            foreach (array_keys($requestBody['content']) as $contentType) {
-                $requestBody['content'][$contentType]['example'] = $example;
+            foreach (array_keys($requestBody["content"]) as $contentType) {
+                $requestBody["content"][$contentType]["example"] = $example;
             }
         }
 
@@ -372,25 +389,25 @@ final class DocumentationSchemaBuilder
     {
         $parameters = [];
 
-        foreach ($endpoint['parameters']['path'] ?? [] as $parameter) {
+        foreach ($endpoint["parameters"]["path"] ?? [] as $parameter) {
             $parameters[] = [
-                'name' => $parameter['name'],
-                'in' => 'path',
-                'required' => true,
-                'description' => $parameter['description'] ?? '',
-                'schema' => $this->normalizeFieldSchema($parameter),
+                "name" => $parameter["name"],
+                "in" => "path",
+                "required" => true,
+                "description" => $parameter["description"] ?? "",
+                "schema" => $this->normalizeFieldSchema($parameter),
             ];
         }
 
-        foreach ($endpoint['parameters']['query'] ?? [] as $parameter) {
+        foreach ($endpoint["parameters"]["query"] ?? [] as $parameter) {
             $schema =
-                $parameter['schema'] ?? $this->normalizeFieldSchema($parameter);
+                $parameter["schema"] ?? $this->normalizeFieldSchema($parameter);
             $parameters[] = [
-                'name' => $parameter['name'],
-                'in' => 'query',
-                'required' => $parameter['required'] ?? false,
-                'description' => $parameter['description'] ?? '',
-                'schema' => $schema,
+                "name" => $parameter["name"],
+                "in" => "query",
+                "required" => $parameter["required"] ?? false,
+                "description" => $parameter["description"] ?? "",
+                "schema" => $schema,
             ];
         }
 
@@ -405,12 +422,12 @@ final class DocumentationSchemaBuilder
     {
         $security = [];
 
-        foreach ($endpoint['security'] ?? [] as $definition) {
+        foreach ($endpoint["security"] ?? [] as $definition) {
             if (
-                ($definition['type'] ?? null) === 'http' &&
-                ($definition['scheme'] ?? null) === 'bearer'
+                ($definition["type"] ?? null) === "http" &&
+                ($definition["scheme"] ?? null) === "bearer"
             ) {
-                $security[] = ['bearerAuth' => []];
+                $security[] = ["bearerAuth" => []];
             }
         }
 
@@ -419,7 +436,9 @@ final class DocumentationSchemaBuilder
 
     /**
      * @param  array<string, mixed>  $endpoint
-     * @return array<string, mixed>
+     * @param  array<string, string>  $customResponseRefs
+     * @param  ComponentSchemas  $componentSchemas
+     * @return array<int|string, array<string, mixed>>
      */
     private function buildOpenApiResponses(
         string $method,
@@ -428,41 +447,46 @@ final class DocumentationSchemaBuilder
         array $customResponseRefs,
         array $componentSchemas,
     ): array {
-        if (! empty($endpoint['responses'])) {
+        if (!empty($endpoint["responses"])) {
+            /** @var array<string, array<string, mixed>> $responses */
             $responses = [];
 
-            foreach ($endpoint['responses'] as $response) {
-                $statusCode = (string) $response['status'];
+            foreach ($endpoint["responses"] as $response) {
+                $statusCode = (string) $response["status"];
+                $description =
+                    is_string($response["description"] ?? null) &&
+                    $response["description"] !== ""
+                        ? $response["description"]
+                        : "HTTP " . $response["status"];
                 $responseContent = [
-                    'description' => $response['description'] ?:
-                        'HTTP '.$response['status'],
+                    "description" => $description,
                 ];
 
                 if (isset($customResponseRefs[$statusCode])) {
-                    $responseContent['content'] = [
-                        'application/json' => [
-                            'schema' => [
+                    $responseContent["content"] = [
+                        "application/json" => [
+                            "schema" => [
                                 '$ref' => $customResponseRefs[$statusCode],
                             ],
                         ],
                     ];
 
                     $example =
-                        $response['example'] ??
+                        $response["example"] ??
                         $this->buildExampleFromReference(
                             $customResponseRefs[$statusCode],
                             $componentSchemas,
                         );
 
                     if ($example !== null) {
-                        $responseContent['content']['application/json'][
-                            'example'
+                        $responseContent["content"]["application/json"][
+                            "example"
                         ] = $example;
                     }
-                } elseif ($response['example']) {
-                    $responseContent['content'] = [
-                        'application/json' => [
-                            'example' => $response['example'],
+                } elseif (array_key_exists("example", $response)) {
+                    $responseContent["content"] = [
+                        "application/json" => [
+                            "example" => $response["example"],
                         ],
                     ];
                 }
@@ -474,34 +498,34 @@ final class DocumentationSchemaBuilder
         }
 
         $successStatus = match ($method) {
-            'post' => '201',
-            'delete' => '204',
-            default => '200',
+            "post" => "201",
+            "delete" => "204",
+            default => "200",
         };
 
         $successResponse = [
-            'description' => match ($method) {
-                'post' => 'Resource created successfully',
-                'put', 'patch' => 'Resource updated successfully',
-                'delete' => 'Resource deleted successfully',
-                default => 'Successful response',
+            "description" => match ($method) {
+                "post" => "Resource created successfully",
+                "put", "patch" => "Resource updated successfully",
+                "delete" => "Resource deleted successfully",
+                default => "Successful response",
             },
         ];
 
-        if ($method !== 'delete') {
+        if ($method !== "delete") {
             $resolvedResponseRef =
                 $responseRef ?? $this->defaultResponseReference($endpoint);
-            $successResponse['content'] = [
-                'application/json' => [
-                    'schema' => [
+            $successResponse["content"] = [
+                "application/json" => [
+                    "schema" => [
                         '$ref' => $resolvedResponseRef,
                     ],
                 ],
             ];
 
-            if (isset($endpoint['example']['response'])) {
-                $successResponse['content']['application/json']['example'] =
-                    $endpoint['example']['response'];
+            if (isset($endpoint["example"]["response"])) {
+                $successResponse["content"]["application/json"]["example"] =
+                    $endpoint["example"]["response"];
             } else {
                 $generatedExample = $this->buildExampleFromReference(
                     $resolvedResponseRef,
@@ -509,35 +533,36 @@ final class DocumentationSchemaBuilder
                 );
 
                 if ($generatedExample !== null) {
-                    $successResponse['content']['application/json'][
-                        'example'
+                    $successResponse["content"]["application/json"][
+                        "example"
                     ] = $generatedExample;
                 }
             }
         }
 
-        $responses = [$successStatus => $successResponse];
+        $responses = [];
+        $responses[$successStatus] = $successResponse;
 
-        if ($method !== 'post') {
-            $responses['404'] = [
-                'description' => 'Resource not found',
-                'content' => [
-                    'application/json' => [
-                        'schema' => [
-                            '$ref' => '#/components/schemas/ErrorResponse',
+        if ($method !== "post") {
+            $responses["404"] = [
+                "description" => "Resource not found",
+                "content" => [
+                    "application/json" => [
+                        "schema" => [
+                            '$ref' => "#/components/schemas/ErrorResponse",
                         ],
                     ],
                 ],
             ];
         }
 
-        if (in_array($method, ['post', 'put', 'patch'], true)) {
-            $responses['422'] = [
-                'description' => 'Validation error',
-                'content' => [
-                    'application/json' => [
-                        'schema' => [
-                            '$ref' => '#/components/schemas/ValidationError',
+        if (in_array($method, ["post", "put", "patch"], true)) {
+            $responses["422"] = [
+                "description" => "Validation error",
+                "content" => [
+                    "application/json" => [
+                        "schema" => [
+                            '$ref' => "#/components/schemas/ValidationError",
                         ],
                     ],
                 ],
@@ -545,22 +570,22 @@ final class DocumentationSchemaBuilder
         }
 
         if ($this->buildOpenApiSecurity($endpoint) !== []) {
-            $responses['401'] = [
-                'description' => 'Unauthenticated',
-                'content' => [
-                    'application/json' => [
-                        'schema' => [
-                            '$ref' => '#/components/schemas/ErrorResponse',
+            $responses["401"] = [
+                "description" => "Unauthenticated",
+                "content" => [
+                    "application/json" => [
+                        "schema" => [
+                            '$ref' => "#/components/schemas/ErrorResponse",
                         ],
                     ],
                 ],
             ];
-            $responses['403'] = [
-                'description' => 'Forbidden',
-                'content' => [
-                    'application/json' => [
-                        'schema' => [
-                            '$ref' => '#/components/schemas/ErrorResponse',
+            $responses["403"] = [
+                "description" => "Forbidden",
+                "content" => [
+                    "application/json" => [
+                        "schema" => [
+                            '$ref' => "#/components/schemas/ErrorResponse",
                         ],
                     ],
                 ],
@@ -578,12 +603,12 @@ final class DocumentationSchemaBuilder
     {
         $tags = [];
 
-        foreach ($schema['endpoints'] ?? [] as $methods) {
+        foreach ($schema["endpoints"] ?? [] as $methods) {
             foreach ($methods as $endpoint) {
-                foreach ($endpoint['tags'] ?? ['default'] as $tag) {
+                foreach ($endpoint["tags"] ?? ["default"] as $tag) {
                     $tags[$tag] ??= [
-                        'name' => $tag,
-                        'description' => 'Operations related to '.$tag,
+                        "name" => $tag,
+                        "description" => "Operations related to " . $tag,
                     ];
                 }
             }
@@ -598,12 +623,12 @@ final class DocumentationSchemaBuilder
      */
     private function buildOpenApiServers(array $schema, string $baseUrl): array
     {
-        $configuredServers = $schema['servers'] ?? [];
+        $configuredServers = $schema["servers"] ?? [];
         if ($configuredServers !== []) {
             return array_map(
-                fn (array $server) => [
-                    'url' => $server['url'] ?? $baseUrl,
-                    'description' => $server['description'] ?? 'Server',
+                fn(array $server) => [
+                    "url" => $server["url"] ?? $baseUrl,
+                    "description" => $server["description"] ?? "Server",
                 ],
                 $configuredServers,
             );
@@ -611,8 +636,8 @@ final class DocumentationSchemaBuilder
 
         return [
             [
-                'url' => $baseUrl,
-                'description' => 'Current environment',
+                "url" => $baseUrl,
+                "description" => "Current environment",
             ],
         ];
     }
@@ -623,21 +648,21 @@ final class DocumentationSchemaBuilder
     private function buildSecuritySchemes(): array
     {
         return [
-            'bearerAuth' => [
-                'type' => 'http',
-                'scheme' => 'bearer',
-                'bearerFormat' => 'JWT',
-                'description' => 'Laravel Sanctum Bearer Token authentication',
+            "bearerAuth" => [
+                "type" => "http",
+                "scheme" => "bearer",
+                "bearerFormat" => "JWT",
+                "description" => "Laravel Sanctum Bearer Token authentication",
             ],
-            'oauth2' => [
-                'type' => 'oauth2',
-                'flows' => [
-                    'implicit' => [
-                        'authorizationUrl' => config(
-                            'api-magic.oauth.auth_url',
-                            '',
+            "oauth2" => [
+                "type" => "oauth2",
+                "flows" => [
+                    "implicit" => [
+                        "authorizationUrl" => config(
+                            "api-magic.oauth.auth_url",
+                            "",
                         ),
-                        'scopes' => config('api-magic.oauth.scopes', []),
+                        "scopes" => config("api-magic.oauth.scopes", []),
                     ],
                 ],
             ],
@@ -651,14 +676,14 @@ final class DocumentationSchemaBuilder
     private function buildObjectSchema(array $fields): array
     {
         $schema = [
-            'type' => 'object',
-            'properties' => [],
+            "type" => "object",
+            "properties" => [],
         ];
 
         foreach ($fields as $name => $field) {
             $this->insertFieldIntoSchema(
                 $schema,
-                explode('.', (string) $name),
+                explode(".", (string) $name),
                 $field,
             );
         }
@@ -672,37 +697,37 @@ final class DocumentationSchemaBuilder
      */
     private function normalizeFieldSchema(array $field): array
     {
-        if (($field['is_file'] ?? false) === true) {
+        if (($field["is_file"] ?? false) === true) {
             return [
-                'type' => 'string',
-                'format' => 'binary',
-                'description' => $field['description'] ?? '',
+                "type" => "string",
+                "format" => "binary",
+                "description" => $field["description"] ?? "",
             ];
         }
 
-        $type = $field['type'] ?? 'string';
+        $type = $field["type"] ?? "string";
         $schema = match ($type) {
-            'integer' => ['type' => 'integer'],
-            'number' => ['type' => 'number'],
-            'boolean' => ['type' => 'boolean'],
-            'array' => ['type' => 'array', 'items' => ['type' => 'string']],
-            'email' => ['type' => 'string', 'format' => 'email'],
-            'url' => ['type' => 'string', 'format' => 'uri'],
-            'date' => ['type' => 'string', 'format' => 'date'],
-            'uuid' => ['type' => 'string', 'format' => 'uuid'],
-            default => ['type' => 'string'],
+            "integer" => ["type" => "integer"],
+            "number" => ["type" => "number"],
+            "boolean" => ["type" => "boolean"],
+            "array" => ["type" => "array", "items" => ["type" => "string"]],
+            "email" => ["type" => "string", "format" => "email"],
+            "url" => ["type" => "string", "format" => "uri"],
+            "date" => ["type" => "string", "format" => "date"],
+            "uuid" => ["type" => "string", "format" => "uuid"],
+            default => ["type" => "string"],
         };
 
-        if (($field['required'] ?? false) === false) {
-            $schema['nullable'] = true;
+        if (($field["required"] ?? false) === false) {
+            $schema["nullable"] = true;
         }
 
-        if (isset($field['description'])) {
-            $schema['description'] = $field['description'];
+        if (isset($field["description"])) {
+            $schema["description"] = $field["description"];
         }
 
-        if (isset($field['enum']) && is_array($field['enum'])) {
-            $schema['enum'] = $field['enum'];
+        if (isset($field["enum"]) && is_array($field["enum"])) {
+            $schema["enum"] = $field["enum"];
         }
 
         return $schema;
@@ -710,21 +735,22 @@ final class DocumentationSchemaBuilder
 
     /**
      * @param  array<string, mixed>  $fields
-     * @return array<string, mixed>
+     * @return ExampleNode
      */
     private function buildExampleFromFields(array $fields): array
     {
+        /** @var ExampleNode $example */
         $example = [];
 
         foreach ($fields as $name => $field) {
-            if (($field['required'] ?? false) !== true) {
+            if (($field["required"] ?? false) !== true) {
                 continue;
             }
 
             $this->insertExampleValue(
                 $example,
-                explode('.', (string) $name),
-                $this->exampleValueForType($field['type'] ?? 'string'),
+                explode(".", (string) $name),
+                $this->exampleValueForType($field["type"] ?? "string"),
             );
         }
 
@@ -747,37 +773,37 @@ final class DocumentationSchemaBuilder
             return;
         }
 
-        if ($segment === '*') {
-            $schema['type'] = 'array';
-            $schema['items'] ??= ['type' => 'object', 'properties' => []];
+        if ($segment === "*") {
+            $schema["type"] = "array";
+            $schema["items"] ??= ["type" => "object", "properties" => []];
 
             if ($segments === []) {
-                $schema['items'] = $this->normalizeFieldSchema($field);
+                $schema["items"] = $this->normalizeFieldSchema($field);
 
                 return;
             }
 
-            if (($schema['items']['type'] ?? null) !== 'object') {
-                $schema['items'] = ['type' => 'object', 'properties' => []];
+            if (($schema["items"]["type"] ?? null) !== "object") {
+                $schema["items"] = ["type" => "object", "properties" => []];
             }
 
-            $this->insertFieldIntoSchema($schema['items'], $segments, $field);
+            $this->insertFieldIntoSchema($schema["items"], $segments, $field);
 
             return;
         }
 
-        $schema['type'] = 'object';
-        $schema['properties'] ??= [];
+        $schema["type"] = "object";
+        $schema["properties"] ??= [];
 
         if ($segments === []) {
-            $schema['properties'][$segment] = $this->normalizeFieldSchema(
+            $schema["properties"][$segment] = $this->normalizeFieldSchema(
                 $field,
             );
 
-            if (($field['required'] ?? false) === true) {
-                $schema['required'] ??= [];
-                if (! in_array($segment, $schema['required'], true)) {
-                    $schema['required'][] = $segment;
+            if (($field["required"] ?? false) === true) {
+                $schema["required"] ??= [];
+                if (!in_array($segment, $schema["required"], true)) {
+                    $schema["required"][] = $segment;
                 }
             }
 
@@ -785,30 +811,30 @@ final class DocumentationSchemaBuilder
         }
 
         $nextSegment = $segments[0];
-        $schema['properties'][$segment] ??=
-            $nextSegment === '*'
+        $schema["properties"][$segment] ??=
+            $nextSegment === "*"
                 ? [
-                    'type' => 'array',
-                    'items' => ['type' => 'object', 'properties' => []],
+                    "type" => "array",
+                    "items" => ["type" => "object", "properties" => []],
                 ]
-                : ['type' => 'object', 'properties' => []];
+                : ["type" => "object", "properties" => []];
 
-        if (($field['required'] ?? false) === true) {
-            $schema['required'] ??= [];
-            if (! in_array($segment, $schema['required'], true)) {
-                $schema['required'][] = $segment;
+        if (($field["required"] ?? false) === true) {
+            $schema["required"] ??= [];
+            if (!in_array($segment, $schema["required"], true)) {
+                $schema["required"][] = $segment;
             }
         }
 
         $this->insertFieldIntoSchema(
-            $schema['properties'][$segment],
+            $schema["properties"][$segment],
             $segments,
             $field,
         );
     }
 
     /**
-     * @param  array<string, mixed>  $example
+     * @param  ExampleNode  $example
      * @param  list<string>  $segments
      */
     private function insertExampleValue(
@@ -822,20 +848,22 @@ final class DocumentationSchemaBuilder
             return;
         }
 
-        if ($segment === '*') {
-            $example[0] ??= [];
-
+        if ($segment === "*") {
             if ($segments === []) {
                 $example[0] = $value;
 
                 return;
             }
 
-            if (! is_array($example[0])) {
-                $example[0] = [];
+            $arrayItem = $example[0] ?? null;
+
+            if (!is_array($arrayItem)) {
+                /** @var ExampleNode $arrayItem */
+                $arrayItem = [];
             }
 
-            $this->insertExampleValue($example[0], $segments, $value);
+            $this->insertExampleValue($arrayItem, $segments, $value);
+            $example[0] = $arrayItem;
 
             return;
         }
@@ -846,8 +874,15 @@ final class DocumentationSchemaBuilder
             return;
         }
 
-        $example[$segment] ??= $segments[0] === '*' ? [] : [];
-        $this->insertExampleValue($example[$segment], $segments, $value);
+        $nestedExample = $example[$segment] ?? null;
+
+        if (!is_array($nestedExample)) {
+            /** @var ExampleNode $nestedExample */
+            $nestedExample = [];
+        }
+
+        $this->insertExampleValue($nestedExample, $segments, $value);
+        $example[$segment] = $nestedExample;
     }
 
     /**
@@ -857,28 +892,28 @@ final class DocumentationSchemaBuilder
     private function cleanupSchemaNode(array $schema): array
     {
         if (
-            ($schema['type'] ?? null) === 'object' &&
-            isset($schema['properties'])
+            ($schema["type"] ?? null) === "object" &&
+            isset($schema["properties"])
         ) {
-            foreach ($schema['properties'] as $property => $childSchema) {
+            foreach ($schema["properties"] as $property => $childSchema) {
                 if (is_array($childSchema)) {
-                    $schema['properties'][$property] = $this->cleanupSchemaNode(
+                    $schema["properties"][$property] = $this->cleanupSchemaNode(
                         $childSchema,
                     );
                 }
             }
 
-            if (($schema['required'] ?? []) === []) {
-                unset($schema['required']);
+            if (($schema["required"] ?? []) === []) {
+                unset($schema["required"]);
             }
         }
 
         if (
-            ($schema['type'] ?? null) === 'array' &&
-            isset($schema['items']) &&
-            is_array($schema['items'])
+            ($schema["type"] ?? null) === "array" &&
+            isset($schema["items"]) &&
+            is_array($schema["items"])
         ) {
-            $schema['items'] = $this->cleanupSchemaNode($schema['items']);
+            $schema["items"] = $this->cleanupSchemaNode($schema["items"]);
         }
 
         return $schema;
@@ -887,30 +922,27 @@ final class DocumentationSchemaBuilder
     private function exampleValueForType(string $type): mixed
     {
         return match ($type) {
-            'integer', 'number' => 1,
-            'boolean' => true,
-            'array' => [],
-            'email' => 'example@example.com',
-            'url' => 'https://example.com',
-            'date' => now()->toDateString(),
-            'uuid' => (string) Str::uuid(),
-            default => 'string',
+            "integer", "number" => 1,
+            "boolean" => true,
+            "array" => [],
+            "email" => "example@example.com",
+            "url" => "https://example.com",
+            "date" => now()->toDateString(),
+            "uuid" => (string) Str::uuid(),
+            default => "string",
         };
     }
 
     /**
-     * @param  array<string, mixed>  $componentSchemas
+     * @param  ComponentSchemas  $componentSchemas
      */
     private function buildExampleFromReference(
         string $reference,
         array $componentSchemas,
     ): mixed {
-        $schemaName = Str::afterLast($reference, '/');
+        $schemaName = Str::afterLast($reference, "/");
 
-        if (
-            ! isset($componentSchemas[$schemaName]) ||
-            ! is_array($componentSchemas[$schemaName])
-        ) {
+        if (!isset($componentSchemas[$schemaName])) {
             return null;
         }
 
@@ -921,19 +953,19 @@ final class DocumentationSchemaBuilder
     }
 
     /**
-     * @param  array<string, mixed>  $schema
-     * @param  array<string, mixed>  $componentSchemas
+     * @param  SchemaNode  $schema
+     * @param  ComponentSchemas  $componentSchemas
      */
     private function buildExampleFromSchema(
         array $schema,
         array $componentSchemas,
     ): mixed {
-        if (isset($schema['example'])) {
-            return $schema['example'];
+        if (isset($schema["example"])) {
+            return $schema["example"];
         }
 
-        if (isset($schema['enum'][0])) {
-            return $schema['enum'][0];
+        if (isset($schema["enum"][0])) {
+            return $schema["enum"][0];
         }
 
         if (isset($schema['$ref']) && is_string($schema['$ref'])) {
@@ -944,44 +976,44 @@ final class DocumentationSchemaBuilder
         }
 
         if (
-            isset($schema['oneOf']) &&
-            is_array($schema['oneOf']) &&
-            isset($schema['oneOf'][0]) &&
-            is_array($schema['oneOf'][0])
+            isset($schema["oneOf"]) &&
+            is_array($schema["oneOf"]) &&
+            isset($schema["oneOf"][0]) &&
+            is_array($schema["oneOf"][0])
         ) {
             return $this->buildExampleFromSchema(
-                $schema['oneOf'][0],
+                $schema["oneOf"][0],
                 $componentSchemas,
             );
         }
 
-        return match ($schema['type'] ?? 'object') {
-            'object' => $this->buildObjectExample($schema, $componentSchemas),
-            'array' => [
+        return match ($schema["type"] ?? "object") {
+            "object" => $this->buildObjectExample($schema, $componentSchemas),
+            "array" => [
                 $this->buildExampleFromSchema(
-                    is_array($schema['items'] ?? null)
-                        ? $schema['items']
-                        : ['type' => 'string'],
+                    is_array($schema["items"] ?? null)
+                        ? $schema["items"]
+                        : ["type" => "string"],
                     $componentSchemas,
                 ),
             ],
-            'integer', 'number' => 1,
-            'boolean' => true,
-            default => match ($schema['format'] ?? null) {
-                'email' => 'example@example.com',
-                'uri' => 'https://example.com',
-                'uuid' => (string) Str::uuid(),
-                'date' => now()->toDateString(),
-                'date-time' => now()->toIso8601String(),
-                'binary' => null,
-                default => 'string',
+            "integer", "number" => 1,
+            "boolean" => true,
+            default => match ($schema["format"] ?? null) {
+                "email" => "example@example.com",
+                "uri" => "https://example.com",
+                "uuid" => (string) Str::uuid(),
+                "date" => now()->toDateString(),
+                "date-time" => now()->toIso8601String(),
+                "binary" => null,
+                default => "string",
             },
         };
     }
 
     /**
-     * @param  array<string, mixed>  $schema
-     * @param  array<string, mixed>  $componentSchemas
+     * @param  SchemaNode  $schema
+     * @param  ComponentSchemas  $componentSchemas
      * @return array<string, mixed>
      */
     private function buildObjectExample(
@@ -990,8 +1022,8 @@ final class DocumentationSchemaBuilder
     ): array {
         $example = [];
 
-        foreach ($schema['properties'] ?? [] as $property => $propertySchema) {
-            if (! is_array($propertySchema)) {
+        foreach ($schema["properties"] ?? [] as $property => $propertySchema) {
+            if (!is_array($propertySchema)) {
                 continue;
             }
 
@@ -1013,11 +1045,11 @@ final class DocumentationSchemaBuilder
      */
     private function schemaLooksLikeResourcePayload(array $schema): bool
     {
-        if (($schema['type'] ?? null) !== 'object') {
+        if (($schema["type"] ?? null) !== "object") {
             return false;
         }
 
-        return ! array_key_exists('data', $schema['properties'] ?? []);
+        return !array_key_exists("data", $schema["properties"] ?? []);
     }
 
     /**
@@ -1025,13 +1057,13 @@ final class DocumentationSchemaBuilder
      */
     private function defaultResponseReference(array $endpoint): string
     {
-        $controllerMethod = $endpoint['controller']['method'] ?? null;
+        $controllerMethod = $endpoint["controller"]["method"] ?? null;
 
-        if ($controllerMethod === 'index') {
-            return '#/components/schemas/PaginatedResponse';
+        if ($controllerMethod === "index") {
+            return "#/components/schemas/PaginatedResponse";
         }
 
-        return '#/components/schemas/ResourceResponse';
+        return "#/components/schemas/ResourceResponse";
     }
 
     /**
@@ -1039,17 +1071,17 @@ final class DocumentationSchemaBuilder
      */
     private function buildRequestComponentName(array $endpoint): string
     {
-        if (! empty($endpoint['request'])) {
-            return Str::finish($endpoint['request'], 'Payload');
+        if (!empty($endpoint["request"])) {
+            return Str::finish($endpoint["request"], "Payload");
         }
 
         return Str::studly(
             $this->buildOperationId(
-                $endpoint['method'] ?? 'post',
-                $endpoint['path'] ?? '/',
+                $endpoint["method"] ?? "post",
+                $endpoint["path"] ?? "/",
                 $endpoint,
             ),
-        ).'Request';
+        ) . "Request";
     }
 
     /**
@@ -1060,24 +1092,24 @@ final class DocumentationSchemaBuilder
         string $path,
         array $endpoint,
     ): string {
-        $controller = $endpoint['controller']['controller'] ?? null;
-        $controllerMethod = $endpoint['controller']['method'] ?? null;
+        $controller = $endpoint["controller"]["controller"] ?? null;
+        $controllerMethod = $endpoint["controller"]["method"] ?? null;
 
         if ($controller !== null && $controllerMethod !== null) {
             return Str::camel(
-                str_replace('Controller', '', $controller).
-                    '_'.
+                str_replace("Controller", "", $controller) .
+                    "_" .
                     $controllerMethod,
             );
         }
 
         return Str::camel(
-            strtolower($method).
-                '_'.
+            strtolower($method) .
+                "_" .
                 trim(
                     str_replace(
-                        ['{', '}', '/', '-', '.'],
-                        [' ', ' ', ' ', ' ', ' '],
+                        ["{", "}", "/", "-", "."],
+                        [" ", " ", " ", " ", " "],
                         $path,
                     ),
                 ),
@@ -1086,106 +1118,106 @@ final class DocumentationSchemaBuilder
 
     private function normalizeOpenApiPath(string $path, string $baseUrl): string
     {
-        $pathKey = str_replace($baseUrl, '', $path);
+        $pathKey = str_replace($baseUrl, "", $path);
 
-        if (! str_starts_with($pathKey, '/')) {
-            $pathKey = '/'.$pathKey;
+        if (!str_starts_with($pathKey, "/")) {
+            $pathKey = "/" . $pathKey;
         }
 
         return $pathKey;
     }
 
     /**
-     * @return array<string, mixed>
+     * @return ComponentSchemas
      */
     private function defaultComponentSchemas(): array
     {
         return [
-            'ResourceResponse' => [
-                'type' => 'object',
-                'properties' => [
-                    'data' => [
-                        'type' => 'object',
-                        'description' => 'Resource payload',
+            "ResourceResponse" => [
+                "type" => "object",
+                "properties" => [
+                    "data" => [
+                        "type" => "object",
+                        "description" => "Resource payload",
                     ],
                 ],
             ],
-            'PaginatedResponse' => [
-                'type' => 'object',
-                'properties' => [
-                    'data' => [
-                        'type' => 'array',
-                        'items' => [
-                            'type' => 'object',
+            "PaginatedResponse" => [
+                "type" => "object",
+                "properties" => [
+                    "data" => [
+                        "type" => "array",
+                        "items" => [
+                            "type" => "object",
                         ],
                     ],
-                    'meta' => [
-                        '$ref' => '#/components/schemas/PaginationMeta',
+                    "meta" => [
+                        '$ref' => "#/components/schemas/PaginationMeta",
                     ],
-                    'links' => [
-                        '$ref' => '#/components/schemas/PaginationLinks',
-                    ],
-                ],
-            ],
-            'PaginationMeta' => [
-                'type' => 'object',
-                'properties' => [
-                    'current_page' => ['type' => 'integer', 'example' => 1],
-                    'from' => ['type' => 'integer', 'nullable' => true],
-                    'last_page' => ['type' => 'integer', 'example' => 1],
-                    'path' => ['type' => 'string', 'format' => 'uri'],
-                    'per_page' => ['type' => 'integer', 'example' => 15],
-                    'to' => ['type' => 'integer', 'nullable' => true],
-                    'total' => ['type' => 'integer', 'example' => 1],
-                ],
-            ],
-            'PaginationLinks' => [
-                'type' => 'object',
-                'properties' => [
-                    'first' => [
-                        'type' => 'string',
-                        'format' => 'uri',
-                        'nullable' => true,
-                    ],
-                    'last' => [
-                        'type' => 'string',
-                        'format' => 'uri',
-                        'nullable' => true,
-                    ],
-                    'prev' => [
-                        'type' => 'string',
-                        'format' => 'uri',
-                        'nullable' => true,
-                    ],
-                    'next' => [
-                        'type' => 'string',
-                        'format' => 'uri',
-                        'nullable' => true,
+                    "links" => [
+                        '$ref' => "#/components/schemas/PaginationLinks",
                     ],
                 ],
             ],
-            'ErrorResponse' => [
-                'type' => 'object',
-                'properties' => [
-                    'message' => [
-                        'type' => 'string',
-                        'example' => 'An error occurred.',
+            "PaginationMeta" => [
+                "type" => "object",
+                "properties" => [
+                    "current_page" => ["type" => "integer", "example" => 1],
+                    "from" => ["type" => "integer", "nullable" => true],
+                    "last_page" => ["type" => "integer", "example" => 1],
+                    "path" => ["type" => "string", "format" => "uri"],
+                    "per_page" => ["type" => "integer", "example" => 15],
+                    "to" => ["type" => "integer", "nullable" => true],
+                    "total" => ["type" => "integer", "example" => 1],
+                ],
+            ],
+            "PaginationLinks" => [
+                "type" => "object",
+                "properties" => [
+                    "first" => [
+                        "type" => "string",
+                        "format" => "uri",
+                        "nullable" => true,
+                    ],
+                    "last" => [
+                        "type" => "string",
+                        "format" => "uri",
+                        "nullable" => true,
+                    ],
+                    "prev" => [
+                        "type" => "string",
+                        "format" => "uri",
+                        "nullable" => true,
+                    ],
+                    "next" => [
+                        "type" => "string",
+                        "format" => "uri",
+                        "nullable" => true,
                     ],
                 ],
             ],
-            'ValidationError' => [
-                'type' => 'object',
-                'properties' => [
-                    'message' => [
-                        'type' => 'string',
-                        'example' => 'The given data was invalid.',
+            "ErrorResponse" => [
+                "type" => "object",
+                "properties" => [
+                    "message" => [
+                        "type" => "string",
+                        "example" => "An error occurred.",
                     ],
-                    'errors' => [
-                        'type' => 'object',
-                        'additionalProperties' => [
-                            'type' => 'array',
-                            'items' => [
-                                'type' => 'string',
+                ],
+            ],
+            "ValidationError" => [
+                "type" => "object",
+                "properties" => [
+                    "message" => [
+                        "type" => "string",
+                        "example" => "The given data was invalid.",
+                    ],
+                    "errors" => [
+                        "type" => "object",
+                        "additionalProperties" => [
+                            "type" => "array",
+                            "items" => [
+                                "type" => "string",
                             ],
                         ],
                     ],
@@ -1199,7 +1231,7 @@ final class DocumentationSchemaBuilder
         if (class_exists(InstalledVersions::class)) {
             try {
                 $version = InstalledVersions::getPrettyVersion(
-                    'arseno25/laravel-api-magic',
+                    "arseno25/laravel-api-magic",
                 );
 
                 if ($version !== null) {
@@ -1210,15 +1242,15 @@ final class DocumentationSchemaBuilder
         }
 
         try {
-            $composerJson = dirname(__DIR__, 2).'/composer.json';
+            $composerJson = dirname(__DIR__, 2) . "/composer.json";
             if (File::exists($composerJson)) {
                 $composer = json_decode(File::get($composerJson), true);
 
-                return $composer['version'] ?? '1.0.0';
+                return $composer["version"] ?? "1.0.0";
             }
         } catch (\Throwable) {
         }
 
-        return '1.0.0';
+        return "1.0.0";
     }
 }

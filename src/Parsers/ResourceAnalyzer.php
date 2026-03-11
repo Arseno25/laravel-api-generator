@@ -18,8 +18,10 @@ final class ResourceAnalyzer
     public function analyzeResourceClass(string $resourceClass): ?array
     {
         try {
+            $resourceReflection = $this->reflectClass($resourceClass);
+
             if (
-                class_exists($resourceClass) &&
+                $resourceReflection !== null &&
                 is_subclass_of($resourceClass, ResourceCollection::class)
             ) {
                 $innerResource = $this->resolveCollectionResource(
@@ -30,12 +32,13 @@ final class ResourceAnalyzer
                     : (object) [];
 
                 return [
-                    'name' => class_basename($resourceClass),
-                    'schema' => [
-                        'type' => 'object',
-                        'description' => 'Response mapped by '.
+                    "name" => class_basename($resourceClass),
+                    "schema" => [
+                        "type" => "object",
+                        "description" =>
+                            "Response mapped by " .
                             class_basename($resourceClass),
-                        'properties' => empty((array) $properties)
+                        "properties" => empty((array) $properties)
                             ? (object) []
                             : $properties,
                     ],
@@ -43,26 +46,26 @@ final class ResourceAnalyzer
             }
 
             if (
-                ! class_exists($resourceClass) ||
-                ! is_subclass_of($resourceClass, JsonResource::class)
+                $resourceReflection === null ||
+                !is_subclass_of($resourceClass, JsonResource::class)
             ) {
                 return null;
             }
 
-            $resourceReflection = new ReflectionClass($resourceClass);
             $schemaAttributes = $resourceReflection->getAttributes(
                 \Arseno25\LaravelApiMagic\Attributes\ApiMagicSchema::class,
             );
-            if (! empty($schemaAttributes)) {
+            if (!empty($schemaAttributes)) {
                 $customSchema = $schemaAttributes[0]->newInstance()->schema;
 
                 return [
-                    'name' => class_basename($resourceClass),
-                    'schema' => [
-                        'type' => 'object',
-                        'description' => 'Response mapped by '.
+                    "name" => class_basename($resourceClass),
+                    "schema" => [
+                        "type" => "object",
+                        "description" =>
+                            "Response mapped by " .
                             class_basename($resourceClass),
-                        'properties' => (object) $customSchema,
+                        "properties" => (object) $customSchema,
                     ],
                 ];
             }
@@ -70,11 +73,12 @@ final class ResourceAnalyzer
             $properties = $this->extractProperties($resourceClass);
 
             return [
-                'name' => class_basename($resourceClass),
-                'schema' => [
-                    'type' => 'object',
-                    'description' => 'Response mapped by '.class_basename($resourceClass),
-                    'properties' => empty((array) $properties)
+                "name" => class_basename($resourceClass),
+                "schema" => [
+                    "type" => "object",
+                    "description" =>
+                        "Response mapped by " . class_basename($resourceClass),
+                    "properties" => empty((array) $properties)
                         ? (object) []
                         : $properties,
                 ],
@@ -92,8 +96,12 @@ final class ResourceAnalyzer
     public function analyze(string $controller, string $method): ?array
     {
         try {
-            $reflection = new ReflectionClass($controller);
-            if (! $reflection->hasMethod($method)) {
+            $reflection = $this->reflectClass($controller);
+            if ($reflection === null) {
+                return null;
+            }
+
+            if (!$reflection->hasMethod($method)) {
                 return null;
             }
 
@@ -103,18 +111,18 @@ final class ResourceAnalyzer
             $schemaAttributes = $methodReflection->getAttributes(
                 \Arseno25\LaravelApiMagic\Attributes\ApiMagicSchema::class,
             );
-            if (! empty($schemaAttributes)) {
+            if (!empty($schemaAttributes)) {
                 $customSchema = $schemaAttributes[0]->newInstance()->schema;
 
                 return [
-                    'name' => 'CustomSchema',
-                    'schema' => $customSchema,
+                    "name" => "CustomSchema",
+                    "schema" => $customSchema,
                 ];
             }
 
             $returnType = $methodReflection->getReturnType();
 
-            if (! $returnType || ! $returnType instanceof ReflectionNamedType) {
+            if (!$returnType || !$returnType instanceof ReflectionNamedType) {
                 return null;
             }
 
@@ -134,17 +142,18 @@ final class ResourceAnalyzer
                     $properties = $this->extractProperties($innerResource);
 
                     return [
-                        'name' => class_basename($innerResource).'Collection',
-                        'schema' => [
-                            'type' => 'object',
-                            'description' => 'Collection of '.
+                        "name" => class_basename($innerResource) . "Collection",
+                        "schema" => [
+                            "type" => "object",
+                            "description" =>
+                                "Collection of " .
                                 class_basename($innerResource),
-                            'properties' => [
-                                'data' => [
-                                    'type' => 'array',
-                                    'items' => [
-                                        'type' => 'object',
-                                        'properties' => empty(
+                            "properties" => [
+                                "data" => [
+                                    "type" => "array",
+                                    "items" => [
+                                        "type" => "object",
+                                        "properties" => empty(
                                             (array) $properties
                                         )
                                             ? (object) []
@@ -174,19 +183,19 @@ final class ResourceAnalyzer
 
         // Strategy 1: Parse toArray() source code for $this->field patterns
         $fromSource = $this->extractFromSource($resourceClass);
-        if (! empty($fromSource)) {
+        if (!empty($fromSource)) {
             return $fromSource;
         }
 
         // Strategy 2: Parse DocBlock @property annotations
         $fromDocBlock = $this->extractFromDocBlock($resourceClass);
-        if (! empty($fromDocBlock)) {
+        if (!empty($fromDocBlock)) {
             return $fromDocBlock;
         }
 
         // Strategy 3: Resolve from the underlying model's fillable/casts
         $fromModel = $this->extractFromModel($resourceClass);
-        if (! empty($fromModel)) {
+        if (!empty($fromModel)) {
             return $fromModel;
         }
 
@@ -202,11 +211,15 @@ final class ResourceAnalyzer
         string $methodName,
     ): ?string {
         try {
-            $reflection = new ReflectionClass($controller);
+            $reflection = $this->reflectClass($controller);
+            if ($reflection === null) {
+                return null;
+            }
+
             $method = $reflection->getMethod($methodName);
 
             $filename = $method->getFileName();
-            if (! $filename || ! file_exists($filename)) {
+            if (!$filename || !file_exists($filename)) {
                 return null;
             }
 
@@ -232,20 +245,20 @@ final class ResourceAnalyzer
                 $resourceName = $matches[1];
 
                 // If it's fully qualified, use it
-                if (str_starts_with($resourceName, '\\')) {
-                    return ltrim($resourceName, '\\');
+                if (str_starts_with($resourceName, "\\")) {
+                    return ltrim($resourceName, "\\");
                 }
 
                 // Otherwise, try to resolve via namespace imports or same namespace
                 // We'll simplify and check if it exists in same namespace or common ones
                 $namespace = $reflection->getNamespaceName();
                 $possibleNamespaces = [
-                    $namespace.'\\'.$resourceName,
-                    'App\\Http\\Resources\\'.$resourceName,
-                    'App\\Http\\Resources\\'.
+                    $namespace . "\\" . $resourceName,
+                    "App\\Http\\Resources\\" . $resourceName,
+                    "App\\Http\\Resources\\" .
                     str_replace(
-                        'Controller',
-                        'Resource',
+                        "Controller",
+                        "Resource",
                         class_basename($controller),
                     ), // Fallback guess
                 ];
@@ -292,12 +305,16 @@ final class ResourceAnalyzer
     private function extractFromSource(string $resourceClass): array
     {
         try {
-            $reflection = new ReflectionClass($resourceClass);
-            if (! $reflection->hasMethod('toArray')) {
+            $reflection = $this->reflectClass($resourceClass);
+            if ($reflection === null) {
                 return [];
             }
 
-            $method = $reflection->getMethod('toArray');
+            if (!$reflection->hasMethod("toArray")) {
+                return [];
+            }
+
+            $method = $reflection->getMethod("toArray");
 
             // Only analyze if the class itself declares toArray (not inherited)
             if ($method->getDeclaringClass()->getName() !== $resourceClass) {
@@ -305,7 +322,7 @@ final class ResourceAnalyzer
             }
 
             $filename = $method->getFileName();
-            if (! $filename || ! file_exists($filename)) {
+            if (!$filename || !file_exists($filename)) {
                 return [];
             }
 
@@ -335,8 +352,8 @@ final class ResourceAnalyzer
                     $key = $match[1];
                     $field = $match[2];
                     $properties[$key] = [
-                        'type' => $this->guessTypeFromFieldName($field),
-                        'description' => Str::headline($key),
+                        "type" => $this->guessTypeFromFieldName($field),
+                        "description" => Str::headline($key),
                     ];
                 }
             }
@@ -353,9 +370,9 @@ final class ResourceAnalyzer
                 foreach ($matches as $match) {
                     $key = $match[1];
                     $properties[$key] = [
-                        'type' => 'string',
-                        'format' => 'date-time',
-                        'description' => Str::headline($key),
+                        "type" => "string",
+                        "format" => "date-time",
+                        "description" => Str::headline($key),
                     ];
                 }
             }
@@ -374,17 +391,17 @@ final class ResourceAnalyzer
                     $resourceName = $match[2];
                     $isCollection = str_contains(
                         $methodBody,
-                        $resourceName.'::collection',
+                        $resourceName . "::collection",
                     );
                     $properties[$key] = $isCollection
                         ? [
-                            'type' => 'array',
-                            'items' => ['type' => 'object'],
-                            'description' => Str::headline($key),
+                            "type" => "array",
+                            "items" => ["type" => "object"],
+                            "description" => Str::headline($key),
                         ]
                         : [
-                            'type' => 'object',
-                            'description' => Str::headline($key),
+                            "type" => "object",
+                            "description" => Str::headline($key),
                         ];
                 }
             }
@@ -400,10 +417,11 @@ final class ResourceAnalyzer
             ) {
                 foreach ($matches as $match) {
                     $key = $match[1];
-                    if (! isset($properties[$key])) {
+                    if (!isset($properties[$key])) {
                         $properties[$key] = [
-                            'type' => 'object',
-                            'description' => Str::headline($key).' (Nested Object/Array)',
+                            "type" => "object",
+                            "description" =>
+                                Str::headline($key) . " (Nested Object/Array)",
                         ];
                     }
                 }
@@ -421,17 +439,18 @@ final class ResourceAnalyzer
                 foreach ($matches as $match) {
                     $key = $match[1];
                     $properties[$key] = [
-                        'oneOf' => [
+                        "oneOf" => [
                             [
-                                'type' => 'object',
-                                'title' => $match[2],
+                                "type" => "object",
+                                "title" => $match[2],
                             ],
                             [
-                                'type' => 'object',
-                                'title' => $match[3],
+                                "type" => "object",
+                                "title" => $match[3],
                             ],
                         ],
-                        'description' => Str::headline($key).' (Polymorphic response)',
+                        "description" =>
+                            Str::headline($key) . " (Polymorphic response)",
                     ];
                 }
             }
@@ -450,7 +469,11 @@ final class ResourceAnalyzer
     private function extractFromDocBlock(string $resourceClass): array
     {
         try {
-            $reflection = new ReflectionClass($resourceClass);
+            $reflection = $this->reflectClass($resourceClass);
+            if ($reflection === null) {
+                return [];
+            }
+
             $docComment = $reflection->getDocComment();
 
             if ($docComment === false) {
@@ -472,8 +495,8 @@ final class ResourceAnalyzer
                     $type = $match[1];
                     $name = $match[2];
                     $properties[$name] = [
-                        'type' => $this->phpTypeToOpenApiType($type),
-                        'description' => Str::headline($name),
+                        "type" => $this->phpTypeToOpenApiType($type),
+                        "description" => Str::headline($name),
                     ];
                 }
             }
@@ -492,13 +515,16 @@ final class ResourceAnalyzer
     private function extractFromModel(string $resourceClass): array
     {
         try {
-            $reflection = new ReflectionClass($resourceClass);
+            $reflection = $this->reflectClass($resourceClass);
+            if ($reflection === null) {
+                return [];
+            }
 
             // Try to determine the model from the resource class name
             $resourceBaseName = class_basename($resourceClass);
             $modelName = str_replace(
-                ['Resource', 'Collection'],
-                '',
+                ["Resource", "Collection"],
+                "",
                 $resourceBaseName,
             );
 
@@ -516,40 +542,44 @@ final class ResourceAnalyzer
                 }
             }
 
-            if (! $modelClass) {
+            if (!$modelClass) {
                 return [];
             }
 
-            $modelReflection = new ReflectionClass($modelClass);
+            $modelReflection = $this->reflectClass($modelClass);
+            if ($modelReflection === null) {
+                return [];
+            }
+
             $model = $modelReflection->newInstanceWithoutConstructor();
 
             $properties = [];
 
             // Get fillable fields
-            if ($modelReflection->hasProperty('fillable')) {
-                $prop = $modelReflection->getProperty('fillable');
+            if ($modelReflection->hasProperty("fillable")) {
+                $prop = $modelReflection->getProperty("fillable");
                 $prop->setAccessible(true);
                 /** @var array<int, string> $fillable */
                 $fillable = $prop->getValue($model);
 
                 foreach ($fillable as $field) {
                     $properties[$field] = [
-                        'type' => $this->guessTypeFromFieldName($field),
-                        'description' => Str::headline($field),
+                        "type" => $this->guessTypeFromFieldName($field),
+                        "description" => Str::headline($field),
                     ];
                 }
             }
 
             // Override types using $casts
-            if ($modelReflection->hasProperty('casts')) {
-                $castProp = $modelReflection->getProperty('casts');
+            if ($modelReflection->hasProperty("casts")) {
+                $castProp = $modelReflection->getProperty("casts");
                 $castProp->setAccessible(true);
                 /** @var array<string, string> $casts */
                 $casts = $castProp->getValue($model);
 
                 foreach ($casts as $field => $cast) {
                     if (isset($properties[$field])) {
-                        $properties[$field]['type'] = $this->castToOpenApiType(
+                        $properties[$field]["type"] = $this->castToOpenApiType(
                             $cast,
                         );
                     }
@@ -557,27 +587,27 @@ final class ResourceAnalyzer
             }
 
             // Always add 'id' at the beginning
-            if (! isset($properties['id'])) {
+            if (!isset($properties["id"])) {
                 $properties = array_merge(
-                    ['id' => ['type' => 'integer', 'description' => 'Id']],
+                    ["id" => ["type" => "integer", "description" => "Id"]],
                     $properties,
                 );
             }
 
             // Add timestamps if model uses them
-            if ($modelReflection->hasProperty('timestamps')) {
-                $tsProp = $modelReflection->getProperty('timestamps');
+            if ($modelReflection->hasProperty("timestamps")) {
+                $tsProp = $modelReflection->getProperty("timestamps");
                 $tsProp->setAccessible(true);
                 if ($tsProp->getValue($model) !== false) {
-                    $properties['created_at'] = [
-                        'type' => 'string',
-                        'format' => 'date-time',
-                        'description' => 'Created At',
+                    $properties["created_at"] = [
+                        "type" => "string",
+                        "format" => "date-time",
+                        "description" => "Created At",
                     ];
-                    $properties['updated_at'] = [
-                        'type' => 'string',
-                        'format' => 'date-time',
-                        'description' => 'Updated At',
+                    $properties["updated_at"] = [
+                        "type" => "string",
+                        "format" => "date-time",
+                        "description" => "Updated At",
                     ];
                 }
             }
@@ -596,11 +626,14 @@ final class ResourceAnalyzer
         try {
             // Convention: FooCollection -> FooResource
             $baseName = class_basename($collectionClass);
-            $namespace = new ReflectionClass(
-                $collectionClass,
-            )->getNamespaceName();
-            $resourceName = str_replace('Collection', 'Resource', $baseName);
-            $fullClass = $namespace.'\\'.$resourceName;
+            $collectionReflection = $this->reflectClass($collectionClass);
+            if ($collectionReflection === null) {
+                return null;
+            }
+
+            $namespace = $collectionReflection->getNamespaceName();
+            $resourceName = str_replace("Collection", "Resource", $baseName);
+            $fullClass = $namespace . "\\" . $resourceName;
 
             if (
                 class_exists($fullClass) &&
@@ -620,37 +653,37 @@ final class ResourceAnalyzer
      */
     private function guessTypeFromFieldName(string $field): string
     {
-        if ($field === 'id' || Str::endsWith($field, '_id')) {
-            return 'integer';
+        if ($field === "id" || Str::endsWith($field, "_id")) {
+            return "integer";
         }
-        if (Str::startsWith($field, 'is_') || Str::startsWith($field, 'has_')) {
-            return 'boolean';
+        if (Str::startsWith($field, "is_") || Str::startsWith($field, "has_")) {
+            return "boolean";
         }
         if (
             Str::contains($field, [
-                'price',
-                'amount',
-                'total',
-                'cost',
-                'balance',
-                'rate',
+                "price",
+                "amount",
+                "total",
+                "cost",
+                "balance",
+                "rate",
             ])
         ) {
-            return 'number';
+            return "number";
         }
         if (
-            Str::contains($field, ['count', 'quantity', 'qty', 'age', 'number'])
+            Str::contains($field, ["count", "quantity", "qty", "age", "number"])
         ) {
-            return 'integer';
+            return "integer";
         }
         if (
-            Str::endsWith($field, '_at') ||
-            Str::contains($field, ['date', 'time'])
+            Str::endsWith($field, "_at") ||
+            Str::contains($field, ["date", "time"])
         ) {
-            return 'string';
+            return "string";
         }
 
-        return 'string';
+        return "string";
     }
 
     /**
@@ -659,20 +692,20 @@ final class ResourceAnalyzer
     private function phpTypeToOpenApiType(string $phpType): string
     {
         $typeMap = [
-            'int' => 'integer',
-            'integer' => 'integer',
-            'float' => 'number',
-            'double' => 'number',
-            'bool' => 'boolean',
-            'boolean' => 'boolean',
-            'string' => 'string',
-            'array' => 'array',
-            'object' => 'object',
+            "int" => "integer",
+            "integer" => "integer",
+            "float" => "number",
+            "double" => "number",
+            "bool" => "boolean",
+            "boolean" => "boolean",
+            "string" => "string",
+            "array" => "array",
+            "object" => "object",
         ];
 
-        $cleanType = ltrim(explode('|', $phpType)[0], '?\\');
+        $cleanType = ltrim(explode("|", $phpType)[0], "?\\");
 
-        return $typeMap[strtolower($cleanType)] ?? 'string';
+        return $typeMap[strtolower($cleanType)] ?? "string";
     }
 
     /**
@@ -681,28 +714,42 @@ final class ResourceAnalyzer
     private function castToOpenApiType(string $cast): string
     {
         $castMap = [
-            'int' => 'integer',
-            'integer' => 'integer',
-            'real' => 'number',
-            'float' => 'number',
-            'double' => 'number',
-            'decimal' => 'number',
-            'string' => 'string',
-            'bool' => 'boolean',
-            'boolean' => 'boolean',
-            'object' => 'object',
-            'array' => 'array',
-            'collection' => 'array',
-            'json' => 'object',
-            'date' => 'string',
-            'datetime' => 'string',
-            'immutable_date' => 'string',
-            'immutable_datetime' => 'string',
-            'timestamp' => 'integer',
+            "int" => "integer",
+            "integer" => "integer",
+            "real" => "number",
+            "float" => "number",
+            "double" => "number",
+            "decimal" => "number",
+            "string" => "string",
+            "bool" => "boolean",
+            "boolean" => "boolean",
+            "object" => "object",
+            "array" => "array",
+            "collection" => "array",
+            "json" => "object",
+            "date" => "string",
+            "datetime" => "string",
+            "immutable_date" => "string",
+            "immutable_datetime" => "string",
+            "timestamp" => "integer",
         ];
 
-        $cleanCast = strtolower(explode(':', $cast)[0]);
+        $cleanCast = strtolower(explode(":", $cast)[0]);
 
-        return $castMap[$cleanCast] ?? 'string';
+        return $castMap[$cleanCast] ?? "string";
+    }
+
+    /**
+     * @param  class-string<object>|string  $className
+     * @return ReflectionClass<object>|null
+     */
+    private function reflectClass(string $className): ?ReflectionClass
+    {
+        if (!class_exists($className)) {
+            return null;
+        }
+
+        /** @var class-string<object> $className */
+        return new ReflectionClass($className);
     }
 }
