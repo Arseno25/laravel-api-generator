@@ -16,44 +16,44 @@ final class ExportDocsCommand extends Command
         {--format=json : Output format (json or yaml)}
         {--strict : Fail if OpenAPI validation issues are detected}';
 
-    protected $description = "Export OpenAPI documentation to a static file (JSON or YAML)";
+    protected $description = 'Export OpenAPI documentation to a static file (JSON or YAML)';
 
     public function handle(
         DocumentationSchemaBuilder $schemaBuilder,
         OpenApiSchemaValidator $validator,
     ): int {
-        $format = strtolower((string) $this->option("format"));
+        $format = strtolower((string) $this->option('format'));
 
-        if (!in_array($format, ["json", "yaml"])) {
+        if (! in_array($format, ['json', 'yaml'])) {
             $this->error('Invalid format. Please use "json" or "yaml".');
 
             return self::FAILURE;
         }
 
-        $basePath = $this->option("path");
+        $basePath = $this->option('path');
         $basePath =
-            is_string($basePath) && $basePath !== ""
+            is_string($basePath) && $basePath !== ''
                 ? $basePath
-                : public_path("api-docs");
+                : public_path('api-docs');
         $extension = $format;
         // In case the user provided a full file name in the path argument
         if (
-            str_ends_with($basePath, ".json") ||
-            str_ends_with($basePath, ".yaml") ||
-            str_ends_with($basePath, ".yml")
+            str_ends_with($basePath, '.json') ||
+            str_ends_with($basePath, '.yaml') ||
+            str_ends_with($basePath, '.yml')
         ) {
             $outputPath = $basePath;
             $format = pathinfo($basePath, PATHINFO_EXTENSION);
-            if ($format === "yml") {
-                $format = "yaml";
+            if ($format === 'yml') {
+                $format = 'yaml';
             }
         } else {
-            $outputPath = rtrim((string) $basePath, "/\\") . "." . $extension;
+            $outputPath = rtrim((string) $basePath, '/\\').'.'.$extension;
         }
 
         $this->info("Generating OpenAPI schema in {$format} format...");
 
-        $request = Request::create(config("app.url", "/"));
+        $request = Request::create(config('app.url', '/'));
         $schema = $schemaBuilder->buildOpenApiSchema($request);
         $issues = $validator->validate($schema);
 
@@ -62,9 +62,9 @@ final class ExportDocsCommand extends Command
                 $this->warn("OpenAPI validation: {$issue}");
             }
 
-            if ($this->option("strict")) {
+            if ($this->option('strict')) {
                 $this->error(
-                    "Export aborted because OpenAPI validation issues were detected.",
+                    'Export aborted because OpenAPI validation issues were detected.',
                 );
 
                 return self::FAILURE;
@@ -72,17 +72,17 @@ final class ExportDocsCommand extends Command
         }
 
         $directory = dirname($outputPath);
-        if (!File::isDirectory($directory)) {
+        if (! File::isDirectory($directory)) {
             File::makeDirectory($directory, 0755, true);
         }
 
-        if ($format === "yaml" && class_exists(Yaml::class)) {
+        if ($format === 'yaml' && class_exists(Yaml::class)) {
             $output = Yaml::dump($schema, 10, 2);
-        } elseif ($format === "yaml") {
+        } elseif ($format === 'yaml') {
             $this->warn(
-                "symfony/yaml is not installed. Falling back to JSON format.",
+                'symfony/yaml is not installed. Falling back to JSON format.',
             );
-            $outputPath = preg_replace('/\.yaml$/', ".json", $outputPath);
+            $outputPath = preg_replace('/\.yaml$/', '.json', $outputPath);
             $output = json_encode(
                 $schema,
                 JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES,
@@ -94,19 +94,19 @@ final class ExportDocsCommand extends Command
             );
         }
 
-        if (!is_string($outputPath)) {
+        if (! is_string($outputPath)) {
             throw new \RuntimeException(
-                "Unable to determine export output path.",
+                'Unable to determine export output path.',
             );
         }
 
         if ($output === false) {
-            throw new \RuntimeException("Unable to encode OpenAPI schema.");
+            throw new \RuntimeException('Unable to encode OpenAPI schema.');
         }
 
         File::put($outputPath, $output);
 
-        $this->info("<fg=green>Documentation exported successfully!</>");
+        $this->info('<fg=green>Documentation exported successfully!</>');
         $this->info("File saved to: {$outputPath}");
 
         return self::SUCCESS;

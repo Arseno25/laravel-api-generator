@@ -14,23 +14,23 @@ final class ChangelogService
     public function saveSnapshot(array $schema): string
     {
         $path = config(
-            "api-magic.changelog.storage_path",
-            storage_path("api-magic/changelog"),
+            'api-magic.changelog.storage_path',
+            storage_path('api-magic/changelog'),
         );
 
-        if (!File::isDirectory($path)) {
+        if (! File::isDirectory($path)) {
             File::makeDirectory($path, 0755, true);
         }
 
-        $filename = date("Y-m-d_His") . ".json";
-        $fullPath = $path . "/" . $filename;
+        $filename = date('Y-m-d_His').'.json';
+        $fullPath = $path.'/'.$filename;
         $encodedSchema = json_encode(
             $schema,
             JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES,
         );
 
         if ($encodedSchema === false) {
-            throw new \RuntimeException("Unable to encode changelog snapshot.");
+            throw new \RuntimeException('Unable to encode changelog snapshot.');
         }
 
         File::put($fullPath, $encodedSchema);
@@ -46,24 +46,24 @@ final class ChangelogService
     public function getSnapshots(): array
     {
         $path = config(
-            "api-magic.changelog.storage_path",
-            storage_path("api-magic/changelog"),
+            'api-magic.changelog.storage_path',
+            storage_path('api-magic/changelog'),
         );
 
-        if (!File::isDirectory($path)) {
+        if (! File::isDirectory($path)) {
             return [];
         }
 
-        $files = File::glob($path . "/*.json");
+        $files = File::glob($path.'/*.json');
         rsort($files);
 
         return array_map(function ($file) {
-            $filename = basename($file, ".json");
+            $filename = basename($file, '.json');
 
             return [
-                "filename" => basename($file),
-                "date" => str_replace("_", " ", $filename),
-                "path" => $file,
+                'filename' => basename($file),
+                'date' => str_replace('_', ' ', $filename),
+                'path' => $file,
             ];
         }, $files);
     }
@@ -81,7 +81,7 @@ final class ChangelogService
             return null;
         }
 
-        $content = File::get($snapshots[0]["path"]);
+        $content = File::get($snapshots[0]['path']);
 
         return json_decode($content, true);
     }
@@ -95,8 +95,8 @@ final class ChangelogService
      */
     public function computeDiff(array $oldSchema, array $newSchema): array
     {
-        $oldEndpoints = $this->flattenEndpoints($oldSchema["endpoints"] ?? []);
-        $newEndpoints = $this->flattenEndpoints($newSchema["endpoints"] ?? []);
+        $oldEndpoints = $this->flattenEndpoints($oldSchema['endpoints'] ?? []);
+        $newEndpoints = $this->flattenEndpoints($newSchema['endpoints'] ?? []);
 
         $added = array_diff_key($newEndpoints, $oldEndpoints);
         $removed = array_diff_key($oldEndpoints, $newEndpoints);
@@ -105,33 +105,32 @@ final class ChangelogService
         foreach ($newEndpoints as $key => $endpoint) {
             if (isset($oldEndpoints[$key])) {
                 $oldParams = json_encode(
-                    $oldEndpoints[$key]["parameters"] ?? [],
+                    $oldEndpoints[$key]['parameters'] ?? [],
                 );
-                $newParams = json_encode($endpoint["parameters"] ?? []);
+                $newParams = json_encode($endpoint['parameters'] ?? []);
 
                 if ($oldParams !== $newParams) {
                     $changed[$key] = [
-                        "old" => $oldEndpoints[$key],
-                        "new" => $endpoint,
+                        'old' => $oldEndpoints[$key],
+                        'new' => $endpoint,
                     ];
                 }
             }
         }
 
         return [
-            "added" => $added,
-            "removed" => $removed,
-            "changed" => $changed,
-            "total_added" => count($added),
-            "total_removed" => count($removed),
-            "total_changed" => count($changed),
+            'added' => $added,
+            'removed' => $removed,
+            'changed' => $changed,
+            'total_added' => count($added),
+            'total_removed' => count($removed),
+            'total_changed' => count($changed),
         ];
     }
 
     /**
      * @param  array<string, array<string, array<string, mixed>>>  $endpoints
-     * Flatten nested endpoint structure into a keyed map.
-     *
+     *                                                                         Flatten nested endpoint structure into a keyed map.
      * @return array<string, array<string, mixed>>
      */
     private function flattenEndpoints(array $endpoints): array
@@ -140,7 +139,7 @@ final class ChangelogService
 
         foreach ($endpoints as $path => $methods) {
             foreach ($methods as $method => $endpoint) {
-                $key = strtoupper($method) . " " . $path;
+                $key = strtoupper($method).' '.$path;
                 $flat[$key] = $endpoint;
             }
         }

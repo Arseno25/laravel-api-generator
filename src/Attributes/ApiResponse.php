@@ -13,7 +13,7 @@ class ApiResponse
     public function __construct(
         public int $status = 200,
         public ?string $resource = null,
-        public string $description = "",
+        public string $description = '',
         public ?array $example = null,
         public bool $isArray = false,
     ) {}

@@ -1,6 +1,7 @@
 <?php
 
 use Arseno25\LaravelApiMagic\Http\Controllers\DocsController;
+use Illuminate\Support\Facades\Route;
 
 use function Pest\Laravel\get;
 use function Pest\Laravel\getJson;
@@ -191,7 +192,7 @@ describe('GET /api/docs/json', function () {
     it('includes versions array', function () {
         // Without any routes registered via Route::get(), iterations should be empty.
         // We'll register one to ensure '1' gets populated.
-        Illuminate\Support\Facades\Route::middleware('api')->get(
+        Route::middleware('api')->get(
             '/api/users',
             function () {},
         );
@@ -424,7 +425,7 @@ describe('endpoint grouping', function () {
 describe('security in endpoints', function () {
     it('includes security information for authenticated routes', function () {
         // Register a protected route
-        Illuminate\Support\Facades\Route::middleware('api')
+        Route::middleware('api')
             ->middleware('auth:sanctum')
             ->get('/api/protected-test', function () {
                 return response()->json(['protected' => true]);
@@ -498,10 +499,10 @@ describe('feature toggles', function () {
 describe('query parameters for index endpoints', function () {
     it('includes standard query parameters for GET index', function () {
         // Register an index route with a controller so RouteAnalyzer detects the 'index' method
-        Illuminate\Support\Facades\Route::middleware('api')->get(
+        Route::middleware('api')->get(
             '/api/products',
             [
-                Arseno25\LaravelApiMagic\Http\Controllers\DocsController::class,
+                DocsController::class,
                 'index',
             ],
         );

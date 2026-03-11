@@ -2,6 +2,7 @@
 
 use Arseno25\LaravelApiMagic\Attributes\ApiResponse;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Route;
@@ -32,7 +33,7 @@ class ContractProbeController extends Controller
 {
     public function store(
         ContractProbeRequest $request,
-    ): \Illuminate\Http\JsonResponse {
+    ): JsonResponse {
         return response()->json([
             'data' => [
                 'email' => $request->input('email'),
@@ -69,7 +70,7 @@ class NestedContractProbeController extends Controller
 {
     public function store(
         NestedContractProbeRequest $request,
-    ): \Illuminate\Http\JsonResponse {
+    ): JsonResponse {
         return response()->json(['data' => $request->validated()]);
     }
 }
@@ -124,7 +125,7 @@ class AttributeResponseProbeController extends Controller
             description: 'Request accepted for processing',
         ),
     ]
-    public function store(): \Illuminate\Http\JsonResponse
+    public function store(): JsonResponse
     {
         return response()->json(['queued' => true], 202);
     }

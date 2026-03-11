@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\File;
 
 final class DocsController extends Controller
 {
-    private const CACHE_PATH = "bootstrap/cache/api-magic.json";
+    private const CACHE_PATH = 'bootstrap/cache/api-magic.json';
 
     public function __construct(
         private readonly DocumentationSchemaBuilder $schemaBuilder,
@@ -24,7 +24,7 @@ final class DocsController extends Controller
 
     public function index(): View
     {
-        return view("api-magic::docs"); // @phpstan-ignore argument.type
+        return view('api-magic::docs'); // @phpstan-ignore argument.type
     }
 
     public function json(Request $request): JsonResponse
@@ -40,19 +40,18 @@ final class DocsController extends Controller
 
     public function export(Request $request): JsonResponse
     {
-        $format = strtolower((string) $request->query("format", "openapi"));
+        $format = strtolower((string) $request->query('format', 'openapi'));
 
-        if (!in_array($format, ["openapi", "postman", "insomnia"], true)) {
+        if (! in_array($format, ['openapi', 'postman', 'insomnia'], true)) {
             return response()->json(
                 [
-                    "error" =>
-                        "Invalid format. Supported formats are: openapi, postman, insomnia",
+                    'error' => 'Invalid format. Supported formats are: openapi, postman, insomnia',
                 ],
                 400,
             );
         }
 
-        if ($format === "postman") {
+        if ($format === 'postman') {
             $postman = app(PostmanExporter::class)->export(
                 $this->schemaBuilder->buildInternalSchema($request),
                 $request->getSchemeAndHttpHost(),
@@ -61,14 +60,14 @@ final class DocsController extends Controller
             return response()
                 ->json($postman)
                 ->header(
-                    "Content-Disposition",
-                    'attachment; filename="postman-collection-' .
-                        date("Y-m-d") .
+                    'Content-Disposition',
+                    'attachment; filename="postman-collection-'.
+                        date('Y-m-d').
                         '.json"',
                 );
         }
 
-        if ($format === "insomnia") {
+        if ($format === 'insomnia') {
             $insomnia = app(InsomniaExporter::class)->export(
                 $this->schemaBuilder->buildInternalSchema($request),
                 $request->getSchemeAndHttpHost(),
@@ -77,9 +76,9 @@ final class DocsController extends Controller
             return response()
                 ->json($insomnia)
                 ->header(
-                    "Content-Disposition",
-                    'attachment; filename="insomnia-collection-' .
-                        date("Y-m-d") .
+                    'Content-Disposition',
+                    'attachment; filename="insomnia-collection-'.
+                        date('Y-m-d').
                         '.json"',
                 );
         }
@@ -87,8 +86,8 @@ final class DocsController extends Controller
         return response()
             ->json($this->schemaBuilder->buildOpenApiSchema($request))
             ->header(
-                "Content-Disposition",
-                'attachment; filename="api-docs-' . date("Y-m-d") . '.json"',
+                'Content-Disposition',
+                'attachment; filename="api-docs-'.date('Y-m-d').'.json"',
             );
     }
 
@@ -102,45 +101,44 @@ final class DocsController extends Controller
 
     public function health(): JsonResponse
     {
-        if (!config("api-magic.health.enabled", false)) {
+        if (! config('api-magic.health.enabled', false)) {
             return response()->json(
-                ["message" => "Health telemetry is disabled."],
+                ['message' => 'Health telemetry is disabled.'],
                 404,
             );
         }
 
         return response()->json([
-            "metrics" => ApiHealthMiddleware::getMetrics(),
-            "generated_at" => now()->toIso8601String(),
+            'metrics' => ApiHealthMiddleware::getMetrics(),
+            'generated_at' => now()->toIso8601String(),
         ]);
     }
 
     public function changelog(): JsonResponse
     {
-        if (!config("api-magic.changelog.enabled", false)) {
+        if (! config('api-magic.changelog.enabled', false)) {
             return response()->json(
-                ["message" => "Changelog is disabled."],
+                ['message' => 'Changelog is disabled.'],
                 404,
             );
         }
 
-        $service = new ChangelogService();
+        $service = new ChangelogService;
         $snapshots = $service->getSnapshots();
 
         if (count($snapshots) < 2) {
             return response()->json([
-                "message" =>
-                    "Not enough snapshots for comparison. Run: php artisan api-magic:snapshot",
-                "snapshots" => count($snapshots),
+                'message' => 'Not enough snapshots for comparison. Run: php artisan api-magic:snapshot',
+                'snapshots' => count($snapshots),
             ]);
         }
 
-        $currentContents = file_get_contents($snapshots[0]["path"]);
-        $previousContents = file_get_contents($snapshots[1]["path"]);
+        $currentContents = file_get_contents($snapshots[0]['path']);
+        $previousContents = file_get_contents($snapshots[1]['path']);
 
         if ($currentContents === false || $previousContents === false) {
             return response()->json(
-                ["message" => "Unable to read changelog snapshots."],
+                ['message' => 'Unable to read changelog snapshots.'],
                 500,
             );
         }
@@ -148,39 +146,39 @@ final class DocsController extends Controller
         $current = json_decode($currentContents, true);
         $previous = json_decode($previousContents, true);
 
-        if (!is_array($current) || !is_array($previous)) {
+        if (! is_array($current) || ! is_array($previous)) {
             return response()->json(
-                ["message" => "Unable to decode changelog snapshots."],
+                ['message' => 'Unable to decode changelog snapshots.'],
                 500,
             );
         }
 
         return response()->json([
-            "diff" => $service->computeDiff($previous, $current),
-            "current_snapshot" => $snapshots[0]["date"],
-            "previous_snapshot" => $snapshots[1]["date"],
-            "total_snapshots" => count($snapshots),
+            'diff' => $service->computeDiff($previous, $current),
+            'current_snapshot' => $snapshots[0]['date'],
+            'previous_snapshot' => $snapshots[1]['date'],
+            'total_snapshots' => count($snapshots),
         ]);
     }
 
     public function codeSnippet(Request $request): JsonResponse
     {
-        $method = $request->query("method", "get");
-        $path = $request->query("path", "/");
+        $method = $request->query('method', 'get');
+        $path = $request->query('path', '/');
         $baseUrl = $request->query(
-            "base_url",
+            'base_url',
             $request->getSchemeAndHttpHost(),
         );
 
         $schema = $this->schemaBuilder->buildInternalSchema($request);
-        $endpoint = $schema["endpoints"][$path][$method] ?? null;
+        $endpoint = $schema['endpoints'][$path][$method] ?? null;
 
         if ($endpoint === null) {
-            return response()->json(["message" => "Endpoint not found."], 404);
+            return response()->json(['message' => 'Endpoint not found.'], 404);
         }
 
         return response()->json([
-            "snippets" => new CodeSnippetGenerator()->generate(
+            'snippets' => new CodeSnippetGenerator()->generate(
                 $method,
                 $path,
                 $endpoint,
@@ -204,13 +202,13 @@ final class DocsController extends Controller
     {
         $cachePath = base_path(self::CACHE_PATH);
 
-        if (!File::exists($cachePath)) {
+        if (! File::exists($cachePath)) {
             return null;
         }
 
         $cached = json_decode(File::get($cachePath), true);
 
-        if (!is_array($cached) || !isset($cached["generated_at"])) {
+        if (! is_array($cached) || ! isset($cached['generated_at'])) {
             return null;
         }
 

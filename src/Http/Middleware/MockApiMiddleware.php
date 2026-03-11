@@ -5,6 +5,7 @@ namespace Arseno25\LaravelApiMagic\Http\Middleware;
 use Arseno25\LaravelApiMagic\Attributes\ApiMock;
 use Arseno25\LaravelApiMagic\Parsers\RequestAnalyzer;
 use Closure;
+use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use ReflectionMethod;
@@ -18,29 +19,29 @@ class MockApiMiddleware
     public function handle(Request $request, Closure $next): mixed
     {
         // Check if mock mode is enabled globally or via header
-        $mockEnabled = config("api-magic.mock.enabled", false);
-        $headerMock = $request->header("X-Api-Mock") === "true";
+        $mockEnabled = config('api-magic.mock.enabled', false);
+        $headerMock = $request->header('X-Api-Mock') === 'true';
 
         // Get the current route's controller and method
         $route = $request->route();
-        if (!$route) {
+        if (! $route) {
             return $next($request);
         }
 
         $action = $route->getAction();
-        $uses = $action["uses"] ?? null;
+        $uses = $action['uses'] ?? null;
 
-        if (!is_string($uses) || !str_contains($uses, "@")) {
+        if (! is_string($uses) || ! str_contains($uses, '@')) {
             return $next($request);
         }
 
-        [$controller, $method] = explode("@", $uses);
+        [$controller, $method] = explode('@', $uses);
 
         // Check for #[ApiMock] attribute
         $mockAttribute = $this->getMockAttribute($controller, $method);
 
         // If mock is not triggered globally, via header, or via attribute, skip
-        if (!$mockEnabled && !$headerMock && !$mockAttribute) {
+        if (! $mockEnabled && ! $headerMock && ! $mockAttribute) {
             return $next($request);
         }
 
@@ -60,14 +61,14 @@ class MockApiMiddleware
 
         return new JsonResponse(
             [
-                "data" => $mockData,
-                "_mock" => true,
-                "_generated_at" => now()->toIso8601String(),
+                'data' => $mockData,
+                '_mock' => true,
+                '_generated_at' => now()->toIso8601String(),
             ],
             $statusCode,
             [
-                "X-Api-Mock" => "true",
-                "X-Api-Mock-Generated" => now()->toIso8601String(),
+                'X-Api-Mock' => 'true',
+                'X-Api-Mock-Generated' => now()->toIso8601String(),
             ],
         );
     }
@@ -80,7 +81,7 @@ class MockApiMiddleware
         string $method,
     ): ?ApiMock {
         try {
-            if (!class_exists($controller)) {
+            if (! class_exists($controller)) {
                 return null;
             }
 
@@ -129,10 +130,10 @@ class MockApiMiddleware
             class_exists($requestClass) &&
             is_subclass_of(
                 $requestClass,
-                \Illuminate\Foundation\Http\FormRequest::class,
+                FormRequest::class,
             )
         ) {
-            /** @var class-string<\Illuminate\Foundation\Http\FormRequest> $requestClass */
+            /** @var class-string<FormRequest> $requestClass */
             $fields = $this->requestAnalyzer->analyze($requestClass);
         }
 
@@ -142,7 +143,7 @@ class MockApiMiddleware
         }
 
         // For list endpoints (index), return multiple items
-        if (in_array($method, ["index"]) || $httpMethod === "get") {
+        if (in_array($method, ['index']) || $httpMethod === 'get') {
             $items = [];
             for ($i = 0; $i < $count; $i++) {
                 $items[] = $this->generateItemFromFields($fields, $i + 1);
@@ -163,12 +164,12 @@ class MockApiMiddleware
      */
     private function generateItemFromFields(array $fields, int $index): array
     {
-        $item = ["id" => $index];
+        $item = ['id' => $index];
 
         foreach ($fields as $field) {
-            $name = $field["name"] ?? "field";
-            $type = $field["type"] ?? "string";
-            $enum = $field["enum"] ?? null;
+            $name = $field['name'] ?? 'field';
+            $type = $field['type'] ?? 'string';
+            $enum = $field['enum'] ?? null;
 
             if ($enum) {
                 $item[$name] = $enum[array_rand($enum)];
@@ -179,8 +180,8 @@ class MockApiMiddleware
             $item[$name] = $this->generateMockValue($name, $type, $index);
         }
 
-        $item["created_at"] = now()->subDays(rand(1, 30))->toIso8601String();
-        $item["updated_at"] = now()->toIso8601String();
+        $item['created_at'] = now()->subDays(rand(1, 30))->toIso8601String();
+        $item['updated_at'] = now()->toIso8601String();
 
         return $item;
     }
@@ -196,88 +197,88 @@ class MockApiMiddleware
         $n = strtolower($name);
 
         // Smart name-based generation
-        if (str_contains($n, "email")) {
+        if (str_contains($n, 'email')) {
             return "user{$index}@example.com";
         }
-        if (str_contains($n, "name") && str_contains($n, "first")) {
-            return ["John", "Jane", "Bob", "Alice", "Charlie"][$index % 5];
+        if (str_contains($n, 'name') && str_contains($n, 'first')) {
+            return ['John', 'Jane', 'Bob', 'Alice', 'Charlie'][$index % 5];
         }
-        if (str_contains($n, "name") && str_contains($n, "last")) {
-            return ["Doe", "Smith", "Wilson", "Brown", "Davis"][$index % 5];
+        if (str_contains($n, 'name') && str_contains($n, 'last')) {
+            return ['Doe', 'Smith', 'Wilson', 'Brown', 'Davis'][$index % 5];
         }
-        if (str_contains($n, "name")) {
+        if (str_contains($n, 'name')) {
             return "Example Name {$index}";
         }
-        if (str_contains($n, "title") || str_contains($n, "subject")) {
+        if (str_contains($n, 'title') || str_contains($n, 'subject')) {
             return "Sample Title {$index}";
         }
         if (
-            str_contains($n, "description") ||
-            str_contains($n, "content") ||
-            str_contains($n, "body")
+            str_contains($n, 'description') ||
+            str_contains($n, 'content') ||
+            str_contains($n, 'body')
         ) {
             return "This is a sample description for item {$index}. Lorem ipsum dolor sit amet.";
         }
-        if (str_contains($n, "slug")) {
+        if (str_contains($n, 'slug')) {
             return "sample-slug-{$index}";
         }
         if (
-            str_contains($n, "url") ||
-            str_contains($n, "link") ||
-            str_contains($n, "website")
+            str_contains($n, 'url') ||
+            str_contains($n, 'link') ||
+            str_contains($n, 'website')
         ) {
             return "https://example.com/item/{$index}";
         }
-        if (str_contains($n, "phone")) {
-            return "+1-555-" .
+        if (str_contains($n, 'phone')) {
+            return '+1-555-'.
                 str_pad(
                     (string) (($index * 1234) % 10000),
                     4,
-                    "0",
+                    '0',
                     STR_PAD_LEFT,
                 );
         }
         if (
-            str_contains($n, "price") ||
-            str_contains($n, "cost") ||
-            str_contains($n, "amount")
+            str_contains($n, 'price') ||
+            str_contains($n, 'cost') ||
+            str_contains($n, 'amount')
         ) {
             return round(9.99 + $index * 10.5, 2);
         }
         if (
-            str_contains($n, "quantity") ||
-            str_contains($n, "stock") ||
-            str_contains($n, "qty")
+            str_contains($n, 'quantity') ||
+            str_contains($n, 'stock') ||
+            str_contains($n, 'qty')
         ) {
             return $index * 10;
         }
         if (
-            str_contains($n, "image") ||
-            str_contains($n, "avatar") ||
-            str_contains($n, "photo")
+            str_contains($n, 'image') ||
+            str_contains($n, 'avatar') ||
+            str_contains($n, 'photo')
         ) {
             return "https://picsum.photos/seed/{$index}/400/300";
         }
-        if (str_contains($n, "_id") || str_contains($n, "category")) {
+        if (str_contains($n, '_id') || str_contains($n, 'category')) {
             return $index;
         }
-        if (str_contains($n, "password")) {
-            return "mock_password_hash";
+        if (str_contains($n, 'password')) {
+            return 'mock_password_hash';
         }
-        if (str_contains($n, "status")) {
-            return ["active", "inactive", "pending"][$index % 3];
+        if (str_contains($n, 'status')) {
+            return ['active', 'inactive', 'pending'][$index % 3];
         }
-        if (str_contains($n, "is_") || str_contains($n, "has_")) {
+        if (str_contains($n, 'is_') || str_contains($n, 'has_')) {
             return $index % 2 === 0;
         }
 
         // Type-based fallback
         return match ($type) {
-            "integer", "int", "bigint" => $index * 100,
-            "number", "float", "double", "decimal" => round($index * 1.5, 2),
-            "boolean", "bool" => $index % 2 === 0,
-            "array" => ["item_{$index}_a", "item_{$index}_b"],
-            "date", "datetime", "timestamp" => now()
+            'integer', 'int', 'bigint' => $index * 100,
+            'number', 'float', 'double', 'decimal' => round($index * 1.5, 2),
+            'boolean', 'bool' => $index % 2 === 0,
+            'array' => ["item_{$index}_a", "item_{$index}_b"],
+            'date', 'datetime', 'timestamp' => now()
                 ->subDays($index)
                 ->toIso8601String(),
             default => "value_{$index}",
@@ -294,15 +295,15 @@ class MockApiMiddleware
         $items = [];
         for ($i = 1; $i <= $count; $i++) {
             $items[] = [
-                "id" => $i,
-                "name" => "Item {$i}",
-                "description" => "Description for item {$i}",
-                "status" => ["active", "inactive", "pending"][$i % 3],
-                "created_at" => now()->subDays($i)->toIso8601String(),
-                "updated_at" => now()->toIso8601String(),
+                'id' => $i,
+                'name' => "Item {$i}",
+                'description' => "Description for item {$i}",
+                'status' => ['active', 'inactive', 'pending'][$i % 3],
+                'created_at' => now()->subDays($i)->toIso8601String(),
+                'updated_at' => now()->toIso8601String(),
             ];
         }
 
-        return $httpMethod === "get" ? $items : $items[0];
+        return $httpMethod === 'get' ? $items : $items[0];
     }
 }

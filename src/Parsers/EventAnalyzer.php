@@ -19,8 +19,8 @@ final class EventAnalyzer
      */
     public function analyze(?string $directory = null): array
     {
-        $directory = $directory ?? app_path("Events");
-        if (!File::exists($directory)) {
+        $directory = $directory ?? app_path('Events');
+        if (! File::exists($directory)) {
             return [];
         }
 
@@ -30,21 +30,21 @@ final class EventAnalyzer
         foreach ($files as $file) {
             $class = $this->extractClassFromFile($file->getPathname());
 
-            if (!$class || !class_exists($class)) {
+            if (! $class || ! class_exists($class)) {
                 continue;
             }
 
             $reflection = new ReflectionClass($class);
             if (
-                !$reflection->implementsInterface(ShouldBroadcast::class) &&
-                !$reflection->implementsInterface(ShouldBroadcastNow::class)
+                ! $reflection->implementsInterface(ShouldBroadcast::class) &&
+                ! $reflection->implementsInterface(ShouldBroadcastNow::class)
             ) {
                 continue;
             }
 
             $eventData = $this->analyzeEventClass($reflection);
             if ($eventData) {
-                $events[$eventData["name"]] = $eventData;
+                $events[$eventData['name']] = $eventData;
             }
         }
 
@@ -60,11 +60,11 @@ final class EventAnalyzer
         $payload = [];
 
         // Use broadcastWith method if available
-        if ($reflection->hasMethod("broadcastWith")) {
+        if ($reflection->hasMethod('broadcastWith')) {
             $payload = [
-                "type" => "object",
-                "description" => "Custom payload from broadcastWith()",
-                "properties" => [],
+                'type' => 'object',
+                'description' => 'Custom payload from broadcastWith()',
+                'properties' => [],
             ];
         } else {
             // Otherwise public properties
@@ -80,25 +80,25 @@ final class EventAnalyzer
                     $prop->hasType() &&
                     $prop->getType() instanceof \ReflectionNamedType
                         ? $prop->getType()->getName()
-                        : "mixed";
+                        : 'mixed';
 
                 $swaggerType = match ($type) {
-                    "int", "integer" => "integer",
-                    "float", "double" => "number",
-                    "bool", "boolean" => "boolean",
-                    "array" => "array",
-                    "string" => "string",
-                    default => "object",
+                    'int', 'integer' => 'integer',
+                    'float', 'double' => 'number',
+                    'bool', 'boolean' => 'boolean',
+                    'array' => 'array',
+                    'string' => 'string',
+                    default => 'object',
                 };
 
-                $schemaProperties[$prop->getName()] = ["type" => $swaggerType];
+                $schemaProperties[$prop->getName()] = ['type' => $swaggerType];
             }
-            $payload = ["type" => "object", "properties" => $schemaProperties];
+            $payload = ['type' => 'object', 'properties' => $schemaProperties];
         }
 
         // Try to guess channel names (very hard without instantiation, but we can do static analysis or return a placeholder)
-        $channel = "PlaceholderChannel";
-        if ($reflection->hasMethod("broadcastOn")) {
+        $channel = 'PlaceholderChannel';
+        if ($reflection->hasMethod('broadcastOn')) {
             // Read file content and extract channel name roughly
             $filename = $reflection->getFileName();
             if ($filename !== false) {
@@ -121,7 +121,7 @@ final class EventAnalyzer
         }
 
         $eventName = $reflection->getShortName();
-        if ($reflection->hasMethod("broadcastAs")) {
+        if ($reflection->hasMethod('broadcastAs')) {
             $filename = $reflection->getFileName();
             $content =
                 $filename !== false ? file_get_contents($filename) : false;
@@ -139,12 +139,12 @@ final class EventAnalyzer
         }
 
         return [
-            "name" => $eventName,
-            "description" => $reflection->getDocComment()
+            'name' => $eventName,
+            'description' => $reflection->getDocComment()
                 ? $this->getSummaryFromDocBlock($reflection->getDocComment())
-                : "",
-            "channel" => $channel,
-            "payload" => $payload,
+                : '',
+            'channel' => $channel,
+            'payload' => $payload,
         ];
     }
 
@@ -158,18 +158,18 @@ final class EventAnalyzer
         // Fallback to first line
         $lines = explode("\n", $docBlock);
         foreach ($lines as $line) {
-            $line = preg_replace("/^\/?\*+/", "", $line);
+            $line = preg_replace("/^\/?\*+/", '', $line);
             if ($line === null) {
                 continue;
             }
 
             $line = trim($line);
-            if (!empty($line) && !Str::startsWith($line, "@")) {
+            if (! empty($line) && ! Str::startsWith($line, '@')) {
                 return $line;
             }
         }
 
-        return "";
+        return '';
     }
 
     private function extractClassFromFile(string $path): ?string
@@ -178,16 +178,16 @@ final class EventAnalyzer
         if ($content === false) {
             return null;
         }
-        if (!preg_match("/namespace\s+([^;]+);/i", $content, $matches)) {
+        if (! preg_match("/namespace\s+([^;]+);/i", $content, $matches)) {
             return null;
         }
         $namespace = trim($matches[1]);
 
-        if (!preg_match("/class\s+([^\s{]+)/i", $content, $matches)) {
+        if (! preg_match("/class\s+([^\s{]+)/i", $content, $matches)) {
             return null;
         }
         $className = trim($matches[1]);
 
-        return $namespace . "\\" . $className;
+        return $namespace.'\\'.$className;
     }
 }

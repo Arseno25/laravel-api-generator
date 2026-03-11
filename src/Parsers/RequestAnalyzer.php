@@ -16,14 +16,14 @@ final class RequestAnalyzer
      */
     public function analyze(string $requestClass): array
     {
-        if (!class_exists($requestClass)) {
+        if (! class_exists($requestClass)) {
             return [];
         }
 
         try {
             $reflection = new ReflectionClass($requestClass);
 
-            if (!$reflection->isSubclassOf(FormRequest::class)) {
+            if (! $reflection->isSubclassOf(FormRequest::class)) {
                 return [];
             }
 
@@ -64,24 +64,24 @@ final class RequestAnalyzer
     {
         if (is_array($rule)) {
             return [
-                "type" => $this->guessType($rule),
-                "required" => $this->isRequired($rule),
-                "rules" => $this->rulesToString($rule),
-                "description" => $this->generateDescription($rule),
-                "enum" => $this->extractEnum($rule),
-                "is_file" => $this->isFile($rule),
+                'type' => $this->guessType($rule),
+                'required' => $this->isRequired($rule),
+                'rules' => $this->rulesToString($rule),
+                'description' => $this->generateDescription($rule),
+                'enum' => $this->extractEnum($rule),
+                'is_file' => $this->isFile($rule),
             ];
         }
 
-        $ruleArray = explode("|", $rule);
+        $ruleArray = explode('|', $rule);
 
         return [
-            "type" => $this->guessType($ruleArray),
-            "required" => in_array("required", $ruleArray),
-            "rules" => $rule,
-            "description" => $this->generateDescription($ruleArray),
-            "enum" => $this->extractEnum($ruleArray),
-            "is_file" => $this->isFile($ruleArray),
+            'type' => $this->guessType($ruleArray),
+            'required' => in_array('required', $ruleArray),
+            'rules' => $rule,
+            'description' => $this->generateDescription($ruleArray),
+            'enum' => $this->extractEnum($ruleArray),
+            'is_file' => $this->isFile($ruleArray),
         ];
     }
 
@@ -92,41 +92,41 @@ final class RequestAnalyzer
      */
     private function guessType(array $rules): string
     {
-        $stringRules = array_filter($rules, "is_string");
-        $rulesString = implode("|", $stringRules);
+        $stringRules = array_filter($rules, 'is_string');
+        $rulesString = implode('|', $stringRules);
 
         if (
-            str_contains($rulesString, "integer") ||
-            str_contains($rulesString, "numeric")
+            str_contains($rulesString, 'integer') ||
+            str_contains($rulesString, 'numeric')
         ) {
-            return "integer";
+            return 'integer';
         }
 
-        if (str_contains($rulesString, "boolean")) {
-            return "boolean";
+        if (str_contains($rulesString, 'boolean')) {
+            return 'boolean';
         }
 
-        if (str_contains($rulesString, "array")) {
-            return "array";
+        if (str_contains($rulesString, 'array')) {
+            return 'array';
         }
 
-        if (str_contains($rulesString, "email")) {
-            return "email";
+        if (str_contains($rulesString, 'email')) {
+            return 'email';
         }
 
-        if (str_contains($rulesString, "url")) {
-            return "url";
+        if (str_contains($rulesString, 'url')) {
+            return 'url';
         }
 
-        if (str_contains($rulesString, "date")) {
-            return "date";
+        if (str_contains($rulesString, 'date')) {
+            return 'date';
         }
 
-        if (str_contains($rulesString, "uuid")) {
-            return "uuid";
+        if (str_contains($rulesString, 'uuid')) {
+            return 'uuid';
         }
 
-        return "string";
+        return 'string';
     }
 
     /**
@@ -136,7 +136,7 @@ final class RequestAnalyzer
      */
     private function isRequired(array $rules): bool
     {
-        return in_array("required", $rules, true);
+        return in_array('required', $rules, true);
     }
 
     /**
@@ -146,11 +146,11 @@ final class RequestAnalyzer
      */
     private function isFile(array $rules): bool
     {
-        return in_array("file", $rules, true) ||
-            in_array("image", $rules, true) ||
+        return in_array('file', $rules, true) ||
+            in_array('image', $rules, true) ||
             collect($rules)->contains(
-                fn($rule) => is_string($rule) &&
-                    str_starts_with($rule, "mimes:"),
+                fn ($rule) => is_string($rule) &&
+                    str_starts_with($rule, 'mimes:'),
             );
     }
 
@@ -161,9 +161,9 @@ final class RequestAnalyzer
      */
     private function rulesToString(array $rules): string
     {
-        $stringRules = array_filter($rules, "is_string");
+        $stringRules = array_filter($rules, 'is_string');
 
-        return implode("|", $stringRules);
+        return implode('|', $stringRules);
     }
 
     /**
@@ -175,11 +175,11 @@ final class RequestAnalyzer
     private function extractEnum(array $rules): ?array
     {
         foreach ($rules as $rule) {
-            if (is_string($rule) && str_starts_with($rule, "in:")) {
+            if (is_string($rule) && str_starts_with($rule, 'in:')) {
                 $values = substr($rule, 3);
-                $enumValues = array_map("trim", explode(",", $values));
+                $enumValues = array_map('trim', explode(',', $values));
 
-                return array_map(fn($v) => trim($v, '"\''), $enumValues);
+                return array_map(fn ($v) => trim($v, '"\''), $enumValues);
             }
         }
 
@@ -194,38 +194,38 @@ final class RequestAnalyzer
     private function generateDescription(array $rules): string
     {
         $description = [];
-        $stringRules = array_filter($rules, "is_string");
+        $stringRules = array_filter($rules, 'is_string');
 
-        if (in_array("required", $stringRules)) {
-            $description[] = "Required";
-        } elseif (in_array("nullable", $stringRules)) {
-            $description[] = "Optional";
+        if (in_array('required', $stringRules)) {
+            $description[] = 'Required';
+        } elseif (in_array('nullable', $stringRules)) {
+            $description[] = 'Optional';
         }
 
         foreach ($stringRules as $rule) {
-            if (str_starts_with($rule, "min:")) {
-                $description[] = "Min: " . substr($rule, 4);
+            if (str_starts_with($rule, 'min:')) {
+                $description[] = 'Min: '.substr($rule, 4);
             }
-            if (str_starts_with($rule, "max:")) {
-                $description[] = "Max: " . substr($rule, 4);
+            if (str_starts_with($rule, 'max:')) {
+                $description[] = 'Max: '.substr($rule, 4);
             }
-            if (str_starts_with($rule, "between:")) {
-                $description[] = "Between: " . substr($rule, 8);
+            if (str_starts_with($rule, 'between:')) {
+                $description[] = 'Between: '.substr($rule, 8);
             }
-            if ($rule === "email") {
-                $description[] = "Must be valid email";
+            if ($rule === 'email') {
+                $description[] = 'Must be valid email';
             }
-            if ($rule === "unique") {
-                $description[] = "Must be unique";
+            if ($rule === 'unique') {
+                $description[] = 'Must be unique';
             }
-            if ($rule === "confirmed") {
-                $description[] = "Requires confirmation field";
+            if ($rule === 'confirmed') {
+                $description[] = 'Requires confirmation field';
             }
         }
 
         return empty($description)
-            ? "No additional constraints"
-            : implode(", ", $description);
+            ? 'No additional constraints'
+            : implode(', ', $description);
     }
 
     /**
@@ -235,12 +235,12 @@ final class RequestAnalyzer
      */
     public function extractRequestFromAction(array|string|null $action): ?string
     {
-        if (!is_array($action)) {
+        if (! is_array($action)) {
             return null;
         }
 
-        if (isset($action["uses"]) && is_string($action["uses"])) {
-            $parts = explode("@", $action["uses"]);
+        if (isset($action['uses']) && is_string($action['uses'])) {
+            $parts = explode('@', $action['uses']);
             if (count($parts) === 2) {
                 [$controller, $method] = $parts;
 
@@ -261,14 +261,14 @@ final class RequestAnalyzer
         string $method,
     ): ?string {
         try {
-            if (!class_exists($controller)) {
+            if (! class_exists($controller)) {
                 return null;
             }
 
             /** @var class-string<object> $controller */
             $reflection = new ReflectionClass($controller);
 
-            if (!$reflection->hasMethod($method)) {
+            if (! $reflection->hasMethod($method)) {
                 return null;
             }
 
@@ -280,7 +280,7 @@ final class RequestAnalyzer
 
                 if (
                     $type instanceof ReflectionNamedType &&
-                    !$type->isBuiltin()
+                    ! $type->isBuiltin()
                 ) {
                     $typeName = $type->getName();
 
@@ -309,39 +309,39 @@ final class RequestAnalyzer
     {
         return [
             [
-                "name" => "page",
-                "in" => "query",
-                "type" => "integer",
-                "required" => false,
-                "description" => "Page number for pagination",
-                "schema" => [
-                    "type" => "integer",
-                    "default" => 1,
-                    "minimum" => 1,
+                'name' => 'page',
+                'in' => 'query',
+                'type' => 'integer',
+                'required' => false,
+                'description' => 'Page number for pagination',
+                'schema' => [
+                    'type' => 'integer',
+                    'default' => 1,
+                    'minimum' => 1,
                 ],
             ],
             [
-                "name" => "per_page",
-                "in" => "query",
-                "type" => "integer",
-                "required" => false,
-                "description" => "Number of items per page",
-                "schema" => [
-                    "type" => "integer",
-                    "default" => 15,
-                    "minimum" => 1,
-                    "maximum" => 100,
+                'name' => 'per_page',
+                'in' => 'query',
+                'type' => 'integer',
+                'required' => false,
+                'description' => 'Number of items per page',
+                'schema' => [
+                    'type' => 'integer',
+                    'default' => 15,
+                    'minimum' => 1,
+                    'maximum' => 100,
                 ],
             ],
             [
-                "name" => "search",
-                "in" => "query",
-                "type" => "string",
-                "required" => false,
-                "description" => "Search query to filter results",
-                "schema" => [
-                    "type" => "string",
-                    "minLength" => 1,
+                'name' => 'search',
+                'in' => 'query',
+                'type' => 'string',
+                'required' => false,
+                'description' => 'Search query to filter results',
+                'schema' => [
+                    'type' => 'string',
+                    'minLength' => 1,
                 ],
             ],
         ];
