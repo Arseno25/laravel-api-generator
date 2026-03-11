@@ -13,8 +13,8 @@ final class StubManager
 
     public function __construct()
     {
-        $this->stubPath = dirname(__DIR__, 2) . "/resources/stubs/";
-        $this->publishedStubPath = base_path("stubs/vendor/api-magic/");
+        $this->stubPath = dirname(__DIR__, 2).'/resources/stubs/';
+        $this->publishedStubPath = base_path('stubs/vendor/api-magic/');
     }
 
     /**
@@ -35,16 +35,16 @@ final class StubManager
     private function getStub(string $filename): string
     {
         // First check if user has published customized stubs
-        $publishedPath = $this->publishedStubPath . $filename;
+        $publishedPath = $this->publishedStubPath.$filename;
 
         if (File::exists($publishedPath)) {
             return File::get($publishedPath);
         }
 
         // Fallback to package stubs
-        $path = $this->stubPath . $filename;
+        $path = $this->stubPath.$filename;
 
-        if (!File::exists($path)) {
+        if (! File::exists($path)) {
             throw new \RuntimeException("Stub file not found: {$path}");
         }
 
@@ -61,8 +61,8 @@ final class StubManager
         foreach ($replacements as $key => $value) {
             $replacement = is_bool($value)
                 ? ($value
-                    ? "1"
-                    : "")
+                    ? '1'
+                    : '')
                 : (string) $value;
             $stub = str_replace($key, $replacement, $stub);
         }
@@ -75,7 +75,7 @@ final class StubManager
                 $content = $matches[2];
 
                 // Check if the condition is truthy in replacements (case-insensitive key lookup)
-                $key = "{{ " . $conditionName . " }}";
+                $key = '{{ '.$conditionName.' }}';
                 $isEnabled = false;
                 foreach ($replacements as $rKey => $rVal) {
                     if (strtolower($rKey) === $key && $rVal) {
@@ -84,14 +84,14 @@ final class StubManager
                     }
                 }
 
-                return $isEnabled ? $content : "";
+                return $isEnabled ? $content : '';
             },
             $stub,
         );
 
         if ($stub === null) {
             throw new \RuntimeException(
-                "Unable to replace conditional stub blocks.",
+                'Unable to replace conditional stub blocks.',
             );
         }
 
@@ -103,17 +103,17 @@ final class StubManager
                 $content = $matches[3];
 
                 // Check if the condition is truthy in replacements
-                $key = "{{" . strtolower($conditionName) . "}}";
+                $key = '{{'.strtolower($conditionName).'}}';
                 $isEnabled = isset($replacements[$key]) && $replacements[$key];
 
-                return $isEnabled ? $content : "";
+                return $isEnabled ? $content : '';
             },
             $stub,
         );
 
         if ($stub === null) {
             throw new \RuntimeException(
-                "Unable to replace inline conditional stub blocks.",
+                'Unable to replace inline conditional stub blocks.',
             );
         }
 
@@ -124,7 +124,7 @@ final class StubManager
     {
         $directory = dirname($path);
 
-        if (!File::isDirectory($directory)) {
+        if (! File::isDirectory($directory)) {
             File::makeDirectory($directory, 0755, true);
         }
     }
@@ -141,13 +141,13 @@ final class StubManager
 
     public function isStubPublished(string $stubFile): bool
     {
-        return File::exists($this->publishedStubPath . $stubFile);
+        return File::exists($this->publishedStubPath.$stubFile);
     }
 
     public function getStubPath(string $stubFile): string
     {
         return $this->isStubPublished($stubFile)
-            ? $this->publishedStubPath . $stubFile
-            : $this->stubPath . $stubFile;
+            ? $this->publishedStubPath.$stubFile
+            : $this->stubPath.$stubFile;
     }
 }

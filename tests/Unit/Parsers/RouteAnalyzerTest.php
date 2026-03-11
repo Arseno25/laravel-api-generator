@@ -1,5 +1,6 @@
 <?php
 
+use Arseno25\LaravelApiMagic\Attributes\ApiMagicHide;
 use Arseno25\LaravelApiMagic\Parsers\RequestAnalyzer;
 use Arseno25\LaravelApiMagic\Parsers\RouteAnalyzer;
 use Illuminate\Support\Facades\Route;
@@ -349,7 +350,7 @@ describe('custom attributes parsing', function () {
 
 class DummyHideController
 {
-    #[\Arseno25\LaravelApiMagic\Attributes\ApiMagicHide]
+    #[ApiMagicHide]
     public function hiddenMethod()
     {
         return response()->json([]);
@@ -361,7 +362,7 @@ class DummyHideController
     }
 }
 
-#[\Arseno25\LaravelApiMagic\Attributes\ApiMagicHide]
+#[ApiMagicHide]
 class DummyHideControllerClassLevel
 {
     public function anyMethod()

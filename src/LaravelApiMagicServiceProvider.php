@@ -11,6 +11,10 @@ use Arseno25\LaravelApiMagic\Commands\InstallCommand;
 use Arseno25\LaravelApiMagic\Commands\ReverseEngineerCommand;
 use Arseno25\LaravelApiMagic\Commands\SnapshotSchemaCommand;
 use Arseno25\LaravelApiMagic\Commands\ValidateOpenApiCommand;
+use Arseno25\LaravelApiMagic\Http\Middleware\ApiCacheMiddleware;
+use Arseno25\LaravelApiMagic\Http\Middleware\ApiHealthMiddleware;
+use Arseno25\LaravelApiMagic\Http\Middleware\MockApiMiddleware;
+use Illuminate\Routing\Router;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -63,18 +67,18 @@ class LaravelApiMagicServiceProvider extends PackageServiceProvider
         parent::packageBooted();
 
         // Register middleware aliases
-        $router = $this->app->make(\Illuminate\Routing\Router::class);
+        $router = $this->app->make(Router::class);
         $router->aliasMiddleware(
             'api.mock',
-            \Arseno25\LaravelApiMagic\Http\Middleware\MockApiMiddleware::class,
+            MockApiMiddleware::class,
         );
         $router->aliasMiddleware(
             'api.cache',
-            \Arseno25\LaravelApiMagic\Http\Middleware\ApiCacheMiddleware::class,
+            ApiCacheMiddleware::class,
         );
         $router->aliasMiddleware(
             'api.health',
-            \Arseno25\LaravelApiMagic\Http\Middleware\ApiHealthMiddleware::class,
+            ApiHealthMiddleware::class,
         );
     }
 }

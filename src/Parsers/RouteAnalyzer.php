@@ -2,6 +2,14 @@
 
 namespace Arseno25\LaravelApiMagic\Parsers;
 
+use Arseno25\LaravelApiMagic\Attributes\ApiDeprecated;
+use Arseno25\LaravelApiMagic\Attributes\ApiDescription;
+use Arseno25\LaravelApiMagic\Attributes\ApiExample;
+use Arseno25\LaravelApiMagic\Attributes\ApiGroup;
+use Arseno25\LaravelApiMagic\Attributes\ApiMagicHide;
+use Arseno25\LaravelApiMagic\Attributes\ApiResponse;
+use Arseno25\LaravelApiMagic\Attributes\ApiWebhook;
+use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Route as RouteFacade;
 use Illuminate\Support\Str;
@@ -11,15 +19,15 @@ final class RouteAnalyzer
 {
     /** @var list<string> */
     private array $excludePatterns = [
-        "sanctum",
-        "passport",
-        "oauth",
-        "telescope",
-        "horizon",
-        "ignition",
-        "_ignition",
-        "docs",
-        "schema",
+        'sanctum',
+        'passport',
+        'oauth',
+        'telescope',
+        'horizon',
+        'ignition',
+        '_ignition',
+        'docs',
+        'schema',
     ];
 
     /**
@@ -33,9 +41,9 @@ final class RouteAnalyzer
         $allRoutes = RouteFacade::getRoutes()->getRoutes();
 
         // In Laravel < 12, try getRoutesByType() first if available
-        if (method_exists(RouteFacade::getRoutes(), "getRoutesByType")) {
+        if (method_exists(RouteFacade::getRoutes(), 'getRoutesByType')) {
             $routes = RouteFacade::getRoutes()->getRoutesByType();
-            if (!empty($routes)) {
+            if (! empty($routes)) {
                 $allRoutes = [];
                 foreach ($routes as $routeCollection) {
                     foreach ($routeCollection as $route) {
@@ -67,7 +75,7 @@ final class RouteAnalyzer
         $middleware = $route->gatherMiddleware();
 
         foreach ($middleware as $m) {
-            if (is_string($m) && str_contains($m, "api")) {
+            if (is_string($m) && str_contains($m, 'api')) {
                 return true;
             }
         }
@@ -75,7 +83,7 @@ final class RouteAnalyzer
         // Check if URI starts with /api
         $uri = $route->uri;
 
-        return str_starts_with($uri, "api");
+        return str_starts_with($uri, 'api');
     }
 
     /**
@@ -87,8 +95,8 @@ final class RouteAnalyzer
 
         // Exclude documentation endpoints themselves
         if (
-            str_contains($uri, "api/docs") ||
-            str_contains($uri, "api/schema")
+            str_contains($uri, 'api/docs') ||
+            str_contains($uri, 'api/schema')
         ) {
             return false;
         }
@@ -113,14 +121,14 @@ final class RouteAnalyzer
         RequestAnalyzer $requestAnalyzer,
         ?ResourceAnalyzer $resourceAnalyzer = null,
     ): ?array {
-        $methods = array_filter($route->methods, fn($m) => $m !== "HEAD");
+        $methods = array_filter($route->methods, fn ($m) => $m !== 'HEAD');
 
         if (empty($methods)) {
             return null;
         }
 
         $method = strtolower($methods[0]);
-        $uri = "/" . $route->uri;
+        $uri = '/'.$route->uri;
         $action = $route->getAction();
 
         // Extract request class
@@ -132,10 +140,10 @@ final class RouteAnalyzer
             class_exists($requestClass) &&
             is_subclass_of(
                 $requestClass,
-                \Illuminate\Foundation\Http\FormRequest::class,
+                FormRequest::class,
             )
         ) {
-            /** @var class-string<\Illuminate\Foundation\Http\FormRequest> $requestClass */
+            /** @var class-string<FormRequest> $requestClass */
             $requestRules = $requestAnalyzer->analyze($requestClass);
         }
 
@@ -155,18 +163,18 @@ final class RouteAnalyzer
         $responseSchema = null;
         if (
             $resourceAnalyzer &&
-            isset($controllerInfo["full_path"]) &&
-            isset($controllerInfo["method"])
+            isset($controllerInfo['full_path']) &&
+            isset($controllerInfo['method'])
         ) {
             $responseSchema = $resourceAnalyzer->analyze(
-                $controllerInfo["full_path"],
-                $controllerInfo["method"],
+                $controllerInfo['full_path'],
+                $controllerInfo['method'],
             );
         }
 
         // Add query parameters for GET index endpoints
         $queryParameters = [];
-        if ($method === "get" && $controllerInfo["method"] === "index") {
+        if ($method === 'get' && $controllerInfo['method'] === 'index') {
             $queryParameters = $requestAnalyzer->getIndexQueryParameters();
         }
 
@@ -174,22 +182,22 @@ final class RouteAnalyzer
         $attributes = $this->extractAttributes($action);
 
         // Skip if marked with ApiMagicHide
-        if (!empty($attributes["hide"])) {
+        if (! empty($attributes['hide'])) {
             return null;
         }
 
         // Map request rules to query parameters for GET and DELETE methods
-        if (in_array($method, ["get", "delete"]) && !empty($requestRules)) {
+        if (in_array($method, ['get', 'delete']) && ! empty($requestRules)) {
             foreach ($requestRules as $name => $rule) {
                 // Check if it already exists (e.g., from index pagination defaults)
-                $exists = collect($queryParameters)->contains("name", $name);
+                $exists = collect($queryParameters)->contains('name', $name);
 
-                if (!$exists) {
+                if (! $exists) {
                     $queryParameters[] = [
-                        "name" => $name,
-                        "type" => $rule["type"] ?? "string",
-                        "required" => $rule["required"] ?? false,
-                        "description" => $rule["description"] ?? "",
+                        'name' => $name,
+                        'type' => $rule['type'] ?? 'string',
+                        'required' => $rule['required'] ?? false,
+                        'description' => $rule['description'] ?? '',
                     ];
                 }
             }
@@ -197,44 +205,42 @@ final class RouteAnalyzer
         }
 
         return [
-            "method" => $method,
-            "path" => $uri,
-            "name" => $name,
-            "summary" => $this->generateSummary(
+            'method' => $method,
+            'path' => $uri,
+            'name' => $name,
+            'summary' => $this->generateSummary(
                 $method,
                 $uri,
                 $controllerInfo,
                 $attributes,
             ),
-            "description" => $this->generateDescription(
+            'description' => $this->generateDescription(
                 $method,
                 $uri,
                 $attributes,
             ),
-            "parameters" => [
-                "path" => $pathParameters,
-                "query" => $queryParameters,
-                "body" => $requestRules,
+            'parameters' => [
+                'path' => $pathParameters,
+                'query' => $queryParameters,
+                'body' => $requestRules,
             ],
-            "controller" => $controllerInfo,
-            "request" => $requestClass ? class_basename($requestClass) : null,
-            "response" => $responseSchema,
-            "tags" => $this->generateTags($uri, $version, $attributes),
-            "security" => $this->analyzeSecurity($route),
-            "version" => $version,
-            "deprecated" => $attributes["deprecated"] ?? false,
-            "deprecated_info" =>
-                $attributes["deprecated"] ?? false
+            'controller' => $controllerInfo,
+            'request' => $requestClass ? class_basename($requestClass) : null,
+            'response' => $responseSchema,
+            'tags' => $this->generateTags($uri, $version, $attributes),
+            'security' => $this->analyzeSecurity($route),
+            'version' => $version,
+            'deprecated' => $attributes['deprecated'] ?? false,
+            'deprecated_info' => $attributes['deprecated'] ?? false
                     ? [
-                        "message" => $attributes["deprecated_message"] ?? "",
-                        "since" => $attributes["deprecated_since"] ?? null,
-                        "alternative" =>
-                            $attributes["deprecated_alternative"] ?? null,
+                        'message' => $attributes['deprecated_message'] ?? '',
+                        'since' => $attributes['deprecated_since'] ?? null,
+                        'alternative' => $attributes['deprecated_alternative'] ?? null,
                     ]
                     : null,
-            "responses" => $attributes["responses"] ?? null,
-            "example" => $attributes["example"] ?? null,
-            "webhooks" => $attributes["webhooks"] ?? null,
+            'responses' => $attributes['responses'] ?? null,
+            'example' => $attributes['example'] ?? null,
+            'webhooks' => $attributes['webhooks'] ?? null,
         ];
     }
 
@@ -252,21 +258,21 @@ final class RouteAnalyzer
         $attributes = [];
 
         if (
-            !is_array($action) ||
-            !isset($action["uses"]) ||
-            !is_string($action["uses"])
+            ! is_array($action) ||
+            ! isset($action['uses']) ||
+            ! is_string($action['uses'])
         ) {
             return $attributes;
         }
 
-        $parts = explode("@", $action["uses"]);
+        $parts = explode('@', $action['uses']);
         if (count($parts) !== 2) {
             return $attributes;
         }
 
         [$controller, $method] = $parts;
 
-        if (!class_exists($controller)) {
+        if (! class_exists($controller)) {
             return $attributes;
         }
 
@@ -278,105 +284,105 @@ final class RouteAnalyzer
 
                 // Check for ApiGroup Attribute (method then class)
                 $groupAttributes = $methodReflection->getAttributes(
-                    \Arseno25\LaravelApiMagic\Attributes\ApiGroup::class,
+                    ApiGroup::class,
                 );
                 if (empty($groupAttributes)) {
                     $groupAttributes = $reflection->getAttributes(
-                        \Arseno25\LaravelApiMagic\Attributes\ApiGroup::class,
+                        ApiGroup::class,
                     );
                 }
-                if (!empty($groupAttributes)) {
+                if (! empty($groupAttributes)) {
                     $attributes[
-                        "group"
+                        'group'
                     ] = $groupAttributes[0]->newInstance()->name;
                 }
 
                 // Check for ApiDescription Attribute
                 $descAttributes = $methodReflection->getAttributes(
-                    \Arseno25\LaravelApiMagic\Attributes\ApiDescription::class,
+                    ApiDescription::class,
                 );
-                if (!empty($descAttributes)) {
+                if (! empty($descAttributes)) {
                     $attributes[
-                        "description"
+                        'description'
                     ] = $descAttributes[0]->newInstance()->description;
                 }
 
                 // Check for ApiDeprecated Attribute (method then class)
                 $deprecatedAttributes = $methodReflection->getAttributes(
-                    \Arseno25\LaravelApiMagic\Attributes\ApiDeprecated::class,
+                    ApiDeprecated::class,
                 );
                 if (empty($deprecatedAttributes)) {
                     $deprecatedAttributes = $reflection->getAttributes(
-                        \Arseno25\LaravelApiMagic\Attributes\ApiDeprecated::class,
+                        ApiDeprecated::class,
                     );
                 }
-                if (!empty($deprecatedAttributes)) {
+                if (! empty($deprecatedAttributes)) {
                     $dep = $deprecatedAttributes[0]->newInstance();
-                    $attributes["deprecated"] = true;
-                    $attributes["deprecated_message"] = $dep->message;
-                    $attributes["deprecated_since"] = $dep->since;
-                    $attributes["deprecated_alternative"] = $dep->alternative;
+                    $attributes['deprecated'] = true;
+                    $attributes['deprecated_message'] = $dep->message;
+                    $attributes['deprecated_since'] = $dep->since;
+                    $attributes['deprecated_alternative'] = $dep->alternative;
                 }
 
                 // Check for ApiMagicHide Attribute (method then class)
                 $hideAttributes = $methodReflection->getAttributes(
-                    \Arseno25\LaravelApiMagic\Attributes\ApiMagicHide::class,
+                    ApiMagicHide::class,
                 );
                 if (empty($hideAttributes)) {
                     $hideAttributes = $reflection->getAttributes(
-                        \Arseno25\LaravelApiMagic\Attributes\ApiMagicHide::class,
+                        ApiMagicHide::class,
                     );
                 }
-                if (!empty($hideAttributes)) {
-                    $attributes["hide"] = true;
+                if (! empty($hideAttributes)) {
+                    $attributes['hide'] = true;
                 }
 
                 // Check for ApiResponse Attribute (repeatable)
                 $responseAttributes = $methodReflection->getAttributes(
-                    \Arseno25\LaravelApiMagic\Attributes\ApiResponse::class,
+                    ApiResponse::class,
                 );
-                if (!empty($responseAttributes)) {
+                if (! empty($responseAttributes)) {
                     $responses = [];
                     foreach ($responseAttributes as $ra) {
                         $resp = $ra->newInstance();
                         $responses[] = [
-                            "status" => $resp->status,
-                            "resource" => $resp->resource,
-                            "description" => $resp->description,
-                            "example" => $resp->example,
-                            "is_array" => $resp->isArray,
+                            'status' => $resp->status,
+                            'resource' => $resp->resource,
+                            'description' => $resp->description,
+                            'example' => $resp->example,
+                            'is_array' => $resp->isArray,
                         ];
                     }
-                    $attributes["responses"] = $responses;
+                    $attributes['responses'] = $responses;
                 }
 
                 // Check for ApiExample Attribute
                 $exampleAttributes = $methodReflection->getAttributes(
-                    \Arseno25\LaravelApiMagic\Attributes\ApiExample::class,
+                    ApiExample::class,
                 );
-                if (!empty($exampleAttributes)) {
+                if (! empty($exampleAttributes)) {
                     $ex = $exampleAttributes[0]->newInstance();
-                    $attributes["example"] = [
-                        "request" => $ex->request,
-                        "response" => $ex->response,
+                    $attributes['example'] = [
+                        'request' => $ex->request,
+                        'response' => $ex->response,
                     ];
                 }
 
                 // Check for ApiWebhook Attribute (repeatable)
                 $webhookAttributes = $methodReflection->getAttributes(
-                    \Arseno25\LaravelApiMagic\Attributes\ApiWebhook::class,
+                    ApiWebhook::class,
                 );
-                if (!empty($webhookAttributes)) {
+                if (! empty($webhookAttributes)) {
                     $webhooks = [];
                     foreach ($webhookAttributes as $wa) {
                         $wh = $wa->newInstance();
                         $webhooks[] = [
-                            "event" => $wh->event,
-                            "description" => $wh->description,
-                            "payload" => $wh->payload,
+                            'event' => $wh->event,
+                            'description' => $wh->description,
+                            'payload' => $wh->payload,
                         ];
                     }
-                    $attributes["webhooks"] = $webhooks;
+                    $attributes['webhooks'] = $webhooks;
                 }
             }
         } catch (\Throwable) {
@@ -397,20 +403,20 @@ final class RouteAnalyzer
 
         $parameters = [];
 
-        if (!empty($matches[1])) {
+        if (! empty($matches[1])) {
             foreach ($matches[1] as $param) {
-                $type = "string";
+                $type = 'string';
 
-                if ($param === "id") {
-                    $type = "integer";
+                if ($param === 'id') {
+                    $type = 'integer';
                 }
 
                 $parameters[] = [
-                    "name" => $param,
-                    "type" => $type,
-                    "required" => true,
-                    "description" => "The {$param} parameter",
-                    "in" => "path",
+                    'name' => $param,
+                    'type' => $type,
+                    'required' => true,
+                    'description' => "The {$param} parameter",
+                    'in' => 'path',
                 ];
             }
         }
@@ -429,28 +435,28 @@ final class RouteAnalyzer
      */
     private function extractControllerInfo(array|string|null $action): array
     {
-        if (!is_array($action)) {
+        if (! is_array($action)) {
             return [
-                "controller" => null,
-                "method" => null,
+                'controller' => null,
+                'method' => null,
             ];
         }
 
-        $uses = $action["uses"] ?? null;
+        $uses = $action['uses'] ?? null;
 
-        if (is_string($uses) && str_contains($uses, "@")) {
-            [$controller, $method] = explode("@", $uses);
+        if (is_string($uses) && str_contains($uses, '@')) {
+            [$controller, $method] = explode('@', $uses);
 
             return [
-                "controller" => class_basename($controller),
-                "method" => $method,
-                "full_path" => $controller,
+                'controller' => class_basename($controller),
+                'method' => $method,
+                'full_path' => $controller,
             ];
         }
 
         return [
-            "controller" => null,
-            "method" => null,
+            'controller' => null,
+            'method' => null,
         ];
     }
 
@@ -459,7 +465,7 @@ final class RouteAnalyzer
      */
     private function generateRouteName(string $method, string $uri): string
     {
-        return strtoupper($method) . " " . $uri;
+        return strtoupper($method).' '.$uri;
     }
 
     /**
@@ -474,8 +480,8 @@ final class RouteAnalyzer
         array $controllerInfo,
         array $attributes = [],
     ): string {
-        if (isset($attributes["description"])) {
-            return $attributes["description"];
+        if (isset($attributes['description'])) {
+            return $attributes['description'];
         }
 
         $resource = $this->extractResourceName($uri);
@@ -498,18 +504,18 @@ final class RouteAnalyzer
         string $uri,
         array $attributes = [],
     ): string {
-        if (isset($attributes["description"])) {
-            return $attributes["description"];
+        if (isset($attributes['description'])) {
+            return $attributes['description'];
         }
 
         $summaries = match ($method) {
-            "get" => str_ends_with($uri, "}") || !str_contains($uri, "{")
-                ? "Retrieve a list of resources"
-                : "Retrieve a single resource",
-            "post" => "Create a new resource",
-            "put", "patch" => "Update an existing resource",
-            "delete" => "Delete a resource",
-            default => "",
+            'get' => str_ends_with($uri, '}') || ! str_contains($uri, '{')
+                ? 'Retrieve a list of resources'
+                : 'Retrieve a single resource',
+            'post' => 'Create a new resource',
+            'put', 'patch' => 'Update an existing resource',
+            'delete' => 'Delete a resource',
+            default => '',
         };
 
         return $summaries;
@@ -521,16 +527,16 @@ final class RouteAnalyzer
     private function extractResourceName(string $uri): ?string
     {
         // Remove 'api/' prefix
-        $uri = preg_replace("#^api/#", "", $uri);
-        if (!is_string($uri)) {
+        $uri = preg_replace('#^api/#', '', $uri);
+        if (! is_string($uri)) {
             return null;
         }
 
         // Get the first segment
-        $segments = explode("/", $uri);
+        $segments = explode('/', $uri);
         $resource = $segments[0];
 
-        if (!$resource) {
+        if (! $resource) {
             return null;
         }
 
@@ -548,26 +554,26 @@ final class RouteAnalyzer
         string $uri,
         array $controllerInfo,
     ): ?string {
-        $controllerMethod = $controllerInfo["method"];
+        $controllerMethod = $controllerInfo['method'];
 
         if ($controllerMethod) {
             return match ($controllerMethod) {
-                "index" => "List all",
-                "show" => "Get single",
-                "store" => "Create",
-                "update" => "Update",
-                "destroy" => "Delete",
+                'index' => 'List all',
+                'show' => 'Get single',
+                'store' => 'Create',
+                'update' => 'Update',
+                'destroy' => 'Delete',
                 default => null,
             };
         }
 
-        $hasId = str_contains($uri, "{");
+        $hasId = str_contains($uri, '{');
 
         return match ($method) {
-            "GET" => $hasId ? "Get" : "List",
-            "POST" => "Create",
-            "PUT", "PATCH" => "Update",
-            "DELETE" => "Delete",
+            'GET' => $hasId ? 'Get' : 'List',
+            'POST' => 'Create',
+            'PUT', 'PATCH' => 'Update',
+            'DELETE' => 'Delete',
             default => null,
         };
     }
@@ -577,11 +583,11 @@ final class RouteAnalyzer
      */
     private function formatUriTitle(string $method, string $uri): string
     {
-        $title = str_replace(["{", "}"], "", $uri);
-        $title = str_replace(["-", "_"], " ", $title);
+        $title = str_replace(['{', '}'], '', $uri);
+        $title = str_replace(['-', '_'], ' ', $title);
         $title = Str::title($title);
 
-        return strtoupper($method) . " " . $title;
+        return strtoupper($method).' '.$title;
     }
 
     /**
@@ -597,12 +603,12 @@ final class RouteAnalyzer
         }
 
         // Second, check controller namespace (e.g., App\Http\Controllers\Api\V2)
-        $fullPath = $controllerInfo["full_path"] ?? "";
+        $fullPath = $controllerInfo['full_path'] ?? '';
         if (preg_match("#\\\\Api\\\\V(\d+)\\\\#i", $fullPath, $matches)) {
             return $matches[1];
         }
 
-        return "1";
+        return '1';
     }
 
     /**
@@ -613,30 +619,30 @@ final class RouteAnalyzer
      */
     private function generateTags(
         string $uri,
-        string $version = "1",
+        string $version = '1',
         array $attributes = [],
     ): array {
-        if (isset($attributes["group"])) {
-            return [$attributes["group"]];
+        if (isset($attributes['group'])) {
+            return [$attributes['group']];
         }
 
-        $uri = ltrim($uri, "/");
+        $uri = ltrim($uri, '/');
 
         // Remove 'api/' prefix and version prefix
-        $uri = preg_replace("#^api/v\d+/#i", "", $uri);
-        $uri = preg_replace("#^api/#", "", is_string($uri) ? $uri : "");
+        $uri = preg_replace("#^api/v\d+/#i", '', $uri);
+        $uri = preg_replace('#^api/#', '', is_string($uri) ? $uri : '');
         if ($uri === null) {
-            $uri = "";
+            $uri = '';
         }
 
         // Get the first segment as the main tag
-        $segments = explode("/", $uri);
+        $segments = explode('/', $uri);
         $mainTag = Str::studly($segments[0]);
 
         $tags = [$mainTag];
 
         // Add version tag if not v1
-        if ($version !== "1") {
+        if ($version !== '1') {
             $tags[] = "v{$version}";
         }
 
@@ -655,7 +661,7 @@ final class RouteAnalyzer
         $requiresAuth = false;
 
         foreach ($middleware as $m) {
-            if (!is_string($m)) {
+            if (! is_string($m)) {
                 continue;
             }
 
@@ -665,31 +671,30 @@ final class RouteAnalyzer
             }
 
             // Check for can middleware (authorization gates/policies)
-            if (str_contains($m, "can:")) {
+            if (str_contains($m, 'can:')) {
                 $security[] = [
-                    "type" => "authorization",
-                    "description" => "Requires specific permission: " . $m,
+                    'type' => 'authorization',
+                    'description' => 'Requires specific permission: '.$m,
                 ];
             }
 
             // Spatie Permission: role middleware (role:admin|editor)
             if (preg_match('#^role:(.+)$#', $m, $matches)) {
-                $roles = explode("|", $matches[1]);
+                $roles = explode('|', $matches[1]);
                 $security[] = [
-                    "type" => "role",
-                    "roles" => $roles,
-                    "description" => "Required roles: " . implode(", ", $roles),
+                    'type' => 'role',
+                    'roles' => $roles,
+                    'description' => 'Required roles: '.implode(', ', $roles),
                 ];
             }
 
             // Spatie Permission: permission middleware (permission:manage-users|edit-posts)
             if (preg_match('#^permission:(.+)$#', $m, $matches)) {
-                $permissions = explode("|", $matches[1]);
+                $permissions = explode('|', $matches[1]);
                 $security[] = [
-                    "type" => "permission",
-                    "permissions" => $permissions,
-                    "description" =>
-                        "Required permissions: " . implode(", ", $permissions),
+                    'type' => 'permission',
+                    'permissions' => $permissions,
+                    'description' => 'Required permissions: '.implode(', ', $permissions),
                 ];
             }
         }
@@ -697,19 +702,18 @@ final class RouteAnalyzer
         // If authentication is required, add bearer auth security
         if ($requiresAuth) {
             array_unshift($security, [
-                "type" => "http",
-                "scheme" => "bearer",
-                "description" =>
-                    "Laravel Sanctum/Passport authentication required",
+                'type' => 'http',
+                'scheme' => 'bearer',
+                'description' => 'Laravel Sanctum/Passport authentication required',
             ]);
         }
 
         // Check for throttle (rate limiting)
         foreach ($middleware as $m) {
-            if (is_string($m) && str_contains($m, "throttle")) {
+            if (is_string($m) && str_contains($m, 'throttle')) {
                 $security[] = [
-                    "type" => "rateLimit",
-                    "description" => "Rate limited: " . $m,
+                    'type' => 'rateLimit',
+                    'description' => 'Rate limited: '.$m,
                 ];
             }
         }

@@ -14,7 +14,7 @@ final class DatabaseSchemaParser
         ?DatabaseColumnMetadataInferrer $metadataInferrer = null,
     ) {
         $this->metadataInferrer =
-            $metadataInferrer ?? new DatabaseColumnMetadataInferrer();
+            $metadataInferrer ?? new DatabaseColumnMetadataInferrer;
     }
 
     /**
@@ -26,23 +26,24 @@ final class DatabaseSchemaParser
     public function getTables(array $exclude = []): array
     {
         $defaultExclude = [
-            "migrations",
-            "password_resets",
-            "password_reset_tokens",
-            "failed_jobs",
-            "personal_access_tokens",
-            "jobs",
-            "job_batches",
-            "sessions",
-            "cache",
-            "cache_locks",
-            "telescope_entries",
-            "telescope_entries_tags",
-            "telescope_monitoring",
+            'migrations',
+            'password_resets',
+            'password_reset_tokens',
+            'failed_jobs',
+            'personal_access_tokens',
+            'jobs',
+            'job_batches',
+            'sessions',
+            'cache',
+            'cache_locks',
+            'telescope_entries',
+            'telescope_entries_tags',
+            'telescope_monitoring',
         ];
 
         $exclude = array_merge($defaultExclude, $exclude);
 
+<<<<<<< HEAD
         $tables = [];
 
         foreach (Schema::getTableListing() as $table) {
@@ -63,6 +64,21 @@ final class DatabaseSchemaParser
         }
 
         return array_values($tables);
+=======
+        $tables = array_map(
+            fn (
+                string $table,
+            ): string => $this->metadataInferrer->normalizeTableName($table),
+            Schema::getTableListing(),
+        );
+
+        return array_values(
+            array_filter(
+                array_unique($tables),
+                fn ($table) => ! in_array($table, $exclude, true),
+            ),
+        );
+>>>>>>> f2b99bd71d5030475882dfa3fc36edbce249d13c
     }
 
     /**
@@ -86,45 +102,45 @@ final class DatabaseSchemaParser
 
         foreach ($columns as $column) {
             $metadata = $this->metadataInferrer->infer($column, $driver);
-            $name = $metadata["name"];
-            $nullable = $metadata["nullable"];
+            $name = $metadata['name'];
+            $nullable = $metadata['nullable'];
 
             // Skip auto-managed columns
-            if ($name === "id") {
+            if ($name === 'id') {
                 continue;
             }
 
-            if (in_array($name, ["created_at", "updated_at"])) {
+            if (in_array($name, ['created_at', 'updated_at'])) {
                 $hasTimestamps = true;
 
                 continue;
             }
 
-            if ($name === "deleted_at") {
+            if ($name === 'deleted_at') {
                 $hasSoftDeletes = true;
 
                 continue;
             }
 
             // Detect foreign keys → BelongsTo relationships
-            if (str_ends_with($name, "_id")) {
-                $relatedModel = Str::studly(Str::beforeLast($name, "_id"));
+            if (str_ends_with($name, '_id')) {
+                $relatedModel = Str::studly(Str::beforeLast($name, '_id'));
                 $relationships[] = [
-                    "type" => "belongsTo",
-                    "model" => $relatedModel,
-                    "foreignKey" => $name,
+                    'type' => 'belongsTo',
+                    'model' => $relatedModel,
+                    'foreignKey' => $name,
                 ];
                 $fillable[] = $name;
                 $rules[$name] = $this->buildRule(
-                    $metadata["type"],
+                    $metadata['type'],
                     $nullable,
                     $name,
                 );
                 $fields[] = [
-                    "name" => $name,
-                    "type" => $metadata["type"],
-                    "nullable" => $nullable,
-                    "db_type" => $metadata["db_type"],
+                    'name' => $name,
+                    'type' => $metadata['type'],
+                    'nullable' => $nullable,
+                    'db_type' => $metadata['db_type'],
                 ];
 
                 continue;
@@ -132,25 +148,26 @@ final class DatabaseSchemaParser
 
             $fillable[] = $name;
             $fields[] = [
-                "name" => $name,
-                "type" => $metadata["type"],
-                "nullable" => $nullable,
-                "db_type" => $metadata["db_type"],
+                'name' => $name,
+                'type' => $metadata['type'],
+                'nullable' => $nullable,
+                'db_type' => $metadata['db_type'],
             ];
             $rules[$name] = $this->buildRule(
-                $metadata["type"],
+                $metadata['type'],
                 $nullable,
                 $name,
             );
 
             // Determine casts
-            $cast = $metadata["cast"];
+            $cast = $metadata['cast'];
             if ($cast) {
                 $casts[$name] = $cast;
             }
         }
 
         return [
+<<<<<<< HEAD
             "table" => $normalizedTable,
             "model" => Str::studly(Str::singular($normalizedTable)),
             "fields" => $fields,
@@ -160,6 +177,17 @@ final class DatabaseSchemaParser
             "relationships" => $relationships,
             "hasSoftDeletes" => $hasSoftDeletes,
             "hasTimestamps" => $hasTimestamps,
+=======
+            'table' => $table,
+            'model' => Str::studly(Str::singular($table)),
+            'fields' => $fields,
+            'fillable' => $fillable,
+            'casts' => $casts,
+            'rules' => $rules,
+            'relationships' => $relationships,
+            'hasSoftDeletes' => $hasSoftDeletes,
+            'hasTimestamps' => $hasTimestamps,
+>>>>>>> f2b99bd71d5030475882dfa3fc36edbce249d13c
         ];
     }
 
@@ -174,12 +202,13 @@ final class DatabaseSchemaParser
         $rules = [];
 
         if ($nullable) {
-            $rules[] = "nullable";
+            $rules[] = 'nullable';
         } else {
-            $rules[] = "required";
+            $rules[] = 'required';
         }
 
         match ($genericType) {
+<<<<<<< HEAD
             "integer" => ($rules[] = "integer"),
             "float", "decimal" => ($rules[] = "numeric"),
             "boolean" => ($rules[] = "boolean"),
@@ -188,32 +217,42 @@ final class DatabaseSchemaParser
             "json" => ($rules[] = "array"),
             "uuid" => ($rules[] = "uuid"),
             default => ($rules[] = "string"),
+=======
+            'integer' => ($rules[] = 'integer'),
+            'number' => ($rules[] = 'numeric'),
+            'boolean' => ($rules[] = 'boolean'),
+            'date' => ($rules[] = 'date'),
+            'datetime' => ($rules[] = 'date'),
+            'json' => ($rules[] = 'array'),
+            'uuid' => ($rules[] = 'uuid'),
+            default => ($rules[] = 'string'),
+>>>>>>> f2b99bd71d5030475882dfa3fc36edbce249d13c
         };
 
         // Smart max length
-        if ($genericType === "string") {
-            if (str_contains($name, "email")) {
-                $rules[] = "email";
-                $rules[] = "max:255";
+        if ($genericType === 'string') {
+            if (str_contains($name, 'email')) {
+                $rules[] = 'email';
+                $rules[] = 'max:255';
             } elseif (
-                str_contains($name, "url") ||
-                str_contains($name, "link")
+                str_contains($name, 'url') ||
+                str_contains($name, 'link')
             ) {
-                $rules[] = "url";
-                $rules[] = "max:2048";
-            } elseif (str_contains($name, "slug")) {
-                $rules[] = "max:255";
+                $rules[] = 'url';
+                $rules[] = 'max:2048';
+            } elseif (str_contains($name, 'slug')) {
+                $rules[] = 'max:255';
             } else {
-                $rules[] = "max:255";
+                $rules[] = 'max:255';
             }
         }
 
-        if (str_ends_with($name, "_id")) {
-            $table = Str::plural(Str::beforeLast($name, "_id"));
+        if (str_ends_with($name, '_id')) {
+            $table = Str::plural(Str::beforeLast($name, '_id'));
             $rules[] = "exists:{$table},id";
         }
 
-        return implode("|", $rules);
+        return implode('|', $rules);
     }
 
     private function resolveDriverName(): string

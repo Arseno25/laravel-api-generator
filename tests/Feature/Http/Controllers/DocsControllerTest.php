@@ -1,6 +1,7 @@
 <?php
 
 use Arseno25\LaravelApiMagic\Http\Controllers\DocsController;
+use Illuminate\Support\Facades\Route;
 
 use function Pest\Laravel\get;
 use function Pest\Laravel\getJson;
@@ -194,8 +195,13 @@ describe("GET /api/docs/json", function () {
     it("includes versions array", function () {
         // Without any routes registered via Route::get(), iterations should be empty.
         // We'll register one to ensure '1' gets populated.
+<<<<<<< HEAD
         Illuminate\Support\Facades\Route::middleware("api")->get(
             "/api/users",
+=======
+        Route::middleware('api')->get(
+            '/api/users',
+>>>>>>> f2b99bd71d5030475882dfa3fc36edbce249d13c
             function () {},
         );
 
@@ -427,10 +433,17 @@ describe("endpoint grouping", function () {
 describe("security in endpoints", function () {
     it("includes security information for authenticated routes", function () {
         // Register a protected route
+<<<<<<< HEAD
         Illuminate\Support\Facades\Route::middleware("api")
             ->middleware("auth:sanctum")
             ->get("/api/protected-test", function () {
                 return response()->json(["protected" => true]);
+=======
+        Route::middleware('api')
+            ->middleware('auth:sanctum')
+            ->get('/api/protected-test', function () {
+                return response()->json(['protected' => true]);
+>>>>>>> f2b99bd71d5030475882dfa3fc36edbce249d13c
             });
 
         $response = getJson("/api/docs/json");
@@ -501,11 +514,19 @@ describe("feature toggles", function () {
 describe("query parameters for index endpoints", function () {
     it("includes standard query parameters for GET index", function () {
         // Register an index route with a controller so RouteAnalyzer detects the 'index' method
+<<<<<<< HEAD
         Illuminate\Support\Facades\Route::middleware("api")->get(
             "/api/products",
             [
                 Arseno25\LaravelApiMagic\Http\Controllers\DocsController::class,
                 "index",
+=======
+        Route::middleware('api')->get(
+            '/api/products',
+            [
+                DocsController::class,
+                'index',
+>>>>>>> f2b99bd71d5030475882dfa3fc36edbce249d13c
             ],
         );
 

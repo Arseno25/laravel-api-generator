@@ -12,28 +12,28 @@ class SnapshotSchemaCommand extends Command
     /**
      * The name and signature of the console command.
      */
-    protected $signature = "api-magic:snapshot";
+    protected $signature = 'api-magic:snapshot';
 
     /**
      * The console command description.
      */
-    protected $description = "Save a snapshot of the current API schema for changelog tracking";
+    protected $description = 'Save a snapshot of the current API schema for changelog tracking';
 
     /**
      * Execute the console command.
      */
     public function handle(DocumentationSchemaBuilder $schemaBuilder): int
     {
-        $this->info("📸 Taking API schema snapshot...");
+        $this->info('📸 Taking API schema snapshot...');
 
-        $request = Request::create("/api/docs/json", "GET");
+        $request = Request::create('/api/docs/json', 'GET');
         $schema = $schemaBuilder->buildInternalSchema($request);
 
-        $changelog = new ChangelogService();
+        $changelog = new ChangelogService;
         $savedPath = $changelog->saveSnapshot($schema);
 
         $endpointCount = 0;
-        foreach ($schema["endpoints"] ?? [] as $methods) {
+        foreach ($schema['endpoints'] ?? [] as $methods) {
             $endpointCount += count($methods);
         }
 
@@ -43,7 +43,7 @@ class SnapshotSchemaCommand extends Command
         // Show diff with previous snapshot if available
         $snapshots = $changelog->getSnapshots();
         if (count($snapshots) > 1) {
-            $previousContent = file_get_contents($snapshots[1]["path"]);
+            $previousContent = file_get_contents($snapshots[1]['path']);
             if ($previousContent === false) {
                 return self::SUCCESS;
             }
@@ -54,41 +54,41 @@ class SnapshotSchemaCommand extends Command
                 $diff = $changelog->computeDiff($previousSchema, $schema);
 
                 if (
-                    $diff["total_added"] > 0 ||
-                    $diff["total_removed"] > 0 ||
-                    $diff["total_changed"] > 0
+                    $diff['total_added'] > 0 ||
+                    $diff['total_removed'] > 0 ||
+                    $diff['total_changed'] > 0
                 ) {
                     $this->newLine();
-                    $this->info("📝 Changes since last snapshot:");
+                    $this->info('📝 Changes since last snapshot:');
 
-                    if ($diff["total_added"] > 0) {
+                    if ($diff['total_added'] > 0) {
                         $this->line(
-                            "  <fg=green>+ {$diff["total_added"]} endpoint(s) added</>",
+                            "  <fg=green>+ {$diff['total_added']} endpoint(s) added</>",
                         );
-                        foreach ($diff["added"] as $key => $endpoint) {
+                        foreach ($diff['added'] as $key => $endpoint) {
                             $this->line("    <fg=green>+ {$key}</>");
                         }
                     }
 
-                    if ($diff["total_removed"] > 0) {
+                    if ($diff['total_removed'] > 0) {
                         $this->line(
-                            "  <fg=red>- {$diff["total_removed"]} endpoint(s) removed</>",
+                            "  <fg=red>- {$diff['total_removed']} endpoint(s) removed</>",
                         );
-                        foreach ($diff["removed"] as $key => $endpoint) {
+                        foreach ($diff['removed'] as $key => $endpoint) {
                             $this->line("    <fg=red>- {$key}</>");
                         }
                     }
 
-                    if ($diff["total_changed"] > 0) {
+                    if ($diff['total_changed'] > 0) {
                         $this->line(
-                            "  <fg=yellow>~ {$diff["total_changed"]} endpoint(s) changed</>",
+                            "  <fg=yellow>~ {$diff['total_changed']} endpoint(s) changed</>",
                         );
-                        foreach ($diff["changed"] as $key => $change) {
+                        foreach ($diff['changed'] as $key => $change) {
                             $this->line("    <fg=yellow>~ {$key}</>");
                         }
                     }
                 } else {
-                    $this->info("✨ No changes detected since last snapshot.");
+                    $this->info('✨ No changes detected since last snapshot.');
                 }
             }
         }
