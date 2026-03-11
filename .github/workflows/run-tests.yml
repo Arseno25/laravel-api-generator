@@ -53,13 +53,13 @@ jobs:
           echo "::add-matcher::${{ runner.tool_cache }}/php.json"
           echo "::add-matcher::${{ runner.tool_cache }}/phpunit.json"
 
+      - name: Validate composer metadata
+        run: composer validate --strict
+
       - name: Install dependencies
         run: |
           composer require "laravel/framework:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" --no-interaction --no-update
           composer update --${{ matrix.stability }} --prefer-dist --no-interaction
-
-      - name: Validate composer metadata
-        run: composer validate --strict
 
       - name: List Installed Dependencies
         run: composer show -D
@@ -67,23 +67,10 @@ jobs:
       - name: Execute tests
         run: vendor/bin/pest --ci
 
-  integration-databases:
+  integration-mysql:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - database: mysql
-            port: 3306
-            username: root
-            password: root
-          - database: pgsql
-            port: 5432
-            username: postgres
-            password: secret
-
-    name: Integration - ${{ matrix.database }}
+    name: Integration - mysql
 
     services:
       mysql:
@@ -98,27 +85,13 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
-      pgsql:
-        image: postgres:16
-        env:
-          POSTGRES_DB: laravel_api_magic
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: secret
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U postgres -d laravel_api_magic"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
-
     env:
-      DB_CONNECTION: ${{ matrix.database }}
+      DB_CONNECTION: mysql
       DB_HOST: 127.0.0.1
-      DB_PORT: ${{ matrix.port }}
+      DB_PORT: 3306
       DB_DATABASE: laravel_api_magic
-      DB_USERNAME: ${{ matrix.username }}
-      DB_PASSWORD: ${{ matrix.password }}
+      DB_USERNAME: root
+      DB_PASSWORD: root
 
     steps:
       - name: Checkout code
@@ -136,13 +109,71 @@ jobs:
           echo "::add-matcher::${{ runner.tool_cache }}/php.json"
           echo "::add-matcher::${{ runner.tool_cache }}/phpunit.json"
 
+      - name: Validate composer metadata
+        run: composer validate --strict
+
       - name: Install dependencies
         run: |
           composer require "laravel/framework:12.*" "orchestra/testbench:10.*" --no-interaction --no-update
           composer update --prefer-stable --prefer-dist --no-interaction
 
+      - name: List Installed Dependencies
+        run: composer show -D
+
+      - name: Execute tests
+        run: vendor/bin/pest --ci
+
+  integration-pgsql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    name: Integration - pgsql
+
+    services:
+      pgsql:
+        image: postgres:16
+        env:
+          POSTGRES_DB: laravel_api_magic
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d laravel_api_magic"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: laravel_api_magic
+      DB_USERNAME: postgres
+      DB_PASSWORD: secret
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.4
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, pdo_mysql, pdo_pgsql, bcmath, soap, intl, gd, exif, iconv, imagick, fileinfo
+          coverage: none
+
+      - name: Setup problem matchers
+        run: |
+          echo "::add-matcher::${{ runner.tool_cache }}/php.json"
+          echo "::add-matcher::${{ runner.tool_cache }}/phpunit.json"
+
       - name: Validate composer metadata
         run: composer validate --strict
+
+      - name: Install dependencies
+        run: |
+          composer require "laravel/framework:12.*" "orchestra/testbench:10.*" --no-interaction --no-update
+          composer update --prefer-stable --prefer-dist --no-interaction
 
       - name: List Installed Dependencies
         run: composer show -D

@@ -100,6 +100,7 @@ final class ReverseEngineerCommand extends Command
         $force = $this->booleanOption("force");
 
         $generatedCount = 0;
+        $generatedTables = [];
 
         foreach ($tables as $tableName) {
             $schema = $dbParser->parseTable((string) $tableName);
@@ -165,6 +166,7 @@ final class ReverseEngineerCommand extends Command
                 $stubManager,
             );
             $generatedCount++;
+            $generatedTables[] = (string) $schema["table"];
         }
 
         if ($generatedCount > 0) {
@@ -173,8 +175,8 @@ final class ReverseEngineerCommand extends Command
             );
 
             $routeLines = [];
-            foreach ($tables as $tableName) {
-                $model = Str::studly(Str::singular((string) $tableName));
+            foreach ($generatedTables as $tableName) {
+                $model = Str::studly(Str::singular($tableName));
                 $routePrefix = $version !== null ? "v{$version}/" : "";
                 $routeLines[] = "Route::apiResource('{$routePrefix}{$tableName}', {$model}Controller::class);";
             }
@@ -226,11 +228,16 @@ final class ReverseEngineerCommand extends Command
             "App\\Http\\Controllers\\Api",
             $version,
         );
+        $requestNamespace = $this->buildNamespace(
+            "App\\Http\\Requests",
+            $version,
+        );
         $resourceNamespace = $this->buildNamespace(
             "App\\Http\\Resources",
             $version,
         );
         $controllerDir = $this->buildPath("Http/Controllers/Api", $version);
+        $requestDir = $this->buildPath("Http/Requests", $version);
         $resourceDir = $this->buildPath("Http/Resources", $version);
         $routePrefix = $version !== null ? "v{$version}/" : "";
         $apiPrefix = "/api/{$routePrefix}" . Str::kebab(Str::plural($model));
@@ -238,6 +245,7 @@ final class ReverseEngineerCommand extends Command
         $replacements = [
             "{{ namespace }}" => "App",
             "{{ controllerNamespace }}" => $controllerNamespace,
+            "{{ requestNamespace }}" => $requestNamespace,
             "{{ resourceNamespace }}" => $resourceNamespace,
             "{{ factoryNamespace }}" => "Database\\Factories",
             "{{ seederNamespace }}" => "Database\\Seeders",
@@ -266,6 +274,7 @@ final class ReverseEngineerCommand extends Command
                 ? "    use SoftDeletes;"
                 : "",
             "{{ searchablefields }}" => !empty($schema["fillable"]),
+            "{{ softdeletesmethods }}" => $schema["hasSoftDeletes"],
             "{{ seederCount }}" => (string) config(
                 "api-magic.generator.seeder_count",
                 10,
@@ -289,7 +298,7 @@ final class ReverseEngineerCommand extends Command
             [
                 "stub" => "request.stub",
                 "destination" => app_path(
-                    "Http/Requests/Store{$model}Request.php",
+                    "{$requestDir}/Store{$model}Request.php",
                 ),
                 "replacements" => array_merge($replacements, [
                     "{{ requestClass }}" => "Store{$model}Request",
@@ -298,7 +307,7 @@ final class ReverseEngineerCommand extends Command
             [
                 "stub" => "request.stub",
                 "destination" => app_path(
-                    "Http/Requests/Update{$model}Request.php",
+                    "{$requestDir}/Update{$model}Request.php",
                 ),
                 "replacements" => array_merge($replacements, [
                     "{{ requestClass }}" => "Update{$model}Request",
@@ -434,7 +443,11 @@ final class ReverseEngineerCommand extends Command
     {
         $lines = [];
         foreach ($rules as $field => $rule) {
-            $lines[] = "'{$field}' => '{$rule}',";
+            $ruleParts = array_map(
+                fn(string $rulePart): string => "'{$rulePart}'",
+                explode("|", $rule),
+            );
+            $lines[] = "'{$field}' => [" . implode(", ", $ruleParts) . "],";
         }
 
         return implode("\n            ", $lines);
@@ -517,7 +530,7 @@ final class ReverseEngineerCommand extends Command
 
             $faker = match ($type) {
                 "integer" => '$this->faker->randomNumber()',
-                "number" => '$this->faker->randomFloat(2, 0, 1000)',
+                "float", "decimal" => '$this->faker->randomFloat(2, 0, 1000)',
                 "boolean" => '$this->faker->boolean',
                 "date", "datetime" => '$this->faker->dateTime',
                 "text" => '$this->faker->paragraph',

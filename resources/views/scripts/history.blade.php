@@ -27,7 +27,8 @@ function clearHistory() {
 function showHistoryPanel() {
     selectedPath = null;
     selectedMethod = null;
-    renderEndpoints(document.getElementById('search').value);
+    const searchEl = document.getElementById('search');
+    renderEndpoints(searchEl ? searchEl.value : '');
     const container = document.getElementById('content-area');
     updateHistoryCount();
 

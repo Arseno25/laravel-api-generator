@@ -11,7 +11,7 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   release:
@@ -62,9 +62,9 @@ jobs:
           LAST_TAG="${{ steps.last_tag.outputs.tag }}"
 
           if [ -z "$LAST_TAG" ]; then
-            COMMITS=$(git log --pretty=format:"%s")
+            COMMITS=$(git log --pretty=format:'%s%n%b%n---COMMIT---')
           else
-            COMMITS=$(git log "${LAST_TAG}..HEAD" --pretty=format:"%s")
+            COMMITS=$(git log "${LAST_TAG}..HEAD" --pretty=format:'%s%n%b%n---COMMIT---')
           fi
 
           if [ -z "$COMMITS" ]; then
@@ -72,11 +72,11 @@ jobs:
             exit 0
           fi
 
-          if echo "$COMMITS" | grep -qiE "BREAKING CHANGE|break!"; then
+          if echo "$COMMITS" | grep -qiE 'BREAKING CHANGE:' || echo "$COMMITS" | grep -qiE '^(feat|fix|chore|docs|refactor|perf|test|build)!'; then
             echo "type=major" >> "$GITHUB_OUTPUT"
-          elif echo "$COMMITS" | grep -qiE "^feat"; then
+          elif echo "$COMMITS" | grep -qiE '^feat'; then
             echo "type=minor" >> "$GITHUB_OUTPUT"
-          elif echo "$COMMITS" | grep -qiE "^fix"; then
+          elif echo "$COMMITS" | grep -qiE '^fix'; then
             echo "type=patch" >> "$GITHUB_OUTPUT"
           else
             echo "type=none" >> "$GITHUB_OUTPUT"

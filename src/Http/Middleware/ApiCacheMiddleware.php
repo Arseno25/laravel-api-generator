@@ -71,6 +71,10 @@ class ApiCacheMiddleware
             $response->getStatusCode() >= 200 &&
             $response->getStatusCode() < 300
         ) {
+            if ($response->headers->has("Vary")) {
+                return $response;
+            }
+
             $safeHeaders = [
                 "Content-Type",
                 "Content-Length",
@@ -78,7 +82,6 @@ class ApiCacheMiddleware
                 "ETag",
                 "Last-Modified",
                 "Expires",
-                "Vary",
                 "Content-Language",
             ];
             $headersToCache = [];

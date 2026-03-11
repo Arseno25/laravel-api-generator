@@ -31,6 +31,7 @@
     <div class="p-4 border-b border-white/10 space-y-3 flex-shrink-0">
         <div class="relative">
             <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+            <label for="search" class="sr-only">Search endpoints or tags</label>
             <input type="text" id="search" placeholder="Search paths, tags, or versions... (Ctrl+K)" class="w-full pl-9 pr-4 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent">
         </div>
         <div class="grid gap-3">

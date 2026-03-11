@@ -1,9 +1,12 @@
 import { defineConfig } from "vite";
 import tailwindcss from "@tailwindcss/vite";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const currentDir = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-    root: resolve(import.meta.dirname),
+    root: resolve(currentDir),
     plugins: [tailwindcss()],
     publicDir: false,
     build: {
@@ -11,7 +14,7 @@ export default defineConfig({
         emptyOutDir: true,
         manifest: false,
         rollupOptions: {
-            input: resolve(import.meta.dirname, "resources/assets/docs.css"),
+            input: resolve(currentDir, "resources/assets/docs.css"),
             output: {
                 assetFileNames: "docs.css",
             },

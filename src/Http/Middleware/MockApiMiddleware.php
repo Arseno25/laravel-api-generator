@@ -18,7 +18,10 @@ class MockApiMiddleware
     public function handle(Request $request, Closure $next): mixed
     {
         // Check if mock mode is enabled globally or via header
-        $mockEnabled = config("api-magic.mock.enabled", false);
+        $mockEnabled = config(
+            "api-magic.mock.enabled",
+            config("laravel-api-magic.mock.enabled", false),
+        );
         $headerMock = $request->header("X-Api-Mock") === "true";
 
         // Get the current route's controller and method
@@ -51,7 +54,6 @@ class MockApiMiddleware
         // Generate mock response based on method type
         $httpMethod = strtolower($request->method());
         $mockData = $this->generateMockData(
-            $controller,
             $method,
             $httpMethod,
             $count,
@@ -112,7 +114,6 @@ class MockApiMiddleware
      * @return array<string, mixed>|array<int, array<string, mixed>>
      */
     private function generateMockData(
-        string $controller,
         string $method,
         string $httpMethod,
         int $count,

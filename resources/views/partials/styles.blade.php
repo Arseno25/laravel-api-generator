@@ -233,4 +233,18 @@
     @keyframes shimmer {
         to { transform: translateX(120%); }
     }
+
+    @media (prefers-reduced-motion: reduce) {
+        .sidebar-item,
+        .sidebar-item:hover,
+        .sidebar-item.active,
+        .sidebar-overlay,
+        .sidebar-panel,
+        .toast,
+        .hero-shine::after {
+            transition: none !important;
+            transform: none !important;
+            animation: none !important;
+        }
+    }
 </style>

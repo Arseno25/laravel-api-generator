@@ -43,19 +43,26 @@ final class DatabaseSchemaParser
 
         $exclude = array_merge($defaultExclude, $exclude);
 
-        $tables = array_map(
-            fn(
-                string $table,
-            ): string => $this->metadataInferrer->normalizeTableName($table),
-            Schema::getTableListing(),
-        );
+        $tables = [];
 
-        return array_values(
-            array_filter(
-                array_unique($tables),
-                fn($table) => !in_array($table, $exclude, true),
-            ),
-        );
+        foreach (Schema::getTableListing() as $table) {
+            $normalizedTable = $this->metadataInferrer->normalizeTableName(
+                $table,
+            );
+
+            if (
+                in_array($normalizedTable, $exclude, true) ||
+                in_array($table, $exclude, true)
+            ) {
+                continue;
+            }
+
+            if (!array_key_exists($normalizedTable, $tables)) {
+                $tables[$normalizedTable] = $table;
+            }
+        }
+
+        return array_values($tables);
     }
 
     /**
@@ -65,7 +72,7 @@ final class DatabaseSchemaParser
      */
     public function parseTable(string $table): array
     {
-        $table = $this->metadataInferrer->normalizeTableName($table);
+        $normalizedTable = $this->metadataInferrer->normalizeTableName($table);
         $columns = Schema::getColumns($table);
         $driver = $this->resolveDriverName();
 
@@ -144,8 +151,8 @@ final class DatabaseSchemaParser
         }
 
         return [
-            "table" => $table,
-            "model" => Str::studly(Str::singular($table)),
+            "table" => $normalizedTable,
+            "model" => Str::studly(Str::singular($normalizedTable)),
             "fields" => $fields,
             "fillable" => $fillable,
             "casts" => $casts,
@@ -174,7 +181,7 @@ final class DatabaseSchemaParser
 
         match ($genericType) {
             "integer" => ($rules[] = "integer"),
-            "number" => ($rules[] = "numeric"),
+            "float", "decimal" => ($rules[] = "numeric"),
             "boolean" => ($rules[] = "boolean"),
             "date" => ($rules[] = "date"),
             "datetime" => ($rules[] = "date"),

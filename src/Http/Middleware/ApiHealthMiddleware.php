@@ -13,7 +13,7 @@ class ApiHealthMiddleware
      */
     public function handle(Request $request, Closure $next): mixed
     {
-        if (! config('api-magic.health.enabled', false)) {
+        if (!config("api-magic.health.enabled", false)) {
             return $next($request);
         }
 
@@ -40,45 +40,42 @@ class ApiHealthMiddleware
         int $statusCode,
         float $durationMs,
     ): void {
-        $store = config('api-magic.health.store') ?? config('cache.default');
-        $window = config('api-magic.health.window', 60);
+        $store = config("api-magic.health.store") ?? config("cache.default");
+        $window = config("api-magic.health.window", 60);
         $key = "api_health:{$method}:{$path}";
 
         $metrics = Cache::store($store)->get($key, [
-            'total_requests' => 0,
-            'total_errors' => 0,
-            'total_duration_ms' => 0,
-            'status_codes' => [],
-            'last_request_at' => null,
-            'window_start' => now()->toIso8601String(),
+            "total_requests" => 0,
+            "total_errors" => 0,
+            "total_duration_ms" => 0,
+            "status_codes" => [],
+            "last_request_at" => null,
+            "window_start" => now()->toIso8601String(),
         ]);
 
-        $metrics['total_requests']++;
-        $metrics['total_duration_ms'] += $durationMs;
-        $metrics['last_request_at'] = now()->toIso8601String();
+        $metrics["total_requests"]++;
+        $metrics["total_duration_ms"] += $durationMs;
+        $metrics["last_request_at"] = now()->toIso8601String();
 
         if ($statusCode >= 400) {
-            $metrics['total_errors']++;
+            $metrics["total_errors"]++;
         }
 
         $statusKey = (string) $statusCode;
-        $metrics['status_codes'][$statusKey] =
-            ($metrics['status_codes'][$statusKey] ?? 0) + 1;
+        $metrics["status_codes"][$statusKey] =
+            ($metrics["status_codes"][$statusKey] ?? 0) + 1;
 
         Cache::store($store)->put($key, $metrics, $window * 60);
 
         // Track global endpoint list
-        $endpointListKey = 'api_health:endpoints';
+        $endpointListKey = "api_health:endpoints";
         $endpoints = Cache::store($store)->get($endpointListKey, []);
         $endpointKey = "{$method} {$path}";
-        if (! in_array($endpointKey, $endpoints)) {
+        if (!in_array($endpointKey, $endpoints)) {
             $endpoints[] = $endpointKey;
-            Cache::store($store)->put(
-                $endpointListKey,
-                $endpoints,
-                $window * 60,
-            );
         }
+
+        Cache::store($store)->put($endpointListKey, $endpoints, $window * 60);
     }
 
     /**
@@ -88,43 +85,43 @@ class ApiHealthMiddleware
      */
     public static function getMetrics(): array
     {
-        $store = config('api-magic.health.store') ?? config('cache.default');
-        $endpoints = Cache::store($store)->get('api_health:endpoints', []);
+        $store = config("api-magic.health.store") ?? config("cache.default");
+        $endpoints = Cache::store($store)->get("api_health:endpoints", []);
 
         $metrics = [];
         foreach ($endpoints as $endpoint) {
-            [$method, $path] = explode(' ', $endpoint, 2);
+            [$method, $path] = explode(" ", $endpoint, 2);
             $key = "api_health:{$method}:{$path}";
             $data = Cache::store($store)->get($key);
 
             if ($data) {
                 $avgDuration =
-                    $data['total_requests'] > 0
+                    $data["total_requests"] > 0
                         ? round(
-                            $data['total_duration_ms'] /
-                                $data['total_requests'],
+                            $data["total_duration_ms"] /
+                                $data["total_requests"],
                             2,
                         )
                         : 0;
 
                 $errorRate =
-                    $data['total_requests'] > 0
+                    $data["total_requests"] > 0
                         ? round(
-                            ($data['total_errors'] / $data['total_requests']) *
+                            ($data["total_errors"] / $data["total_requests"]) *
                                 100,
                             1,
                         )
                         : 0;
 
                 $metrics[] = [
-                    'method' => $method,
-                    'path' => $path,
-                    'total_requests' => $data['total_requests'],
-                    'total_errors' => $data['total_errors'],
-                    'avg_response_ms' => $avgDuration,
-                    'error_rate' => $errorRate,
-                    'status_codes' => $data['status_codes'],
-                    'last_request_at' => $data['last_request_at'],
+                    "method" => $method,
+                    "path" => $path,
+                    "total_requests" => $data["total_requests"],
+                    "total_errors" => $data["total_errors"],
+                    "avg_response_ms" => $avgDuration,
+                    "error_rate" => $errorRate,
+                    "status_codes" => $data["status_codes"],
+                    "last_request_at" => $data["last_request_at"],
                 ];
             }
         }
@@ -132,7 +129,7 @@ class ApiHealthMiddleware
         // Sort by total requests desc
         usort(
             $metrics,
-            fn ($a, $b) => $b['total_requests'] <=> $a['total_requests'],
+            fn($a, $b) => $b["total_requests"] <=> $a["total_requests"],
         );
 
         return $metrics;

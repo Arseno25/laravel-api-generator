@@ -1,7 +1,7 @@
 {{-- Modal Dialogs --}}
 
 {{-- Auth Modal --}}
-<div id="auth-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+<div id="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
     <div class="bg-slate-800/95 rounded-[1.75rem] shadow-2xl w-full max-w-lg border border-white/10 overflow-hidden">
         <div class="border-b border-white/10 bg-white/5 px-5 py-4 lg:px-6">
             <div class="flex items-start gap-3">
@@ -9,7 +9,7 @@
                     <i class="fas fa-key"></i>
                 </div>
                 <div>
-                    <h3 class="text-lg font-bold text-white">Authentication Settings</h3>
+                    <h3 id="auth-modal-title" class="text-lg font-bold text-white">Authentication Settings</h3>
                     <p class="mt-1 text-sm text-slate-400">Choose the auth mode used when sending requests from this console.</p>
                 </div>
             </div>
@@ -45,6 +45,7 @@
                 </div>
             </div>
 
+            <label for="auth-token" class="mb-2 block text-sm font-medium text-slate-300">Token</label>
             <input type="password" id="auth-token" placeholder="1|abc123xyz..." class="w-full px-4 py-3 bg-slate-900 border border-white/10 rounded-2xl text-sm font-mono mb-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 text-slate-200">
 
             <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">

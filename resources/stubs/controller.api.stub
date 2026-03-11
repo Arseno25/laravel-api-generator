@@ -3,8 +3,8 @@
 namespace {{ controllerNamespace }};
 
 use App\Http\Controllers\Controller;
-use {{ namespace }}\Http\Requests\Store{{ model }}Request;
-use {{ namespace }}\Http\Requests\Update{{ model }}Request;
+use {{ requestNamespace }}\Store{{ model }}Request;
+use {{ requestNamespace }}\Update{{ model }}Request;
 use {{ resourceNamespace }}\{{ model }}Resource;
 use {{ resourceNamespace }}\{{ model }}Collection;
 use {{ namespace }}\Models\{{ model }};

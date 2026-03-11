@@ -207,6 +207,11 @@ final class GenerateApiCommand extends Command
             $version,
         );
         $controllerDir = $this->buildPath("Http/Controllers/Api", $version);
+        $requestNamespace = $this->buildNamespace(
+            "App\\Http\\Requests",
+            $version,
+        );
+        $requestDir = $this->buildPath("Http/Requests", $version);
         $resourceDir = $this->buildPath("Http/Resources", $version);
 
         // Build route prefix: no version → "" | with version → "v1/"
@@ -216,6 +221,7 @@ final class GenerateApiCommand extends Command
         $replacements = [
             "{{ namespace }}" => "App",
             "{{ controllerNamespace }}" => $controllerNamespace,
+            "{{ requestNamespace }}" => $requestNamespace,
             "{{ resourceNamespace }}" => $resourceNamespace,
             "{{ factoryNamespace }}" => "Database\\Factories",
             "{{ seederNamespace }}" => "Database\\Seeders",
@@ -249,6 +255,7 @@ final class GenerateApiCommand extends Command
             "{{ softDeletesTrait }}" => $useSoftDeletes
                 ? "    use SoftDeletes;"
                 : "",
+            "{{ softdeletesmethods }}" => $useSoftDeletes,
             "{{ searchablefields }}" => !empty($fields["searchableFields"]),
             "{{ seederCount }}" => (string) config(
                 "api-magic.generator.seeder_count",
@@ -281,7 +288,7 @@ final class GenerateApiCommand extends Command
             [
                 "stub" => "request.stub",
                 "destination" => app_path(
-                    "Http/Requests/Store{$model}Request.php",
+                    "{$requestDir}/Store{$model}Request.php",
                 ),
                 "replacements" => array_merge($replacements, [
                     "{{ requestClass }}" => "Store{$model}Request",
@@ -290,7 +297,7 @@ final class GenerateApiCommand extends Command
             [
                 "stub" => "request.stub",
                 "destination" => app_path(
-                    "Http/Requests/Update{$model}Request.php",
+                    "{$requestDir}/Update{$model}Request.php",
                 ),
                 "replacements" => array_merge($replacements, [
                     "{{ requestClass }}" => "Update{$model}Request",
@@ -546,18 +553,27 @@ final class GenerateApiCommand extends Command
     ): array {
         $existing = [];
         $controllerDir = $this->buildPath("Http/Controllers/Api", $version);
+        $requestDir = $this->buildPath("Http/Requests", $version);
         $resourceDir = $this->buildPath("Http/Resources", $version);
 
         $files = [
             app_path("Models/{$model}.php"),
             app_path("{$controllerDir}/{$model}Controller.php"),
-            app_path("Http/Requests/Store{$model}Request.php"),
-            app_path("Http/Requests/Update{$model}Request.php"),
+            app_path("{$requestDir}/Store{$model}Request.php"),
+            app_path("{$requestDir}/Update{$model}Request.php"),
             app_path("{$resourceDir}/{$model}Resource.php"),
         ];
 
         if ($this->option("policy")) {
             $files[] = app_path("Policies/{$model}Policy.php");
+        }
+
+        if ($this->option("factory")) {
+            $files[] = database_path("factories/{$model}Factory.php");
+        }
+
+        if ($this->option("seeder")) {
+            $files[] = database_path("seeders/{$model}Seeder.php");
         }
 
         if ($generateTest) {

@@ -104,6 +104,7 @@ final class SchemaParser
             "date",
             "datetime",
             "timestamp",
+            "uuid",
             "image",
             "file",
             "size",
@@ -270,8 +271,11 @@ final class SchemaParser
                 }
             }
 
-            $rulesString = implode("|", $rules);
-            $lines[] = "            '{$name}' => '{$rulesString}',";
+            $rulesCode = implode(
+                ", ",
+                array_map(fn(string $rule): string => "'{$rule}'", $rules),
+            );
+            $lines[] = "            '{$name}' => [{$rulesCode}],";
         }
 
         if (empty($lines)) {
